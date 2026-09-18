@@ -544,11 +544,12 @@ fun EmptyState(icon: ImageVector, title: String, body: String, action: String? =
 }
 
 @Composable
-fun PermissionEmptyState(onGrant: () -> Unit = {}) = EmptyState(
+fun PermissionEmptyState(blocked: Boolean = false, onGrant: () -> Unit = {}) = EmptyState(
     Icons.Rounded.FolderOpen,
     "Let Harmonia find your music",
-    "We only read audio files on this device to build your library. Nothing leaves your phone.",
-    "Grant access",
+    if (blocked) "Access was turned off. Open settings, tap Permissions and allow Music and audio."
+    else "We only read audio files on this device to build your library. Nothing leaves your phone.",
+    if (blocked) "Open settings" else "Grant access",
     onGrant,
 )
 

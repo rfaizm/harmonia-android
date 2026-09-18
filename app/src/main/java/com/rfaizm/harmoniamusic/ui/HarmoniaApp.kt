@@ -1,9 +1,16 @@
 package com.rfaizm.harmoniamusic.ui
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
+import android.net.Uri
+import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -58,6 +65,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.rfaizm.harmoniamusic.data.SEED_PLAYLISTS
 import com.rfaizm.harmoniamusic.data.SEED_SONGS
 import com.rfaizm.harmoniamusic.data.Playlist
@@ -71,6 +80,9 @@ import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+private val AUDIO_PERMISSION =
+    if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
 
 enum class Tab(val label: String, val icon: ImageVector) {
     Songs("Songs", Icons.Rounded.MusicNote),
@@ -131,6 +143,28 @@ fun HarmoniaApp() {
         activity?.enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
     }
 
+    // PRD phase 1: our explainer shows first; the system prompt only appears once "Grant access" is tapped.
+    val context = LocalContext.current
+    fun hasPermission() = ContextCompat.checkSelfPermission(context, AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED
+    var granted by remember { mutableStateOf(hasPermission()) }
+    // "Don't ask again": the system won't prompt any more, so the button opens app settings instead.
+    // ponytail: dismissing the prompt without choosing also reads as blocked on API 30+; costs one detour via settings.
+    var blocked by rememberSaveable { mutableStateOf(false) }
+    val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
+        granted = ok
+        blocked = !ok && activity?.shouldShowRequestPermissionRationale(AUDIO_PERMISSION) == false
+    }
+    LifecycleResumeEffect(Unit) {
+        granted = hasPermission() // picks up a grant made in system settings
+        onPauseOrDispose {}
+    }
+    fun requestPermission() {
+        if (blocked) context.startActivity(
+            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))
+        )
+        else permissionLauncher.launch(AUDIO_PERMISSION)
+    }
+
     HarmoniaTheme(darkTheme = darkMode) {
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize()) {
@@ -141,16 +175,17 @@ fun HarmoniaApp() {
                     modifier = Modifier.weight(1f),
                     label = "tab"
                 ) { t ->
-                    when (t) {
-                        Tab.Songs -> SongsScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
-                        Tab.Playlists -> PlaylistsScreen(
+                    when {
+                        t == Tab.Settings -> SettingsScreen()
+                        !granted -> PermissionEmptyState(blocked, ::requestPermission)
+                        t == Tab.Songs -> SongsScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
+                        t == Tab.Playlists -> PlaylistsScreen(
                             songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo,
                             onCreate = { addTo(it, emptyList()) },
                             onRemove = { playlistId, songId -> playlists.removeSong(playlistId, songId) },
                             onDelete = { playlists.remove(it) },
                         )
-                        Tab.Artists -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
-                        Tab.Settings -> SettingsScreen()
+                        else -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
                     }
                 }
                 AnimatedVisibility(
