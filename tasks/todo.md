@@ -11,7 +11,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## M1: Real library (PRD phase 1)
 - [x] T4 Permission flow (`READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE` ≤32, `PermissionEmptyState`, settings link after a permanent denial)
 - [x] T5 MediaStore scan in `object Library` (filters, tag fallbacks plus a test, rescan, pull-to-refresh, no rescan on rotation)
-- [ ] **Checkpoint M1:** real library shows on the phone, first scan under 3 s, empty and permission states work
+- [ ] **Checkpoint M1:** tests and lint pass ✅; waiting for the phone check: real library shows on the phone, first scan under 3 s, empty and permission states work
 
 ## M2: Real playback
 - [ ] T6 Media3 `PlaybackService` and `MediaController` (notification, lock screen, Bluetooth, background)
