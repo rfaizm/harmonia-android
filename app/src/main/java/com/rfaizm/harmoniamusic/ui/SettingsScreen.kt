@@ -37,7 +37,7 @@ import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(onRescan: () -> Unit) {
     var crossfade by rememberSaveable { mutableStateOf(true) }
     var gapless by rememberSaveable { mutableStateOf(true) }
     var smartShuffle by rememberSaveable { mutableStateOf(true) }
@@ -50,7 +50,7 @@ fun SettingsScreen() {
         Text("Settings", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 14.dp))
 
         SettingsSection("Library") {
-            SettingsRow(Icons.Rounded.Schedule, "Rescan library", "Last scanned just now", onClick = {}) { Chevron() }
+            SettingsRow(Icons.Rounded.Schedule, "Rescan library", "Find new or removed songs", onClick = onRescan) { Chevron() }
             Divider()
             SettingsRow(Icons.Rounded.Tune, "Filters", "Hide clips shorter than 30 seconds", onClick = {}) { Chevron() }
         }

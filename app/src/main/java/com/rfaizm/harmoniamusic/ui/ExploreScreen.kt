@@ -36,6 +36,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,8 +73,9 @@ fun ExploreScreen(
     // Open artist or album name (which one follows albumsView); local state, like PlaylistsScreen.
     var openName by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(openName != null) { openName = null }
-    val artists = remember(songs) { songs.groupBy { it.displayArtist }.toList().sortedBy { it.first.lowercase() } }
-    val albums = remember(songs) { songs.groupBy { it.album }.toList().sortedBy { it.first.lowercase() } }
+    // derivedStateOf, not remember(songs) alone: the list instance never changes, so a rescan would never regroup.
+    val artists by remember(songs) { derivedStateOf { songs.groupBy { it.displayArtist }.toList().sortedBy { it.first.lowercase() } } }
+    val albums by remember(songs) { derivedStateOf { songs.groupBy { it.album }.toList().sortedBy { it.first.lowercase() } } }
 
     AnimatedContent(openName, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "exploreDetail") { open ->
         if (open != null) {
@@ -149,7 +151,7 @@ fun ExploreScreen(
                                     Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
                                         Text(album, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         Text(list.first().displayArtist, fontSize = 11.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text("${list.first().year} · ${list.size} tracks", fontSize = 10.sp, color = colors.mutedForeground.copy(alpha = 0.55f), modifier = Modifier.padding(top = 2.dp))
+                                        Text(listOfNotNull(list.first().year.takeIf { it > 0 }, "${list.size} tracks").joinToString(" · "), fontSize = 10.sp, color = colors.mutedForeground.copy(alpha = 0.55f), modifier = Modifier.padding(top = 2.dp))
                                     }
                                 }
                             }

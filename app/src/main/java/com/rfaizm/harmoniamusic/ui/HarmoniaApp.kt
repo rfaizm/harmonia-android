@@ -44,15 +44,16 @@ import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -67,9 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
-import com.rfaizm.harmoniamusic.data.SEED_PLAYLISTS
-import com.rfaizm.harmoniamusic.data.SEED_SONGS
-import com.rfaizm.harmoniamusic.data.Playlist
+import com.rfaizm.harmoniamusic.data.Library
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.addSongs
 import com.rfaizm.harmoniamusic.data.removeSong
@@ -77,6 +76,7 @@ import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -92,14 +92,14 @@ enum class Tab(val label: String, val icon: ImageVector) {
 }
 
 /**
- * UI-only shell: all state is in-memory seed data (GUIDELINE §16).
- * ponytail: no playback, scanning or persistence yet — wire a MediaStore repo + Media3 player here next.
+ * Root state holder (GUIDELINE §16). Songs and playlists live in [Library]; everything else is UI state here.
+ * ponytail: no playback or persistence yet; Media3 lands in T6, saving in T10.
  */
 @Composable
 fun HarmoniaApp() {
     var darkMode by rememberSaveable { mutableStateOf(true) }
-    val songs = remember { mutableStateListOf<Song>().apply { addAll(SEED_SONGS) } }
-    val playlists = remember { mutableStateListOf<Playlist>().apply { addAll(SEED_PLAYLISTS) } }
+    val songs = Library.songs
+    val playlists = Library.playlists
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
     var activeId by rememberSaveable { mutableStateOf<Int?>(null) }
     var isPlaying by rememberSaveable { mutableStateOf(false) }
@@ -165,6 +165,18 @@ fun HarmoniaApp() {
         else permissionLauncher.launch(AUDIO_PERMISSION)
     }
 
+    // First scan once permission is there; Library outlives the activity, so rotation doesn't rescan.
+    LaunchedEffect(granted) { if (granted && !Library.loaded) Library.scan(context) }
+    val scope = rememberCoroutineScope()
+    var rescanning by remember { mutableStateOf(false) }
+    fun rescan() {
+        if (!granted || rescanning) return
+        scope.launch {
+            rescanning = true
+            try { Library.scan(context) } finally { rescanning = false }
+        }
+    }
+
     HarmoniaTheme(darkTheme = darkMode) {
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize()) {
@@ -176,8 +188,12 @@ fun HarmoniaApp() {
                     label = "tab"
                 ) { t ->
                     when {
-                        t == Tab.Settings -> SettingsScreen()
+                        t == Tab.Settings -> SettingsScreen(onRescan = ::rescan)
                         !granted -> PermissionEmptyState(blocked, ::requestPermission)
+                        !Library.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(color = colors.primary)
+                        }
+                        songs.isEmpty() -> NoMusicEmptyState(rescanning, ::rescan)
                         t == Tab.Songs -> SongsScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
                         t == Tab.Playlists -> PlaylistsScreen(
                             songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo,

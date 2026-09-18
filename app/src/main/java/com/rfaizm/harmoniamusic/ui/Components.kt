@@ -27,16 +27,19 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Check
@@ -54,11 +57,13 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -553,14 +558,19 @@ fun PermissionEmptyState(blocked: Boolean = false, onGrant: () -> Unit = {}) = E
     onGrant,
 )
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun NoMusicEmptyState(onRefresh: () -> Unit = {}) = EmptyState(
-    Icons.Rounded.LibraryMusic,
-    "No songs yet",
-    "Copy some audio files to your phone's Music or Download folder, then pull down to refresh.",
-    "Scan again",
-    onRefresh,
-)
+fun NoMusicEmptyState(refreshing: Boolean = false, onRefresh: () -> Unit = {}) = PullToRefreshBox(refreshing, onRefresh) {
+    EmptyState(
+        Icons.Rounded.LibraryMusic,
+        "No songs yet",
+        "Copy some audio files to your phone's Music or Download folder, then pull down to refresh.",
+        "Scan again",
+        onRefresh,
+        // Fills and scrolls so a pull anywhere on screen reaches PullToRefreshBox.
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+    )
+}
 
 @Preview(showBackground = true, backgroundColor = 0xFF1E2022)
 @Composable
