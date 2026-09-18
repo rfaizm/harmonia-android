@@ -1,0 +1,280 @@
+package com.rfaizm.harmoniamusic.ui
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.FormatQuote
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Repeat
+import androidx.compose.material.icons.rounded.RepeatOne
+import androidx.compose.material.icons.rounded.Shuffle
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.formatDuration
+import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
+import com.rfaizm.harmoniamusic.ui.theme.card
+
+@Composable
+fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> Unit, onNext: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
+    val (g0, g1) = song.gradient
+    val shape = RoundedCornerShape(16.dp)
+    Column(
+        modifier
+            .padding(horizontal = 12.dp)
+            .padding(bottom = 8.dp)
+            .shadow(16.dp, shape, ambientColor = g1, spotColor = g1)
+            .clip(shape)
+            .background(Brush.horizontalGradient(listOf(g0.copy(alpha = 0.94f), g1.copy(alpha = 0.94f))))
+            .clickable(onClick = onOpen)
+    ) {
+        Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            AlbumArt(song.gradient, 42.dp, Modifier.shadow(2.dp, RoundedCornerShape(12.dp)))
+            Column(Modifier.weight(1f)) {
+                Text(song.displayTitle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(song.displayArtist, fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            CircleIcon(
+                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", onToggle,
+                size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.15f)
+            )
+            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
+        }
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.15f))) {
+            Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White.copy(alpha = 0.6f)))
+        }
+    }
+}
+
+@Composable
+fun FullPlayer(
+    song: Song,
+    isPlaying: Boolean,
+    shuffle: Boolean,
+    repeatMode: Int,
+    onClose: () -> Unit,
+    onToggle: () -> Unit,
+    onNext: () -> Unit,
+    onPrev: () -> Unit,
+    onShuffle: () -> Unit,
+    onRepeat: () -> Unit,
+    onLike: () -> Unit,
+) {
+    val (g0, g1) = song.gradient
+    var progress by remember(song.id) { mutableFloatStateOf(0.32f) }
+    var volume by remember { mutableFloatStateOf(0.7f) }
+    var muted by remember { mutableStateOf(false) }
+    BackHandler(onBack = onClose)
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(0f to g0, 0.45f to g1, 1f to PlayerBottom))
+            // swallow taps so they don't reach the screen underneath
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
+            .systemBarsPadding()
+    ) {
+        // 1. Top bar
+        Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            CircleIcon(Icons.Rounded.KeyboardArrowDown, "Close player", onClose, size = 36.dp, iconSize = 22.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
+            Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            HeartButton(song.liked, onLike, iconSize = 18.dp, unlikedTint = Color.White)
+        }
+
+        // 2. Album art — remounts per song, breathes with play state
+        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 40.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
+            key(song.id) {
+                var appeared by remember { mutableStateOf(false) }
+                LaunchedEffect(Unit) { appeared = true }
+                val artSpring = spring<Float>(dampingRatio = 0.71f, stiffness = 240f)
+                val scale by animateFloatAsState(if (!appeared) 0.82f else if (isPlaying) 1f else 0.88f, artSpring, label = "artScale")
+                val alpha by animateFloatAsState(if (appeared) 1f else 0f, artSpring, label = "artAlpha")
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+                        .shadow(32.dp, RoundedCornerShape(24.dp), ambientColor = g1, spotColor = g1)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(gradientBrush(song.gradient)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(80.dp))
+                }
+            }
+        }
+
+        // 3. Song info
+        Row(Modifier.padding(horizontal = 28.dp).padding(bottom = 20.dp), verticalAlignment = Alignment.Top) {
+            Column(Modifier.weight(1f)) {
+                Text(song.displayTitle, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text("${song.displayArtist} · ${song.album}", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+            }
+            Row(Modifier.padding(top = 6.dp, start = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Icon(Icons.Rounded.Star, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(12.dp))
+                Text("${song.playCount}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.4f))
+            }
+        }
+
+        // 4. Scrubber
+        Column(Modifier.padding(horizontal = 28.dp).padding(bottom = 20.dp)) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(20.dp)
+                    .pointerInput(Unit) { detectTapGestures { progress = (it.x / size.width).coerceIn(0f, 1f) } }
+                    .pointerInput(Unit) { detectHorizontalDragGestures { change, _ -> progress = (change.position.x / size.width).coerceIn(0f, 1f) } },
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f))) {
+                    Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White))
+                }
+                Row(Modifier.fillMaxWidth(progress), horizontalArrangement = Arrangement.End) {
+                    Box(Modifier.size(12.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
+                }
+            }
+            Row(Modifier.fillMaxWidth()) {
+                Text(formatDuration((song.duration * progress).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), modifier = Modifier.weight(1f))
+                Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f))
+            }
+        }
+
+        // 5. Controls — wide spacing between play/skip (PRD phase 7)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp).padding(bottom = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            ModeButton(Icons.Rounded.Shuffle, "Shuffle", shuffle, onShuffle)
+            CircleIcon(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
+            val playScale by animateFloatAsState(if (isPlaying) 1f else 0.96f, label = "play")
+            Box(
+                Modifier
+                    .size(64.dp)
+                    .graphicsLayer { scaleX = playScale; scaleY = playScale }
+                    .shadow(12.dp, CircleShape)
+                    .clip(CircleShape)
+                    .background(Color.White)
+                    .clickable(onClick = onToggle),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", tint = g0, modifier = Modifier.size(32.dp))
+            }
+            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
+            ModeButton(if (repeatMode == 2) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", repeatMode != 0, onRepeat)
+        }
+
+        // 6. Volume
+        Row(Modifier.padding(horizontal = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CircleIcon(
+                if (muted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp, if (muted) "Unmute" else "Mute",
+                { muted = !muted }, size = 32.dp, iconSize = 18.dp, tint = Color.White.copy(alpha = 0.6f)
+            )
+            Slider(
+                value = if (muted) 0f else volume,
+                onValueChange = { volume = it; muted = false },
+                modifier = Modifier.weight(1f),
+                colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = 0.2f))
+            )
+        }
+
+        // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
+        Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            ExtraChip(Icons.Rounded.FormatQuote, "Lyrics") {}
+            SleepTimerChip()
+        }
+    }
+}
+
+@Composable
+private fun ModeButton(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier.clip(CircleShape).clickable(onClick = onClick).padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(icon, label, tint = Color.White.copy(alpha = if (active) 1f else 0.35f), modifier = Modifier.size(20.dp))
+        Spacer(Modifier.height(2.dp))
+        Box(Modifier.size(4.dp).clip(CircleShape).background(if (active) Color.White else Color.Transparent))
+    }
+}
+
+@Composable
+private fun ExtraChip(icon: ImageVector, text: String, onClick: () -> Unit) {
+    Row(
+        Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.10f)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(icon, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(15.dp))
+        Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.8f))
+    }
+}
+
+@Composable
+private fun SleepTimerChip() {
+    var open by remember { mutableStateOf(false) }
+    var choice by remember { mutableStateOf<String?>(null) }
+    Box {
+        ExtraChip(Icons.Rounded.Bedtime, choice?.let { "Sleep · $it" } ?: "Sleep timer") { open = true }
+        DropdownMenu(open, { open = false }, shape = RoundedCornerShape(16.dp), containerColor = colors.card) {
+            listOf("15 min", "30 min", "45 min", "60 min", "End of track", "Off").forEach { opt ->
+                DropdownMenuItem(
+                    text = { Text(opt, fontSize = 14.sp, color = if (opt == "Off") colors.onSurfaceVariant else colors.onSurface) },
+                    onClick = { choice = opt.takeIf { it != "Off" }; open = false }
+                )
+            }
+        }
+    }
+}
+
