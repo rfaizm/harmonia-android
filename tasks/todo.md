@@ -15,8 +15,8 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 
 ## M2: Real playback
 - [x] T6 Media3 `PlaybackService` and `MediaController` (notification, lock screen, Bluetooth, background); play counts move to the service (`countPlay` test). Shuffle button is inert until T7
-- [x] T7 Progress polling, seek, shuffle/repeat mapping, device volume (`PlayerTest`); T6 phone check passed 2026-09-19
-- [ ] T8 Corrupt file skips to the next with a Toast, no infinite loop
+- [x] T7 Progress polling, seek, shuffle/repeat mapping, device volume (`PlayerTest`); T6 phone check passed 2026-09-19. Volume goes through `AudioManager` (Media3 controllers drop volume commands for local playback) and CBR seeking makes recorder `.aac`/`.amr` seekable; both confirmed on the phone
+- [x] T8 Corrupt file skips to the next with a Toast, no infinite loop (`shouldSkipAfterError`, `PlaybackServiceTest`)
 - [ ] T9 Noisy pause, ducking, previous restarts after 5 s, 30% speaker volume after unplug, fade-in on resume
 - [ ] **Checkpoint M2:** device test covering playback, lock screen, Bluetooth, unplugging, a call, previous, and a corrupt file
 
