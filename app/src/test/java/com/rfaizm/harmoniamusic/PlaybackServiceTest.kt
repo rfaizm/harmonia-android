@@ -23,4 +23,14 @@ class PlaybackServiceTest {
     fun aBrokenLastSongWithRepeatOffStops() {
         assertFalse(shouldSkipAfterError(errorsInARow = 1, queueSize = 5, hasNext = false))
     }
+
+    @Test
+    fun playAfterUnplugCapsTheSpeakerAtThirtyPercent() {
+        assertEquals(5, speakerSafeVolume(current = 12, max = 15)) // 30% of 15 steps is 4.5, rounded to 5
+    }
+
+    @Test
+    fun playAfterUnplugNeverRaisesAnAlreadyQuietSpeaker() {
+        assertEquals(3, speakerSafeVolume(current = 3, max = 15))
+    }
 }

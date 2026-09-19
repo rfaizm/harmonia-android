@@ -1,11 +1,20 @@
 package com.rfaizm.harmoniamusic
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Intent
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.media.AudioManager.STREAM_MUSIC
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
@@ -20,6 +29,8 @@ import androidx.media3.session.MediaSessionService
 import com.rfaizm.harmoniamusic.data.Library
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.countPlay
+import kotlin.math.min
+import kotlin.math.roundToInt
 
 /**
  * Owns the player so music keeps going with the app closed. Media3 draws the notification and lock-screen
@@ -28,14 +39,22 @@ import com.rfaizm.harmoniamusic.data.countPlay
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
     private var errorsInARow = 0
+    private var pausedByUnplug = false
+    private val handler = Handler(Looper.getMainLooper())
+    private val audio by lazy { getSystemService(AudioManager::class.java) } // no context before onCreate
 
-    @OptIn(UnstableApi::class) // DefaultExtractorsFactory, setDeviceVolumeControlEnabled
+    @OptIn(UnstableApi::class) // DefaultExtractorsFactory, setMaxSeekToPreviousPositionMs, setDeviceVolumeControlEnabled
     override fun onCreate() {
         super.onCreate()
         // Voice recorders often write ADTS .aac or .amr, which have no seek index; without this they can't be seeked.
         val extractors = DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)
         val player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this, extractors))
+            // PRD phase 4: pause for calls and other music apps, duck for notifications. Media3 ducks to about 20%
+            // rather than the PRD's 30%; not worth fighting (tasks/plan.md).
+            .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
+            .setHandleAudioBecomingNoisy(true) // pause the moment earphones come out
+            .setMaxSeekToPreviousPositionMs(5_000) // PRD phase 7: previous after 5 s restarts the song
             // Lets the controller read the phone's media volume, so hardware keys move the slider.
             .setDeviceVolumeControlEnabled(true)
             .build()
@@ -54,6 +73,22 @@ class PlaybackService : MediaSessionService() {
                     player.seekToNextMediaItem()
                     player.prepare() // an error leaves the player idle; playWhenReady is still set, so it plays
                 }
+            }
+
+            override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+                if (!playWhenReady) {
+                    pausedByUnplug = reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
+                    return
+                }
+                if (reason != Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) return
+                // PRD phase 4: play pressed after the earphones came out shouldn't blast the speaker. Android keeps a
+                // separate volume per output, so this lowers only the speaker's; headphones keep theirs.
+                if (pausedByUnplug && !headphonesConnected()) {
+                    audio.setStreamVolume(STREAM_MUSIC, speakerSafeVolume(audio.getStreamVolume(STREAM_MUSIC), audio.getStreamMaxVolume(STREAM_MUSIC)), 0)
+                }
+                pausedByUnplug = false
+                // Resuming mid-song fades in over 1 s; a song started from 0 plays at full volume straight away.
+                if (player.currentPosition > 0) fadeIn(player)
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -75,7 +110,23 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
 
+    /** Ramps the volume up over 1 s. A Handler, not ValueAnimator: animators tick on display frames, which aren't guaranteed with the screen off. */
+    private fun fadeIn(player: Player) {
+        handler.removeCallbacksAndMessages(null)
+        val start = SystemClock.uptimeMillis()
+        object : Runnable {
+            override fun run() {
+                val t = ((SystemClock.uptimeMillis() - start) / 1_000f).coerceAtMost(1f)
+                player.volume = t * t // squared: the ear hears loudness logarithmically, so a linear ramp jumps early
+                if (t < 1f) handler.postDelayed(this, 50)
+            }
+        }.run() // first step now, so the volume is 0 before the resumed audio is heard
+    }
+
+    private fun headphonesConnected() = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADPHONES }
+
     override fun onDestroy() {
+        handler.removeCallbacksAndMessages(null)
         session?.run { player.release(); release() }
         session = null
         super.onDestroy()
@@ -87,6 +138,16 @@ class PlaybackService : MediaSessionService() {
  * (repeat-all always has a next song, so the count is what stops an all-broken queue from looping forever).
  */
 internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Boolean) = hasNext && errorsInARow < queueSize
+
+/** PRD phase 4: after an unplug the speaker plays at no more than 30%; a quieter setting is left alone. */
+internal fun speakerSafeVolume(current: Int, max: Int) = min(current, (max * 0.3).roundToInt())
+
+// Outputs that count as "earphones are in". USB and BLE are newer than minSdk, but these ints are only compared.
+@SuppressLint("InlinedApi")
+private val HEADPHONES = setOf(
+    AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
+    AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_BLE_HEADSET,
+)
 
 fun Song.toMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaId(id.toString())
