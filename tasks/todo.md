@@ -11,10 +11,10 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## M1: Real library (PRD phase 1)
 - [x] T4 Permission flow (`READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE` ≤32, `PermissionEmptyState`, settings link after a permanent denial)
 - [x] T5 MediaStore scan in `object Library` (filters, tag fallbacks plus a test, rescan, pull-to-refresh, no rescan on rotation)
-- [ ] **Checkpoint M1:** tests and lint pass ✅; waiting for the phone check: real library shows on the phone, first scan under 3 s, empty and permission states work
+- [x] **Checkpoint M1:** tests and lint pass ✅; phone check 2026-09-19: permission flow works and the list shows the phone's real songs
 
 ## M2: Real playback
-- [ ] T6 Media3 `PlaybackService` and `MediaController` (notification, lock screen, Bluetooth, background)
+- [x] T6 Media3 `PlaybackService` and `MediaController` (notification, lock screen, Bluetooth, background); play counts move to the service (`countPlay` test). Shuffle button is inert until T7
 - [ ] T7 Progress polling, seek, shuffle/repeat mapping, device volume
 - [ ] T8 Corrupt file skips to the next with a Toast, no infinite loop
 - [ ] T9 Noisy pause, ducking, previous restarts after 5 s, 30% speaker volume after unplug, fade-in on resume

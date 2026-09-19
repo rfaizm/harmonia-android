@@ -9,7 +9,7 @@ Harmonia: an offline local-music player for Android, written in Kotlin with Jetp
 - `PRD.md` holds the feature spec, in Indonesian, split into phases 1–9: scanning, metadata cleanup, batch playlist creation, audio focus, low-end devices, i18n/RTL, small UX details, likes and Favorites, and advanced playback.
 - `GUIDELINE.md` is the design system: colors, typography, spacing, component specs and motion. It is written in React/Tailwind/lucide/framer-motion terms and has to be translated into Compose (see below).
 
-**The UI is done; real logic is being added one milestone at a time.** `tasks/plan.md` holds the plan and `tasks/todo.md` tracks progress (M0–M5). The library is real now: permission flow plus a MediaStore scan. There is still no playback engine (Media3 comes in M2) and no persistence (M3). Don't build ahead of the current task.
+**The UI is done; real logic is being added one milestone at a time.** `tasks/plan.md` holds the plan and `tasks/todo.md` tracks progress (M0–M5). The library is real now: permission flow plus a MediaStore scan. Playback runs on Media3 (M2 in progress) and there is no persistence yet (M3). Don't build ahead of the current task.
 
 ## Commands
 
@@ -29,7 +29,7 @@ This machine has no emulator or connected device, so UI can't be checked from he
 ## Architecture
 
 - **Songs and playlists live in `object Library`** (`data/Library.kt`) as `mutableStateListOf`. `Library.scan()` queries MediaStore on `Dispatchers.IO` and keeps likes and play counts across rescans. Because it lives for the whole process, rotation doesn't rescan, and the playback service (M2) can reach it.
-- **UI state lives in the root `HarmoniaApp` composable** (`ui/HarmoniaApp.kt`), following GUIDELINE §16: the tab, active song, queue, play/shuffle/repeat state, the full-player flag, dark mode and the permission state. Screens get data and callbacks as parameters; there is no ViewModel or state library.
+- **UI state lives in the root `HarmoniaApp` composable** (`ui/HarmoniaApp.kt`), following GUIDELINE §16: the tab, the active song and play state (mirrored from the `MediaController`), shuffle/repeat, the full-player flag, dark mode and the permission state. Screens get data and callbacks as parameters; there is no ViewModel or state library.
 - **Screens:** `SongsScreen`, `PlaylistsScreen` (the list and the detail view are switched by local state, not by navigation), `ExploreScreen` (Artists/Albums tab), `SettingsScreen` and `Player.kt` (mini player plus the full-screen player overlay). Shared building blocks are in `ui/Components.kt`.
 - **Theme mapping** (`ui/theme/Theme.kt`): the guideline's CSS tokens are mapped onto the M3 `ColorScheme` (card→surface, muted→surfaceVariant, muted-foreground→onSurfaceVariant, border→outline, accent→tertiary, destructive→error). Extension aliases (`colors.card`, `colors.muted`, `colors.mutedForeground`, `colors.border`, `colors.destructive`) keep the guideline's names in code. `colors` is a `@Composable` getter for `MaterialTheme.colorScheme`, defined in `Components.kt`.
 - **`HarmoniaTheme` provides `LocalContentColor = onBackground`.** The root is a plain `Box`, not a `Surface`, so without this any `Text` with no explicit color renders black in dark mode.

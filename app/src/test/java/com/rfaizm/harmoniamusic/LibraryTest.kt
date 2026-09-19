@@ -1,6 +1,7 @@
 package com.rfaizm.harmoniamusic
 
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.countPlay
 import com.rfaizm.harmoniamusic.data.keepUserState
 import com.rfaizm.harmoniamusic.data.toSong
 import org.junit.Assert.assertEquals
@@ -32,5 +33,24 @@ class LibraryTest {
             listOf(Song(1, "Fixed Tag", "X", "A", 2020, 100, liked = true, playCount = 5), Song(2, "New Song", "Y", "B", 2021, 200)),
             merged,
         )
+    }
+
+    @Test
+    fun countPlayBumpsOnlyTheMatchingSong() {
+        val songs = mutableListOf(Song(1, "A", "X", "A", 2020, 100), Song(2, "B", "Y", "B", 2021, 200, playCount = 3))
+
+        songs.countPlay(2)
+
+        assertEquals(listOf(0, 4), songs.map { it.playCount })
+    }
+
+    @Test
+    fun countPlayIgnoresASongNoLongerInTheLibrary() {
+        // The player can still hold a song a rescan removed; counting it must not crash the service.
+        val songs = mutableListOf(Song(1, "A", "X", "A", 2020, 100))
+
+        songs.countPlay(99)
+
+        assertEquals(listOf(Song(1, "A", "X", "A", 2020, 100)), songs)
     }
 }

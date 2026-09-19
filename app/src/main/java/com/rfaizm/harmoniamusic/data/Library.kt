@@ -64,3 +64,9 @@ internal fun keepUserState(fresh: List<Song>, old: List<Song>): List<Song> {
     val byId = old.associateBy { it.id }
     return fresh.map { s -> byId[s.id]?.let { s.copy(liked = it.liked, playCount = it.playCount) } ?: s }
 }
+
+/** Called by the player on every track change; the song may already be gone after a rescan. */
+internal fun MutableList<Song>.countPlay(id: Int) {
+    val i = indexOfFirst { it.id == id }
+    if (i >= 0) this[i] = this[i].copy(playCount = this[i].playCount + 1)
+}

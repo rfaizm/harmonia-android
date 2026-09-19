@@ -1,6 +1,7 @@
 package com.rfaizm.harmoniamusic.ui
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
@@ -68,10 +69,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LifecycleStartEffect
+import androidx.media3.common.Player
+import androidx.media3.common.util.Util
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import com.rfaizm.harmoniamusic.PlaybackService
 import com.rfaizm.harmoniamusic.data.Library
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.addSongs
 import com.rfaizm.harmoniamusic.data.removeSong
+import com.rfaizm.harmoniamusic.toMediaItem
 import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -93,7 +101,8 @@ enum class Tab(val label: String, val icon: ImageVector) {
 
 /**
  * Root state holder (GUIDELINE §16). Songs and playlists live in [Library]; everything else is UI state here.
- * ponytail: no playback or persistence yet; Media3 lands in T6, saving in T10.
+ * Playback lives in [PlaybackService]; [activeId] and [isPlaying] mirror it through a MediaController.
+ * ponytail: no persistence yet; saving lands in T10.
  */
 @Composable
 fun HarmoniaApp() {
@@ -101,25 +110,44 @@ fun HarmoniaApp() {
     val songs = Library.songs
     val playlists = Library.playlists
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
+    // Saved so rotation doesn't flash the mini player away while the controller reconnects.
     var activeId by rememberSaveable { mutableStateOf<Int?>(null) }
     var isPlaying by rememberSaveable { mutableStateOf(false) }
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
     var shuffle by rememberSaveable { mutableStateOf(false) }
     var repeatMode by rememberSaveable { mutableIntStateOf(0) }
-    // Ids of the list the current song was started from; next/prev walk this, not the whole library.
-    // ponytail: plain remember (a big queue would bloat the saved-state Bundle); Media3 owns the queue from T6.
-    var queue by remember { mutableStateOf(emptyList<Int>()) }
     val active = songs.firstOrNull { it.id == activeId }
 
-    fun play(s: Song) {
-        val i = songs.indexOfFirst { it.id == s.id }
-        songs[i] = s.copy(playCount = s.playCount + 1)
-        activeId = s.id
-        isPlaying = true
+    // Connected while the app is visible; the service keeps playing after it's released.
+    val context = LocalContext.current
+    var controller by remember { mutableStateOf<MediaController?>(null) }
+    LifecycleStartEffect(Unit) {
+        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
+        future.addListener({
+            // Cancelled or already released if the app was stopped before the connection finished.
+            val c = runCatching { future.get() }.getOrNull()?.takeIf { it.isConnected } ?: return@addListener
+            fun sync() {
+                activeId = c.currentMediaItem?.mediaId?.toIntOrNull()
+                isPlaying = !Util.shouldShowPlayButton(c)
+            }
+            c.addListener(object : Player.Listener {
+                override fun onEvents(player: Player, events: Player.Events) = sync()
+            })
+            sync()
+            controller = c
+        }, ContextCompat.getMainExecutor(context))
+        onStopOrDispose {
+            controller = null
+            MediaController.releaseFuture(future)
+        }
     }
+
+    // Next/prev walk the list the song was tapped from: the sorted Songs tab, a playlist, or Liked.
     fun playFrom(s: Song, list: List<Song>) {
-        queue = list.map { it.id }
-        play(s)
+        val c = controller ?: return
+        c.setMediaItems(list.map { it.toMediaItem() }, list.indexOfFirst { it.id == s.id }, 0)
+        c.prepare()
+        c.play()
     }
     fun like(s: Song) {
         val i = songs.indexOfFirst { it.id == s.id }
@@ -127,12 +155,6 @@ fun HarmoniaApp() {
     }
     fun addTo(name: String, ids: Collection<Int>) =
         playlists.addSongs(name, ids, SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
-    fun step(delta: Int) {
-        val q = queue.mapNotNull { id -> songs.firstOrNull { it.id == id } }.ifEmpty { songs }
-        if (q.isEmpty()) return
-        val i = q.indexOfFirst { it.id == activeId }
-        play(q[if (shuffle) q.indices.random() else (i + delta).mod(q.size)])
-    }
 
     // Status bar icons follow the app theme; the full player is always dark.
     val activity = LocalContext.current as? ComponentActivity
@@ -144,7 +166,6 @@ fun HarmoniaApp() {
     }
 
     // PRD phase 1: our explainer shows first; the system prompt only appears once "Grant access" is tapped.
-    val context = LocalContext.current
     fun hasPermission() = ContextCompat.checkSelfPermission(context, AUDIO_PERMISSION) == PackageManager.PERMISSION_GRANTED
     var granted by remember { mutableStateOf(hasPermission()) }
     // "Don't ask again": the system won't prompt any more, so the button opens app settings instead.
@@ -210,7 +231,7 @@ fun HarmoniaApp() {
                     exit = slideOutVertically { it } + fadeOut(),
                 ) {
                     active?.let {
-                        MiniPlayer(it, isPlaying, 0.32f, onToggle = { isPlaying = !isPlaying }, onNext = { step(1) }, onOpen = { fullPlayer = true })
+                        MiniPlayer(it, isPlaying, 0.32f, onToggle = { Util.handlePlayPauseButtonAction(controller) }, onNext = { controller?.seekToNext() }, onOpen = { fullPlayer = true })
                     }
                 }
                 BottomNav(tab) { tab = it }
@@ -225,9 +246,9 @@ fun HarmoniaApp() {
                     FullPlayer(
                         song = it, isPlaying = isPlaying, shuffle = shuffle, repeatMode = repeatMode,
                         onClose = { fullPlayer = false },
-                        onToggle = { isPlaying = !isPlaying },
-                        onNext = { step(1) },
-                        onPrev = { step(-1) },
+                        onToggle = { Util.handlePlayPauseButtonAction(controller) },
+                        onNext = { controller?.seekToNext() },
+                        onPrev = { controller?.seekToPrevious() },
                         onShuffle = { shuffle = !shuffle },
                         onRepeat = { repeatMode = (repeatMode + 1) % 3 },
                         onLike = { like(it) },
