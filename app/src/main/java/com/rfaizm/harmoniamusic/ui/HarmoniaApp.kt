@@ -51,7 +51,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -84,10 +86,12 @@ import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.math.roundToInt
 
 private val AUDIO_PERMISSION =
     if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -115,7 +119,10 @@ fun HarmoniaApp() {
     var isPlaying by rememberSaveable { mutableStateOf(false) }
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
     var shuffle by rememberSaveable { mutableStateOf(false) }
-    var repeatMode by rememberSaveable { mutableIntStateOf(0) }
+    var repeatMode by rememberSaveable { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
+    var positionMs by remember { mutableLongStateOf(0L) }
+    var volume by remember { mutableFloatStateOf(0f) }
+    var muted by remember { mutableStateOf(false) }
     val active = songs.firstOrNull { it.id == activeId }
 
     // Connected while the app is visible; the service keeps playing after it's released.
@@ -129,6 +136,11 @@ fun HarmoniaApp() {
             fun sync() {
                 activeId = c.currentMediaItem?.mediaId?.toIntOrNull()
                 isPlaying = !Util.shouldShowPlayButton(c)
+                positionMs = c.currentPosition
+                shuffle = c.shuffleModeEnabled
+                repeatMode = c.repeatMode
+                volume = c.deviceVolume / c.deviceInfo.maxVolume.coerceAtLeast(1).toFloat()
+                muted = c.isDeviceMuted
             }
             c.addListener(object : Player.Listener {
                 override fun onEvents(player: Player, events: Player.Events) = sync()
@@ -139,6 +151,15 @@ fun HarmoniaApp() {
         onStopOrDispose {
             controller = null
             MediaController.releaseFuture(future)
+        }
+    }
+
+    // Seeks, track changes and pauses arrive through sync(); only the steady tick has to be polled.
+    LaunchedEffect(controller, isPlaying) {
+        val c = controller ?: return@LaunchedEffect
+        while (isPlaying) {
+            positionMs = c.currentPosition
+            delay(500)
         }
     }
 
@@ -231,7 +252,7 @@ fun HarmoniaApp() {
                     exit = slideOutVertically { it } + fadeOut(),
                 ) {
                     active?.let {
-                        MiniPlayer(it, isPlaying, 0.32f, onToggle = { Util.handlePlayPauseButtonAction(controller) }, onNext = { controller?.seekToNext() }, onOpen = { fullPlayer = true })
+                        MiniPlayer(it, isPlaying, progressOf(positionMs, it.duration), onToggle = { Util.handlePlayPauseButtonAction(controller) }, onNext = { controller?.seekToNext() }, onOpen = { fullPlayer = true })
                     }
                 }
                 BottomNav(tab) { tab = it }
@@ -244,13 +265,23 @@ fun HarmoniaApp() {
             ) {
                 active?.let {
                     FullPlayer(
-                        song = it, isPlaying = isPlaying, shuffle = shuffle, repeatMode = repeatMode,
+                        song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
+                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted,
                         onClose = { fullPlayer = false },
                         onToggle = { Util.handlePlayPauseButtonAction(controller) },
                         onNext = { controller?.seekToNext() },
                         onPrev = { controller?.seekToPrevious() },
-                        onShuffle = { shuffle = !shuffle },
-                        onRepeat = { repeatMode = (repeatMode + 1) % 3 },
+                        onSeek = { f -> controller?.seekTo((f * it.duration * 1000).toLong()) },
+                        // Explicit `c.`: inside run {} the local repeatMode/shuffle vars would shadow the controller's.
+                        onShuffle = { controller?.let { c -> c.shuffleModeEnabled = !c.shuffleModeEnabled } },
+                        onRepeat = { controller?.let { c -> c.repeatMode = nextRepeatMode(c.repeatMode) } },
+                        onVolume = { f ->
+                            controller?.let { c ->
+                                c.setDeviceVolume((f * c.deviceInfo.maxVolume).roundToInt(), 0)
+                                if (c.isDeviceMuted) c.setDeviceMuted(false, 0)
+                            }
+                        },
+                        onMute = { controller?.let { c -> c.setDeviceMuted(!c.isDeviceMuted, 0) } },
                         onLike = { like(it) },
                     )
                 }

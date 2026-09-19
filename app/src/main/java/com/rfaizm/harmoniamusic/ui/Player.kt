@@ -48,9 +48,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.media3.common.Player
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
@@ -105,20 +106,27 @@ fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> 
 fun FullPlayer(
     song: Song,
     isPlaying: Boolean,
+    progress: Float,
     shuffle: Boolean,
-    repeatMode: Int,
+    repeatMode: Int, // Player.REPEAT_MODE_*
+    volume: Float,   // device media volume, 0..1
+    muted: Boolean,
     onClose: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
     onPrev: () -> Unit,
+    onSeek: (Float) -> Unit,
     onShuffle: () -> Unit,
     onRepeat: () -> Unit,
+    onVolume: (Float) -> Unit,
+    onMute: () -> Unit,
     onLike: () -> Unit,
 ) {
     val (g0, g1) = song.gradient
-    var progress by remember(song.id) { mutableFloatStateOf(0.32f) }
-    var volume by remember { mutableFloatStateOf(0.7f) }
-    var muted by remember { mutableStateOf(false) }
+    // Dragging only moves the thumb; the seek happens on release, not on every frame.
+    var drag by remember(song.id) { mutableStateOf<Float?>(null) }
+    val shown = drag ?: progress
+    val seek by rememberUpdatedState(onSeek) // the gesture detectors below outlive a single onSeek lambda
     BackHandler(onBack = onClose)
 
     Column(
@@ -177,19 +185,23 @@ fun FullPlayer(
                 Modifier
                     .fillMaxWidth()
                     .height(20.dp)
-                    .pointerInput(Unit) { detectTapGestures { progress = (it.x / size.width).coerceIn(0f, 1f) } }
-                    .pointerInput(Unit) { detectHorizontalDragGestures { change, _ -> progress = (change.position.x / size.width).coerceIn(0f, 1f) } },
+                    .pointerInput(Unit) { detectTapGestures { seek((it.x / size.width).coerceIn(0f, 1f)) } }
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(onDragEnd = { drag?.let(seek); drag = null }, onDragCancel = { drag = null }) { change, _ ->
+                            drag = (change.position.x / size.width).coerceIn(0f, 1f)
+                        }
+                    },
                 contentAlignment = Alignment.CenterStart
             ) {
                 Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f))) {
-                    Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White))
+                    Box(Modifier.fillMaxWidth(shown).fillMaxHeight().clip(CircleShape).background(Color.White))
                 }
-                Row(Modifier.fillMaxWidth(progress), horizontalArrangement = Arrangement.End) {
+                Row(Modifier.fillMaxWidth(shown), horizontalArrangement = Arrangement.End) {
                     Box(Modifier.size(12.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
                 }
             }
             Row(Modifier.fillMaxWidth()) {
-                Text(formatDuration((song.duration * progress).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), modifier = Modifier.weight(1f))
+                Text(formatDuration((song.duration * shown).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), modifier = Modifier.weight(1f))
                 Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f))
             }
         }
@@ -212,18 +224,18 @@ fun FullPlayer(
                 Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", tint = g0, modifier = Modifier.size(32.dp))
             }
             CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
-            ModeButton(if (repeatMode == 2) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", repeatMode != 0, onRepeat)
+            ModeButton(if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", repeatMode != Player.REPEAT_MODE_OFF, onRepeat)
         }
 
         // 6. Volume
         Row(Modifier.padding(horizontal = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CircleIcon(
                 if (muted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp, if (muted) "Unmute" else "Mute",
-                { muted = !muted }, size = 32.dp, iconSize = 18.dp, tint = Color.White.copy(alpha = 0.6f)
+                onMute, size = 32.dp, iconSize = 18.dp, tint = Color.White.copy(alpha = 0.6f)
             )
             Slider(
                 value = if (muted) 0f else volume,
-                onValueChange = { volume = it; muted = false },
+                onValueChange = onVolume,
                 modifier = Modifier.weight(1f),
                 colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = 0.2f))
             )
@@ -236,6 +248,16 @@ fun FullPlayer(
         }
     }
 }
+
+/** Repeat button order: off → all → one. Media3 numbers them OFF=0, ONE=1, ALL=2, so this isn't just +1. */
+internal fun nextRepeatMode(mode: Int) = when (mode) {
+    Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+    Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+    else -> Player.REPEAT_MODE_OFF
+}
+
+/** MediaStore rounds durations, so the position can run a little past the end; clamp for fillMaxWidth. */
+internal fun progressOf(positionMs: Long, durationSec: Int) = (positionMs / (durationSec * 1000f)).coerceIn(0f, 1f)
 
 @Composable
 private fun ModeButton(icon: ImageVector, label: String, active: Boolean, onClick: () -> Unit) {

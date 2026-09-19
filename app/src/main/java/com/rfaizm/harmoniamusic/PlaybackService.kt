@@ -4,9 +4,11 @@ import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Intent
 import android.provider.MediaStore
+import androidx.annotation.OptIn
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -21,9 +23,12 @@ import com.rfaizm.harmoniamusic.data.countPlay
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
 
+    @OptIn(UnstableApi::class) // setDeviceVolumeControlEnabled
     override fun onCreate() {
         super.onCreate()
-        val player = ExoPlayer.Builder(this).build()
+        val player = ExoPlayer.Builder(this)
+            .setDeviceVolumeControlEnabled(true) // the full player's slider sets the phone's media volume
+            .build()
         player.addListener(object : Player.Listener {
             // Counted here, not in the UI, so tracks that advance in the background count too.
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
