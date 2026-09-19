@@ -127,6 +127,8 @@ fun FullPlayer(
     var drag by remember(song.id) { mutableStateOf<Float?>(null) }
     val shown = drag ?: progress
     val seek by rememberUpdatedState(onSeek) // the gesture detectors below outlive a single onSeek lambda
+    // The real volume arrives a moment later via the player, so the thumb follows the finger meanwhile.
+    var volumeDrag by remember { mutableStateOf<Float?>(null) }
     BackHandler(onBack = onClose)
 
     Column(
@@ -234,8 +236,9 @@ fun FullPlayer(
                 onMute, size = 32.dp, iconSize = 18.dp, tint = Color.White.copy(alpha = 0.6f)
             )
             Slider(
-                value = if (muted) 0f else volume,
-                onValueChange = onVolume,
+                value = volumeDrag ?: if (muted) 0f else volume,
+                onValueChange = { volumeDrag = it; onVolume(it) },
+                onValueChangeFinished = { volumeDrag = null },
                 modifier = Modifier.weight(1f),
                 colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color.White, inactiveTrackColor = Color.White.copy(alpha = 0.2f))
             )

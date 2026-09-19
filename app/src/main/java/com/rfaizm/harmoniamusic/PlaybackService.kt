@@ -10,6 +10,8 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.rfaizm.harmoniamusic.data.Library
@@ -23,11 +25,15 @@ import com.rfaizm.harmoniamusic.data.countPlay
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
 
-    @OptIn(UnstableApi::class) // setDeviceVolumeControlEnabled
+    @OptIn(UnstableApi::class) // DefaultExtractorsFactory, setDeviceVolumeControlEnabled
     override fun onCreate() {
         super.onCreate()
+        // Voice recorders often write ADTS .aac or .amr, which have no seek index; without this they can't be seeked.
+        val extractors = DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)
         val player = ExoPlayer.Builder(this)
-            .setDeviceVolumeControlEnabled(true) // the full player's slider sets the phone's media volume
+            .setMediaSourceFactory(DefaultMediaSourceFactory(this, extractors))
+            // Lets the controller read the phone's media volume, so hardware keys move the slider.
+            .setDeviceVolumeControlEnabled(true)
             .build()
         player.addListener(object : Player.Listener {
             // Counted here, not in the UI, so tracks that advance in the background count too.

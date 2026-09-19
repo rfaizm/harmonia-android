@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
+import android.media.AudioManager
+import android.media.AudioManager.STREAM_MUSIC
 import android.net.Uri
 import android.os.Build
 import androidx.activity.ComponentActivity
@@ -128,6 +130,9 @@ fun HarmoniaApp() {
     // Connected while the app is visible; the service keeps playing after it's released.
     val context = LocalContext.current
     var controller by remember { mutableStateOf<MediaController?>(null) }
+    // Media3 controllers drop device-volume commands during local playback, so volume is set through
+    // AudioManager; the new level comes back through sync(), same as a hardware key press.
+    val audio = remember { context.getSystemService(AudioManager::class.java) }
     LifecycleStartEffect(Unit) {
         val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
         future.addListener({
@@ -276,12 +281,10 @@ fun HarmoniaApp() {
                         onShuffle = { controller?.let { c -> c.shuffleModeEnabled = !c.shuffleModeEnabled } },
                         onRepeat = { controller?.let { c -> c.repeatMode = nextRepeatMode(c.repeatMode) } },
                         onVolume = { f ->
-                            controller?.let { c ->
-                                c.setDeviceVolume((f * c.deviceInfo.maxVolume).roundToInt(), 0)
-                                if (c.isDeviceMuted) c.setDeviceMuted(false, 0)
-                            }
+                            if (audio.isStreamMute(STREAM_MUSIC)) audio.adjustStreamVolume(STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
+                            audio.setStreamVolume(STREAM_MUSIC, (f * audio.getStreamMaxVolume(STREAM_MUSIC)).roundToInt(), 0)
                         },
-                        onMute = { controller?.let { c -> c.setDeviceMuted(!c.isDeviceMuted, 0) } },
+                        onMute = { audio.adjustStreamVolume(STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, 0) },
                         onLike = { like(it) },
                     )
                 }
