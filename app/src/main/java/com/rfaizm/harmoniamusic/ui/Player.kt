@@ -3,6 +3,7 @@ package com.rfaizm.harmoniamusic.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -61,6 +62,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,6 +70,7 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.rfaizm.harmoniamusic.SLEEP_END_OF_TRACK
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.albumArtOf
 import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -86,7 +89,7 @@ fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> 
             .clickable(onClick = onOpen)
     ) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AlbumArt(song.gradient, 42.dp, Modifier.shadow(2.dp, RoundedCornerShape(12.dp)))
+            AlbumArt(song.gradient, 42.dp, Modifier.shadow(2.dp, RoundedCornerShape(12.dp)), songId = song.id)
             Column(Modifier.weight(1f)) {
                 Text(song.displayTitle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Text(song.displayArtist, fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -157,6 +160,7 @@ fun FullPlayer(
                 val artSpring = spring<Float>(dampingRatio = 0.71f, stiffness = 240f)
                 val scale by animateFloatAsState(if (!appeared) 0.82f else if (isPlaying) 1f else 0.88f, artSpring, label = "artScale")
                 val alpha by animateFloatAsState(if (appeared) 1f else 0f, artSpring, label = "artAlpha")
+                val art = albumArtOf(song.id)
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -167,7 +171,8 @@ fun FullPlayer(
                         .background(gradientBrush(song.gradient)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(80.dp))
+                    if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                    else Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(80.dp))
                 }
             }
         }

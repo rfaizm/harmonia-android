@@ -17,6 +17,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -83,6 +84,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -94,6 +96,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.Playlist
+import com.rfaizm.harmoniamusic.data.albumArtOf
 import com.rfaizm.harmoniamusic.data.SEED_PLAYLISTS
 import com.rfaizm.harmoniamusic.data.SEED_SONGS
 import com.rfaizm.harmoniamusic.data.Song
@@ -136,6 +139,7 @@ fun CircleIcon(
     }
 }
 
+/** Shows the song's own cover when it has one, and its gradient when it doesn't (PRD phase 2). */
 @Composable
 fun AlbumArt(
     gradient: Pair<Color, Color>,
@@ -143,12 +147,15 @@ fun AlbumArt(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(12.dp),
     icon: ImageVector = Icons.Rounded.MusicNote,
+    songId: Int? = null,
 ) {
+    val art = albumArtOf(songId)
     Box(
         modifier.size(size).clip(shape).background(gradientBrush(gradient)),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(size * 0.36f))
+        if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Icon(icon, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(size * 0.36f))
     }
 }
 
@@ -335,7 +342,7 @@ fun SongRow(
                 else Text("${index + 1}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (active) colors.primary else colors.mutedForeground)
             }
         } else {
-            AlbumArt(song.gradient, 48.dp)
+            AlbumArt(song.gradient, 48.dp, songId = song.id)
         }
         Column(Modifier.weight(1f)) {
             Text(

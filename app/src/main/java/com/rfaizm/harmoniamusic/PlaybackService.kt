@@ -22,6 +22,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackException
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
@@ -155,7 +156,7 @@ class PlaybackService : MediaSessionService() {
         // Same intent as the launcher icon, so tapping the notification brings back the running task
         // instead of stacking a second activity on it.
         val launch = Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        session = MediaSession.Builder(this, player)
+        session = MediaSession.Builder(this, published(player))
             .setSessionActivity(PendingIntent.getActivity(this, 0, launch, PendingIntent.FLAG_IMMUTABLE))
             .setCallback(sessionCallback)
             .build()
@@ -261,11 +262,22 @@ class PlaybackService : MediaSessionService() {
     /** Full volume, unless the sleep timer is inside its last minute. */
     private fun targetVolume() = if (sleepAt == 0L) 1f else fadeVolume(sleepAt - SystemClock.uptimeMillis())
 
+    /**
+     * What controllers, the notification and the lock screen see: the player, minus the cover art while
+     * Settings › Lock screen privacy is on (PRD phase 9). Playback itself is untouched.
+     */
+    @OptIn(UnstableApi::class) // ForwardingPlayer
+    private fun published(player: Player): Player = object : ForwardingPlayer(player) {
+        override fun getMediaMetadata(): MediaMetadata =
+            if (Settings[Key.LockPrivacy]) withoutArtwork(super.getMediaMetadata()) else super.getMediaMetadata()
+    }
+
     /** Settings can change mid-playback, so both audio switches are re-applied to the live player. */
     @OptIn(UnstableApi::class) // setAudioAttributes
     private fun applySettings() {
         player.setAudioAttributes(audioAttributesFor(Settings[Key.Ducking]), true)
         player.setHandleAudioBecomingNoisy(Settings[Key.PauseOnUnplug])
+        session?.player = published(player) // re-publishes the metadata, so privacy applies to the song playing now
         if (player.shuffleModeEnabled) applyShuffleOrder(newOrder = true)
     }
 
@@ -330,6 +342,10 @@ class PlaybackService : MediaSessionService() {
  * (repeat-all always has a next song, so the count is what stops an all-broken queue from looping forever).
  */
 internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Boolean) = hasNext && errorsInARow < queueSize
+
+/** Everything about the song except its cover, so the lock screen shows what is playing but not the artwork. */
+internal fun withoutArtwork(metadata: MediaMetadata): MediaMetadata =
+    metadata.buildUpon().setArtworkData(null, null).setArtworkUri(null).build()
 
 /** Identifies the queue an order was built for, so the same queue is never ordered twice in a row. */
 internal fun queueSignature(ids: List<String>, smartShuffle: Boolean) =

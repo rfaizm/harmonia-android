@@ -225,7 +225,7 @@ private fun PlaylistCard(p: Playlist, songs: List<Song>, onOpen: () -> Unit, onP
                 }
             } else {
                 p.songIds.take(4).forEach { id ->
-                    AlbumArt(gradientFor(id), 32.dp, Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(8.dp)), RoundedCornerShape(8.dp))
+                    AlbumArt(gradientFor(id), 32.dp, Modifier.border(1.dp, Color.White.copy(alpha = 0.3f), RoundedCornerShape(8.dp)), RoundedCornerShape(8.dp), songId = id)
                 }
             }
         }

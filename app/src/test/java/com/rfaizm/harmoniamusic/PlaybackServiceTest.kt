@@ -1,11 +1,13 @@
 package com.rfaizm.harmoniamusic
 
 import androidx.media3.common.C
+import androidx.media3.common.MediaMetadata
 import com.rfaizm.harmoniamusic.data.SEED_SONGS
 import com.rfaizm.harmoniamusic.data.Song
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
@@ -148,6 +150,21 @@ class PlaybackServiceTest {
 
         assertNotEquals(queueSignature(ids, smartShuffle = true), queueSignature(listOf("1", "2"), smartShuffle = true))
         assertNotEquals(queueSignature(ids, smartShuffle = true), queueSignature(ids, smartShuffle = false))
+    }
+
+    @Test
+    fun lockScreenPrivacyHidesTheArtworkButKeepsTheSongDetails() {
+        val shown = MediaMetadata.Builder()
+            .setTitle("Quiet Harbour")
+            .setArtist("Aurelia Vance")
+            .setArtworkData(byteArrayOf(1, 2, 3), MediaMetadata.PICTURE_TYPE_FRONT_COVER)
+            .build()
+
+        val hidden = withoutArtwork(shown)
+
+        assertNull(hidden.artworkData)
+        assertEquals("Quiet Harbour", hidden.title.toString())
+        assertEquals("Aurelia Vance", hidden.artist.toString())
     }
 
     private fun song(id: Int) = Song(id, "Song $id", "Artist", "Album", 2024, 200)

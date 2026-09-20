@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -47,12 +48,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.albumArtOf
 import com.rfaizm.harmoniamusic.data.gradientFor
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -124,7 +127,7 @@ fun ExploreScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    AlbumArt(gradientFor(list.first().id), 48.dp, shape = CircleShape, icon = Icons.Rounded.Mic)
+                                    AlbumArt(gradientFor(list.first().id), 48.dp, shape = CircleShape, icon = Icons.Rounded.Mic, songId = list.first().id)
                                     Column(Modifier.weight(1f)) {
                                         Text(name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         val albumCount = list.distinctBy { it.album }.size
@@ -145,8 +148,10 @@ fun ExploreScreen(
                             itemsIndexed(albums, key = { _, a -> a.first }) { i, (album, list) ->
                                 val shape = RoundedCornerShape(16.dp)
                                 Column(Modifier.enterAnimation().clip(shape).background(colors.card).border(1.dp, colors.border, shape).clickable { openName = album }) {
+                                    val cover = albumArtOf(list.first().id)
                                     Box(Modifier.fillMaxWidth().height(112.dp).background(gradientBrush(gradientFor(list.first().id))), contentAlignment = Alignment.Center) {
-                                        Icon(Icons.Rounded.Album, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(44.dp))
+                                        if (cover != null) Image(cover, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                                        else Icon(Icons.Rounded.Album, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(44.dp))
                                     }
                                     Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
                                         Text(album, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
