@@ -1,11 +1,13 @@
 package com.rfaizm.harmoniamusic
 
 import androidx.media3.common.C
+import com.rfaizm.harmoniamusic.data.SEED_SONGS
 import com.rfaizm.harmoniamusic.data.Song
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.random.Random
 
 class PlaybackServiceTest {
     @Test
@@ -89,6 +91,34 @@ class PlaybackServiceTest {
     @Test
     fun theSleepTimerStaysSilentIfTheTickRunsLate() {
         assertEquals(0f, fadeVolume(msLeft = -500), 0f)
+    }
+
+    @Test
+    fun smartShufflePlaysEverySongExactlyOnce() {
+        val artists = SEED_SONGS.map { it.displayArtist }
+
+        val order = smartShuffle(artists, first = 0, random = Random(1))
+
+        assertEquals(artists.indices.toList(), order.sorted())
+    }
+
+    @Test
+    fun smartShuffleNeverPlacesTwoSongsByTheSameArtistInARow() {
+        val artists = SEED_SONGS.map { it.displayArtist }
+
+        repeat(1000) { seed ->
+            val order = smartShuffle(artists, first = seed % artists.size, random = Random(seed.toLong()))
+            val sameArtistInARow = order.zipWithNext().count { (a, b) -> artists[a] == artists[b] }
+
+            assertEquals("seed $seed", 0, sameArtistInARow)
+        }
+    }
+
+    @Test
+    fun smartShuffleStartsWithTheSongThatIsPlaying() {
+        val artists = SEED_SONGS.map { it.displayArtist }
+
+        assertEquals(7, smartShuffle(artists, first = 7, random = Random(2)).first())
     }
 
     private fun song(id: Int) = Song(id, "Song $id", "Artist", "Album", 2024, 200)

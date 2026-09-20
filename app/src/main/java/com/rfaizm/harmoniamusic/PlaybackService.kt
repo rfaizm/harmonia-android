@@ -27,6 +27,7 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
@@ -46,6 +47,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlin.math.min
+import kotlin.random.Random
 import kotlin.math.roundToInt
 
 /**
@@ -59,6 +61,7 @@ class PlaybackService : MediaSessionService() {
     private var pausedByUnplug = false
     private var restoring = false
     private var sleepAt = 0L // uptime when the sleep timer pauses playback, 0 when off
+    private var shuffling = false
     private var fadeStep: Runnable? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -140,7 +143,13 @@ class PlaybackService : MediaSessionService() {
 
             // A new queue from the user starts a fresh count, even if the last one ended all-broken.
             override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-                if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) errorsInARow = 0
+                if (reason != Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) return
+                errorsInARow = 0
+                if (player.shuffleModeEnabled) applyShuffleOrder()
+            }
+
+            override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
+                if (shuffleModeEnabled) applyShuffleOrder()
             }
         })
         // Same intent as the launcher icon, so tapping the notification brings back the running task
@@ -257,6 +266,31 @@ class PlaybackService : MediaSessionService() {
     private fun applySettings() {
         player.setAudioAttributes(audioAttributesFor(Settings[Key.Ducking]), true)
         player.setHandleAudioBecomingNoisy(Settings[Key.PauseOnUnplug])
+        if (player.shuffleModeEnabled) applyShuffleOrder()
+    }
+
+    /**
+     * PRD phase 9. Media3 still owns shuffling, it just gets our running order; switching shuffle off puts the
+     * queue back in its own order with no work from us.
+     */
+    @OptIn(UnstableApi::class) // setShuffleOrder
+    private fun applyShuffleOrder() {
+        val count = player.mediaItemCount
+        // Media3 reports a new shuffle order as a playlist change, which lands back in onTimelineChanged below,
+        // so without this guard setting the order would call itself forever.
+        if (count == 0 || shuffling) return
+        val seed = Random.nextLong()
+        shuffling = true
+        try {
+            player.setShuffleOrder(
+                if (!Settings[Key.SmartShuffle]) DefaultShuffleOrder(count, seed) else {
+                    val artists = (0 until count).map { player.getMediaItemAt(it).mediaMetadata.artist?.toString().orEmpty() }
+                    DefaultShuffleOrder(smartShuffle(artists, player.currentMediaItemIndex, Random).toIntArray(), seed)
+                }
+            )
+        } finally {
+            shuffling = false
+        }
     }
 
     /** Ramps the volume up over 1 s. A Handler, not ValueAnimator: animators tick on display frames, which aren't guaranteed with the screen off. */
@@ -294,6 +328,37 @@ class PlaybackService : MediaSessionService() {
  * (repeat-all always has a next song, so the count is what stops an all-broken queue from looping forever).
  */
 internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Boolean) = hasNext && errorsInARow < queueSize
+
+/**
+ * PRD phase 9 "smart shuffle": a play order over [artists] that starts at [first] and keeps songs by the same
+ * artist apart. Each round takes from the artist with the most left, skipping whoever just played, so no one is
+ * left bunched at the end. Two in a row can only happen when one artist owns more than half the queue.
+ */
+internal fun smartShuffle(artists: List<String>, first: Int, random: Random): List<Int> {
+    val remaining = artists.indices
+        .groupBy { artists[it] }
+        .values
+        .map { it.shuffled(random).toMutableList() }
+        .shuffled(random) // so equal-sized artists don't always come out in library order
+        .toMutableList()
+
+    val order = ArrayList<Int>(artists.size)
+    fun take(group: MutableList<Int>) {
+        order += group.removeAt(group.lastIndex)
+        if (group.isEmpty()) remaining.remove(group)
+    }
+    remaining.first { first in it }.let { group ->
+        group.remove(first)
+        order += first
+        if (group.isEmpty()) remaining.remove(group)
+    }
+    while (remaining.isNotEmpty()) {
+        val justPlayed = artists[order.last()]
+        val group = remaining.filter { artists[it.first()] != justPlayed }.maxByOrNull { it.size }
+        take(group ?: remaining.first()) // only artist left: it has to follow itself
+    }
+    return order
+}
 
 /** Sleep timer command the full player sends through its controller, with [SLEEP_MINUTES] in the args. */
 internal const val SLEEP_COMMAND = "com.rfaizm.harmoniamusic.SLEEP"
