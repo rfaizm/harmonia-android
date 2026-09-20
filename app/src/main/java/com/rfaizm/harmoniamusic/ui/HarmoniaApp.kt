@@ -132,7 +132,7 @@ fun HarmoniaApp() {
     var positionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0f) }
     var muted by remember { mutableStateOf(false) }
-    // Kept here, not in the chip, so it survives closing the full player; the timer itself lives in the service.
+    // Mirrors the service's timer, so the chip goes back to "Off" by itself once the timer fires.
     var sleep by remember { mutableStateOf<SleepOption?>(null) }
     val active = songs.firstOrNull { it.id == activeId }
 
@@ -143,7 +143,13 @@ fun HarmoniaApp() {
     // AudioManager; the new level comes back through sync(), same as a hardware key press.
     val audio = remember { context.getSystemService(AudioManager::class.java) }
     LifecycleStartEffect(Unit) {
-        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java))).buildAsync()
+        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
+            .setListener(object : MediaController.Listener {
+                override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
+                    sleep = sleepOptionOf(extras.getInt(SLEEP_MINUTES))
+                }
+            })
+            .buildAsync()
         future.addListener({
             // Cancelled or already released if the app was stopped before the connection finished.
             val c = runCatching { future.get() }.getOrNull()?.takeIf { it.isConnected } ?: return@addListener
@@ -160,6 +166,7 @@ fun HarmoniaApp() {
                 override fun onEvents(player: Player, events: Player.Events) = sync()
             })
             sync()
+            sleep = sleepOptionOf(c.sessionExtras.getInt(SLEEP_MINUTES)) // a timer may already be running
             controller = c
         }, ContextCompat.getMainExecutor(context))
         onStopOrDispose {
@@ -299,7 +306,7 @@ fun HarmoniaApp() {
                         },
                         onMute = { audio.adjustStreamVolume(STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, 0) },
                         onSleep = { option ->
-                            sleep = option
+                            // No local echo: the label changes when the service confirms, and only it knows when a timer ends.
                             controller?.sendCustomCommand(
                                 SessionCommand(SLEEP_COMMAND, Bundle.EMPTY),
                                 bundleOf(SLEEP_MINUTES to (option?.minutes ?: 0)),

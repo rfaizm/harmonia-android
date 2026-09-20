@@ -298,6 +298,9 @@ enum class SleepOption(val label: String, val minutes: Int) {
     EndOfTrack("End of track", SLEEP_END_OF_TRACK),
 }
 
+/** The option the service reports it is running, or null for "Off" (0 means none, including "just fired"). */
+internal fun sleepOptionOf(minutes: Int) = SleepOption.entries.firstOrNull { it.minutes == minutes }
+
 @Composable
 private fun SleepTimerChip(selected: SleepOption?, onSelect: (SleepOption?) -> Unit) {
     var open by remember { mutableStateOf(false) }

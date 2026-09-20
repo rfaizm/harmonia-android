@@ -16,6 +16,7 @@ import android.provider.MediaStore
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.core.content.edit
+import androidx.core.os.bundleOf
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -231,6 +232,8 @@ class PlaybackService : MediaSessionService() {
         sleepAt = if (minutes > 0) SystemClock.uptimeMillis() + minutes * 60_000L else 0L
         player.volume = targetVolume()
         if (sleepAt > 0L) handler.post(sleepTick)
+        // The chip can't know when a timer fires, so the service is the one source of truth for it.
+        session?.setSessionExtras(bundleOf(SLEEP_MINUTES to minutes))
     }
 
     private val sleepTick = object : Runnable {
@@ -238,8 +241,7 @@ class PlaybackService : MediaSessionService() {
             if (sleepAt == 0L) return
             if (SystemClock.uptimeMillis() >= sleepAt) {
                 player.pause()
-                sleepAt = 0L
-                player.volume = 1f // so the next play isn't silent
+                setSleepTimer(0) // clears the timer, restores the volume and tells the chip
                 return
             }
             player.volume = targetVolume()

@@ -27,7 +27,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] **Checkpoint M3:** phone check passed 2026-09-20
 
 ## M4: Remaining PRD features
-- [x] T13 Sleep timer with a 60 s fade-out (`fadeVolume` test). A custom `SessionCommand` carries the choice to the service, which owns the timer; "End of track" uses `pauseAtEndOfMediaItems` and clears itself. Resume fade-in and sleep fade-out share one target volume so they don't fight
+- [x] T13 Sleep timer with a 60 s fade-out (`fadeVolume` test). A custom `SessionCommand` carries the choice to the service, which owns the timer; "End of track" uses `pauseAtEndOfMediaItems` and clears itself. Resume fade-in and sleep fade-out share one target volume so they don't fight. The service publishes the running timer as session extras, so the chip resets to Off when it fires and shows a timer that is still running after the player is reopened
 - [ ] T14 Smart shuffle (`smartShuffle` tests)
 - [ ] T15 Real album art with gradient fallback, and the lock-screen privacy toggle
 - [ ] T16 Delete file (API 30+ / 29 / 24–28 branches)
