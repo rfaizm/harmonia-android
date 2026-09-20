@@ -5,6 +5,7 @@ import com.rfaizm.harmoniamusic.data.SEED_SONGS
 import com.rfaizm.harmoniamusic.data.Song
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
@@ -119,6 +120,34 @@ class PlaybackServiceTest {
         val artists = SEED_SONGS.map { it.displayArtist }
 
         assertEquals(7, smartShuffle(artists, first = 7, random = Random(2)).first())
+    }
+
+    @Test
+    fun smartShuffleHandlesAPlaylistWhereEverySongIsTheSameArtist() {
+        // A one-artist playlist can't avoid repeats, but it still has to finish and play each song once.
+        val artists = List(9) { "Coldplay" }
+
+        val order = smartShuffle(artists, first = 3, random = Random(5))
+
+        assertEquals(artists.indices.toList(), order.sorted())
+        assertEquals(3, order.first())
+    }
+
+    @Test
+    fun theSameQueueIsOnlyOrderedOnce() {
+        // Media3 reports our own new order as another playlist change, so re-ordering has to be a no-op
+        // or the callbacks never stop.
+        val ids = listOf("1", "2", "3")
+
+        assertEquals(queueSignature(ids, smartShuffle = true), queueSignature(ids, smartShuffle = true))
+    }
+
+    @Test
+    fun aChangedQueueOrSettingIsOrderedAgain() {
+        val ids = listOf("1", "2", "3")
+
+        assertNotEquals(queueSignature(ids, smartShuffle = true), queueSignature(listOf("1", "2"), smartShuffle = true))
+        assertNotEquals(queueSignature(ids, smartShuffle = true), queueSignature(ids, smartShuffle = false))
     }
 
     private fun song(id: Int) = Song(id, "Song $id", "Artist", "Album", 2024, 200)

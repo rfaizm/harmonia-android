@@ -61,7 +61,7 @@ class PlaybackService : MediaSessionService() {
     private var pausedByUnplug = false
     private var restoring = false
     private var sleepAt = 0L // uptime when the sleep timer pauses playback, 0 when off
-    private var shuffling = false
+    private var shuffledQueue = 0 // signature of the queue the current shuffle order was built for
     private var fadeStep: Runnable? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
@@ -145,11 +145,11 @@ class PlaybackService : MediaSessionService() {
             override fun onTimelineChanged(timeline: Timeline, reason: Int) {
                 if (reason != Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) return
                 errorsInARow = 0
-                if (player.shuffleModeEnabled) applyShuffleOrder()
+                if (player.shuffleModeEnabled) applyShuffleOrder(newOrder = false)
             }
 
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-                if (shuffleModeEnabled) applyShuffleOrder()
+                if (shuffleModeEnabled) applyShuffleOrder(newOrder = true)
             }
         })
         // Same intent as the launcher icon, so tapping the notification brings back the running task
@@ -266,31 +266,33 @@ class PlaybackService : MediaSessionService() {
     private fun applySettings() {
         player.setAudioAttributes(audioAttributesFor(Settings[Key.Ducking]), true)
         player.setHandleAudioBecomingNoisy(Settings[Key.PauseOnUnplug])
-        if (player.shuffleModeEnabled) applyShuffleOrder()
+        if (player.shuffleModeEnabled) applyShuffleOrder(newOrder = true)
     }
 
     /**
      * PRD phase 9. Media3 still owns shuffling, it just gets our running order; switching shuffle off puts the
      * queue back in its own order with no work from us.
      */
+    /**
+     * Media3 reports our own new order as another playlist change, and delivers that callback only after this
+     * method has returned, so a re-entry flag can't stop the two from feeding each other (it ANRed). Ordering a
+     * queue we already ordered is simply skipped instead; [newOrder] forces a fresh one when the user asks.
+     */
     @OptIn(UnstableApi::class) // setShuffleOrder
-    private fun applyShuffleOrder() {
+    private fun applyShuffleOrder(newOrder: Boolean) {
         val count = player.mediaItemCount
-        // Media3 reports a new shuffle order as a playlist change, which lands back in onTimelineChanged below,
-        // so without this guard setting the order would call itself forever.
-        if (count == 0 || shuffling) return
+        if (count == 0) return
+        val smart = Settings[Key.SmartShuffle]
+        val queue = queueSignature((0 until count).map { player.getMediaItemAt(it).mediaId }, smart)
+        if (!newOrder && queue == shuffledQueue) return
+        shuffledQueue = queue
         val seed = Random.nextLong()
-        shuffling = true
-        try {
-            player.setShuffleOrder(
-                if (!Settings[Key.SmartShuffle]) DefaultShuffleOrder(count, seed) else {
-                    val artists = (0 until count).map { player.getMediaItemAt(it).mediaMetadata.artist?.toString().orEmpty() }
-                    DefaultShuffleOrder(smartShuffle(artists, player.currentMediaItemIndex, Random).toIntArray(), seed)
-                }
-            )
-        } finally {
-            shuffling = false
-        }
+        player.setShuffleOrder(
+            if (!smart) DefaultShuffleOrder(count, seed) else {
+                val artists = (0 until count).map { player.getMediaItemAt(it).mediaMetadata.artist?.toString().orEmpty() }
+                DefaultShuffleOrder(smartShuffle(artists, player.currentMediaItemIndex, Random).toIntArray(), seed)
+            }
+        )
     }
 
     /** Ramps the volume up over 1 s. A Handler, not ValueAnimator: animators tick on display frames, which aren't guaranteed with the screen off. */
@@ -328,6 +330,10 @@ class PlaybackService : MediaSessionService() {
  * (repeat-all always has a next song, so the count is what stops an all-broken queue from looping forever).
  */
 internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Boolean) = hasNext && errorsInARow < queueSize
+
+/** Identifies the queue an order was built for, so the same queue is never ordered twice in a row. */
+internal fun queueSignature(ids: List<String>, smartShuffle: Boolean) =
+    ids.fold(if (smartShuffle) 1 else 0) { hash, id -> hash * 31 + id.hashCode() }
 
 /**
  * PRD phase 9 "smart shuffle": a play order over [artists] that starts at [first] and keeps songs by the same

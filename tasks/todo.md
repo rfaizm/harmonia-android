@@ -28,7 +28,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 
 ## M4: Remaining PRD features
 - [x] T13 Sleep timer with a 60 s fade-out (`fadeVolume` test). A custom `SessionCommand` carries the choice to the service, which owns the timer; "End of track" uses `pauseAtEndOfMediaItems` and clears itself. Resume fade-in and sleep fade-out share one target volume so they don't fight. The service publishes the running timer as session extras, so the chip resets to Off when it fires and shows a timer that is still running after the player is reopened
-- [x] T14 Smart shuffle (`smartShuffle` tests: every song once, no same artist twice in a row over 1000 seeds, starts on the playing song). Handed to Media3 as a `ShuffleOrder`, so switching shuffle off restores the queue order for free; the Settings switch picks smart or plain random and applies live. Guarded against re-entry: Media3 reports a new shuffle order as a playlist change
+- [x] T14 Smart shuffle (`smartShuffle` tests: every song once, no same artist twice in a row over 1000 seeds, starts on the playing song). Handed to Media3 as a `ShuffleOrder`, so switching shuffle off restores the queue order for free; the Settings switch picks smart or plain random and applies live. Ordering is idempotent (`queueSignature`): Media3 reports our own new order as another playlist change and delivers it after the call returns, so a re-entry flag ANRed the app on the first shuffle tap
 - [ ] T15 Real album art with gradient fallback, and the lock-screen privacy toggle
 - [ ] T16 Delete file (API 30+ / 29 / 24–28 branches)
 - [ ] T17 Drag to select after a long press
