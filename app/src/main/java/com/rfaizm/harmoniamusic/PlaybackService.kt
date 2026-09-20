@@ -1,9 +1,9 @@
 package com.rfaizm.harmoniamusic
 
-import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Intent
+import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.AudioManager.STREAM_MUSIC
@@ -43,6 +43,14 @@ class PlaybackService : MediaSessionService() {
     private val handler = Handler(Looper.getMainLooper())
     private val audio by lazy { getSystemService(AudioManager::class.java) } // no context before onCreate
 
+    // Earphones back in (wired, USB-C, Bluetooth, anything): the sound no longer goes to the bare speaker,
+    // so drop the 30% cap. Matching on device types missed USB-C sets and headsets that reconnect late.
+    private val outputWatcher = object : AudioDeviceCallback() {
+        override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>) {
+            if (addedDevices.any { it.isSink }) pausedByUnplug = false
+        }
+    }
+
     @OptIn(UnstableApi::class) // DefaultExtractorsFactory, setMaxSeekToPreviousPositionMs, setDeviceVolumeControlEnabled
     override fun onCreate() {
         super.onCreate()
@@ -58,6 +66,7 @@ class PlaybackService : MediaSessionService() {
             // Lets the controller read the phone's media volume, so hardware keys move the slider.
             .setDeviceVolumeControlEnabled(true)
             .build()
+        audio.registerAudioDeviceCallback(outputWatcher, handler)
         player.addListener(object : Player.Listener {
             // Counted here, not in the UI, so tracks that advance in the background count too.
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
@@ -83,7 +92,7 @@ class PlaybackService : MediaSessionService() {
                 if (reason != Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) return
                 // PRD phase 4: play pressed after the earphones came out shouldn't blast the speaker. Android keeps a
                 // separate volume per output, so this lowers only the speaker's; headphones keep theirs.
-                if (pausedByUnplug && !headphonesConnected()) {
+                if (pausedByUnplug) {
                     audio.setStreamVolume(STREAM_MUSIC, speakerSafeVolume(audio.getStreamVolume(STREAM_MUSIC), audio.getStreamMaxVolume(STREAM_MUSIC)), 0)
                 }
                 pausedByUnplug = false
@@ -123,9 +132,8 @@ class PlaybackService : MediaSessionService() {
         }.run() // first step now, so the volume is 0 before the resumed audio is heard
     }
 
-    private fun headphonesConnected() = audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).any { it.type in HEADPHONES }
-
     override fun onDestroy() {
+        audio.unregisterAudioDeviceCallback(outputWatcher)
         handler.removeCallbacksAndMessages(null)
         session?.run { player.release(); release() }
         session = null
@@ -141,13 +149,6 @@ internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Bo
 
 /** PRD phase 4: after an unplug the speaker plays at no more than 30%; a quieter setting is left alone. */
 internal fun speakerSafeVolume(current: Int, max: Int) = min(current, (max * 0.3).roundToInt())
-
-// Outputs that count as "earphones are in". USB and BLE are newer than minSdk, but these ints are only compared.
-@SuppressLint("InlinedApi")
-private val HEADPHONES = setOf(
-    AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES, AudioDeviceInfo.TYPE_BLUETOOTH_A2DP,
-    AudioDeviceInfo.TYPE_USB_HEADSET, AudioDeviceInfo.TYPE_BLE_HEADSET,
-)
 
 fun Song.toMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaId(id.toString())
