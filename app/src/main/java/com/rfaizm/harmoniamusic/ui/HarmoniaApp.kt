@@ -80,6 +80,8 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.rfaizm.harmoniamusic.PlaybackService
 import com.rfaizm.harmoniamusic.data.Library
+import com.rfaizm.harmoniamusic.data.Settings
+import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.addSongs
 import com.rfaizm.harmoniamusic.data.removeSong
@@ -112,7 +114,7 @@ enum class Tab(val label: String, val icon: ImageVector) {
  */
 @Composable
 fun HarmoniaApp() {
-    var darkMode by rememberSaveable { mutableStateOf(true) }
+    val darkMode = Settings[Key.DarkMode]
     val songs = Library.songs
     val playlists = Library.playlists
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
@@ -236,7 +238,7 @@ fun HarmoniaApp() {
     HarmoniaTheme(darkTheme = darkMode) {
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize()) {
-                TopBar(songs.size, darkMode) { darkMode = !darkMode }
+                TopBar(songs.size, darkMode) { Settings[Key.DarkMode] = !darkMode }
                 AnimatedContent(
                     tab,
                     transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(160)) },

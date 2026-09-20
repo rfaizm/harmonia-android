@@ -1,5 +1,6 @@
 package com.rfaizm.harmoniamusic
 
+import androidx.media3.common.C
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,6 +23,17 @@ class PlaybackServiceTest {
     @Test
     fun aBrokenLastSongWithRepeatOffStops() {
         assertFalse(shouldSkipAfterError(errorsInARow = 1, queueSize = 5, hasNext = false))
+    }
+
+    @Test
+    fun duckingOnKeepsMusicPlayingQuietlyForNotifications() {
+        assertEquals(C.AUDIO_CONTENT_TYPE_MUSIC, audioAttributesFor(ducking = true).contentType)
+    }
+
+    @Test
+    fun duckingOffPausesForNotificationsInstead() {
+        // Media3 ducks for every content type but speech, so that flag is the only lever for this setting.
+        assertEquals(C.AUDIO_CONTENT_TYPE_SPEECH, audioAttributesFor(ducking = false).contentType)
     }
 
     @Test

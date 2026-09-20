@@ -3,6 +3,7 @@ package com.rfaizm.harmoniamusic
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Intent
+import android.content.SharedPreferences
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -27,6 +28,8 @@ import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.rfaizm.harmoniamusic.data.Library
+import com.rfaizm.harmoniamusic.data.Settings
+import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.countPlay
 import kotlin.math.min
@@ -38,10 +41,13 @@ import kotlin.math.roundToInt
  */
 class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
+    private lateinit var player: ExoPlayer
     private var errorsInARow = 0
     private var pausedByUnplug = false
     private val handler = Handler(Looper.getMainLooper())
     private val audio by lazy { getSystemService(AudioManager::class.java) } // no context before onCreate
+    private val settings by lazy { getSharedPreferences(Settings.FILE, MODE_PRIVATE) }
+    private val settingsWatcher = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> applySettings() }
 
     // Earphones back in (wired, USB-C, Bluetooth, anything): the sound no longer goes to the bare speaker,
     // so drop the 30% cap. Matching on device types missed USB-C sets and headsets that reconnect late.
@@ -56,17 +62,18 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         // Voice recorders often write ADTS .aac or .amr, which have no seek index; without this they can't be seeked.
         val extractors = DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)
-        val player = ExoPlayer.Builder(this)
+        Settings.init(this)
+        player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this, extractors))
-            // PRD phase 4: pause for calls and other music apps, duck for notifications. Media3 ducks to about 20%
-            // rather than the PRD's 30%; not worth fighting (tasks/plan.md).
-            .setAudioAttributes(AudioAttributes.Builder().setUsage(C.USAGE_MEDIA).setContentType(C.AUDIO_CONTENT_TYPE_MUSIC).build(), true)
-            .setHandleAudioBecomingNoisy(true) // pause the moment earphones come out
+            // PRD phase 4: pause for calls and other music apps; notifications duck or pause per Settings.
+            .setAudioAttributes(audioAttributesFor(Settings[Key.Ducking]), true)
+            .setHandleAudioBecomingNoisy(Settings[Key.PauseOnUnplug])
             .setMaxSeekToPreviousPositionMs(5_000) // PRD phase 7: previous after 5 s restarts the song
             // Lets the controller read the phone's media volume, so hardware keys move the slider.
             .setDeviceVolumeControlEnabled(true)
             .build()
         audio.registerAudioDeviceCallback(outputWatcher, handler)
+        settings.registerOnSharedPreferenceChangeListener(settingsWatcher)
         player.addListener(object : Player.Listener {
             // Counted here, not in the UI, so tracks that advance in the background count too.
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
@@ -100,7 +107,7 @@ class PlaybackService : MediaSessionService() {
                 }
                 pausedByUnplug = false
                 // Resuming mid-song fades in over 1 s; a song started from 0 plays at full volume straight away.
-                if (player.currentPosition > 0) fadeIn(player)
+                if (player.currentPosition > 0) fadeIn()
             }
 
             override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -122,8 +129,15 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
 
+    /** Settings can change mid-playback, so both audio switches are re-applied to the live player. */
+    @OptIn(UnstableApi::class) // setAudioAttributes
+    private fun applySettings() {
+        player.setAudioAttributes(audioAttributesFor(Settings[Key.Ducking]), true)
+        player.setHandleAudioBecomingNoisy(Settings[Key.PauseOnUnplug])
+    }
+
     /** Ramps the volume up over 1 s. A Handler, not ValueAnimator: animators tick on display frames, which aren't guaranteed with the screen off. */
-    private fun fadeIn(player: Player) {
+    private fun fadeIn() {
         handler.removeCallbacksAndMessages(null)
         val start = SystemClock.uptimeMillis()
         object : Runnable {
@@ -136,9 +150,11 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        settings.unregisterOnSharedPreferenceChangeListener(settingsWatcher)
         audio.unregisterAudioDeviceCallback(outputWatcher)
         handler.removeCallbacksAndMessages(null)
-        session?.run { player.release(); release() }
+        session?.release()
+        player.release()
         session = null
         super.onDestroy()
     }
@@ -149,6 +165,15 @@ class PlaybackService : MediaSessionService() {
  * (repeat-all always has a next song, so the count is what stops an all-broken queue from looping forever).
  */
 internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Boolean) = hasNext && errorsInARow < queueSize
+
+/**
+ * Settings › "Lower volume for notifications". Media3 ducks for every content type except speech, where it
+ * pauses instead, so the content type is the switch (tests pin this; it isn't obvious from the API).
+ */
+internal fun audioAttributesFor(ducking: Boolean): AudioAttributes = AudioAttributes.Builder()
+    .setUsage(C.USAGE_MEDIA)
+    .setContentType(if (ducking) C.AUDIO_CONTENT_TYPE_MUSIC else C.AUDIO_CONTENT_TYPE_SPEECH)
+    .build()
 
 /** PRD phase 4: after an unplug the speaker plays at no more than 30%; a quieter setting is left alone. */
 internal fun speakerSafeVolume(current: Int, max: Int) = min(current, (max * 0.3).roundToInt())

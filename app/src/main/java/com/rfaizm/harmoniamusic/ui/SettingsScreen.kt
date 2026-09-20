@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.BlurOn
-import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Notifications
@@ -18,34 +17,23 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.rfaizm.harmoniamusic.data.Settings
+import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
 fun SettingsScreen(onRescan: () -> Unit) {
-    var crossfade by rememberSaveable { mutableStateOf(true) }
-    var gapless by rememberSaveable { mutableStateOf(true) }
-    var smartShuffle by rememberSaveable { mutableStateOf(true) }
-    var ducking by rememberSaveable { mutableStateOf(true) }
-    var pauseOnUnplug by rememberSaveable { mutableStateOf(true) }
-    var lightMode by rememberSaveable { mutableStateOf(false) }
-    var lockPrivacy by rememberSaveable { mutableStateOf(false) }
-
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text("Settings", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 14.dp))
 
@@ -55,26 +43,23 @@ fun SettingsScreen(onRescan: () -> Unit) {
             SettingsRow(Icons.Rounded.Tune, "Filters", "Hide clips shorter than 30 seconds", onClick = {}) { Chevron() }
         }
 
+        // Crossfade and gapless switches are gone: Media3 is always gapless, and crossfade was dropped (tasks/plan.md).
         SettingsSection("Playback") {
-            ToggleRow(Icons.Rounded.SwapHoriz, "Crossfade", "Smooth 2s blend between tracks", crossfade) { crossfade = it }
-            Divider()
-            ToggleRow(Icons.Rounded.GraphicEq, "Gapless playback", "No silence between album tracks", gapless) { gapless = it }
-            Divider()
-            ToggleRow(Icons.Rounded.Shuffle, "Smart shuffle", "Spread out songs by the same artist", smartShuffle) { smartShuffle = it }
+            ToggleRow(Icons.Rounded.Shuffle, "Smart shuffle", "Spread out songs by the same artist", Key.SmartShuffle)
             Divider()
             SettingsRow(Icons.Rounded.Bedtime, "Sleep timer", "Off · fades out over the last minute", onClick = {}) { Chevron() }
         }
 
         SettingsSection("Audio focus") {
-            ToggleRow(Icons.Rounded.Notifications, "Lower volume for notifications", "Duck music instead of pausing", ducking) { ducking = it }
+            ToggleRow(Icons.Rounded.Notifications, "Lower volume for notifications", "Duck music instead of pausing", Key.Ducking)
             Divider()
-            ToggleRow(Icons.Rounded.Headphones, "Pause when headphones unplug", "Resume on speaker at 30% volume", pauseOnUnplug) { pauseOnUnplug = it }
+            ToggleRow(Icons.Rounded.Headphones, "Pause when headphones unplug", "Resume on speaker at 30% volume", Key.PauseOnUnplug)
         }
 
         SettingsSection("Display & privacy") {
-            ToggleRow(Icons.Rounded.Speed, "Light performance mode", "Turn off blur and heavy effects", lightMode) { lightMode = it }
+            ToggleRow(Icons.Rounded.Speed, "Light performance mode", "Turn off blur and heavy effects", Key.LiteMode)
             Divider()
-            ToggleRow(Icons.Rounded.BlurOn, "Lock screen privacy", "Blur album art on the lock screen", lockPrivacy) { lockPrivacy = it }
+            ToggleRow(Icons.Rounded.BlurOn, "Lock screen privacy", "Blur album art on the lock screen", Key.LockPrivacy)
         }
 
         SettingsSection("About") {
@@ -86,8 +71,8 @@ fun SettingsScreen(onRescan: () -> Unit) {
 }
 
 @Composable
-private fun ToggleRow(icon: ImageVector, label: String, sub: String, value: Boolean, onChange: (Boolean) -> Unit) =
-    SettingsRow(icon, label, sub, onClick = { onChange(!value) }) { HarmoniaSwitch(value, onChange) }
+private fun ToggleRow(icon: ImageVector, label: String, sub: String, key: Key) =
+    SettingsRow(icon, label, sub, onClick = { Settings[key] = !Settings[key] }) { HarmoniaSwitch(Settings[key]) { Settings[key] = it } }
 
 @Composable
 private fun Divider() = HorizontalDivider(color = colors.border)
