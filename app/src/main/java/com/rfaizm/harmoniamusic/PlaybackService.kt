@@ -10,6 +10,7 @@ import android.media.AudioManager
 import android.media.AudioManager.STREAM_MUSIC
 import android.os.Handler
 import android.os.Looper
+import android.os.Bundle
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.widget.Toast
@@ -28,11 +29,14 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import com.rfaizm.harmoniamusic.data.Library
 import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.countPlay
+import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +57,8 @@ class PlaybackService : MediaSessionService() {
     private var errorsInARow = 0
     private var pausedByUnplug = false
     private var restoring = false
+    private var sleepAt = 0L // uptime when the sleep timer pauses playback, 0 when off
+    private var fadeStep: Runnable? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
     private val audio by lazy { getSystemService(AudioManager::class.java) } // no context before onCreate
@@ -110,6 +116,8 @@ class PlaybackService : MediaSessionService() {
 
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (!playWhenReady) {
+                    // The end-of-track timer is a one-shot; clear it so the next song plays through.
+                    if (reason == Player.PLAY_WHEN_READY_CHANGE_REASON_END_OF_MEDIA_ITEM) setSleepTimer(0)
                     pausedByUnplug = reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
                     saveSession() // a pause is where a session usually ends
                     return
@@ -139,7 +147,7 @@ class PlaybackService : MediaSessionService() {
         val launch = Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         session = MediaSession.Builder(this, player)
             .setSessionActivity(PendingIntent.getActivity(this, 0, launch, PendingIntent.FLAG_IMMUTABLE))
-            .setCallback(resumptionCallback)
+            .setCallback(sessionCallback)
             .build()
         // Put the last queue back, paused. No prepare(): an idle player draws no notification, so the app
         // reopens on the song you left without pretending something is playing.
@@ -152,8 +160,32 @@ class PlaybackService : MediaSessionService() {
         }
     }
 
-    /** A media button after the process died: Media3 asks what to play, then starts it itself. */
-    private val resumptionCallback = object : MediaSession.Callback {
+    private val sessionCallback = object : MediaSession.Callback {
+        /** The defaults don't include custom commands, so the sleep timer has to be granted explicitly. */
+        @OptIn(UnstableApi::class) // AcceptedResultBuilder
+        override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo) =
+            MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller)
+                .setAvailableSessionCommands(
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                        .add(SessionCommand(SLEEP_COMMAND, Bundle.EMPTY))
+                        .build()
+                )
+                .build()
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle,
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.customAction != SLEEP_COMMAND) {
+                return super.onCustomCommand(session, controller, customCommand, args)
+            }
+            setSleepTimer(args.getInt(SLEEP_MINUTES))
+            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+        }
+
+        /** A media button after the process died: Media3 asks what to play, then starts it itself. */
         @OptIn(UnstableApi::class)
         override fun onPlaybackResumption(
             mediaSession: MediaSession,
@@ -191,6 +223,33 @@ class PlaybackService : MediaSessionService() {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
 
+    /** PRD phase 7: minutes, [SLEEP_END_OF_TRACK], or 0 to switch the timer off. */
+    @OptIn(UnstableApi::class) // setPauseAtEndOfMediaItems
+    private fun setSleepTimer(minutes: Int) {
+        handler.removeCallbacks(sleepTick)
+        player.pauseAtEndOfMediaItems = minutes == SLEEP_END_OF_TRACK
+        sleepAt = if (minutes > 0) SystemClock.uptimeMillis() + minutes * 60_000L else 0L
+        player.volume = targetVolume()
+        if (sleepAt > 0L) handler.post(sleepTick)
+    }
+
+    private val sleepTick = object : Runnable {
+        override fun run() {
+            if (sleepAt == 0L) return
+            if (SystemClock.uptimeMillis() >= sleepAt) {
+                player.pause()
+                sleepAt = 0L
+                player.volume = 1f // so the next play isn't silent
+                return
+            }
+            player.volume = targetVolume()
+            handler.postDelayed(this, 250)
+        }
+    }
+
+    /** Full volume, unless the sleep timer is inside its last minute. */
+    private fun targetVolume() = if (sleepAt == 0L) 1f else fadeVolume(sleepAt - SystemClock.uptimeMillis())
+
     /** Settings can change mid-playback, so both audio switches are re-applied to the live player. */
     @OptIn(UnstableApi::class) // setAudioAttributes
     private fun applySettings() {
@@ -200,15 +259,19 @@ class PlaybackService : MediaSessionService() {
 
     /** Ramps the volume up over 1 s. A Handler, not ValueAnimator: animators tick on display frames, which aren't guaranteed with the screen off. */
     private fun fadeIn() {
-        handler.removeCallbacksAndMessages(null)
+        fadeStep?.let(handler::removeCallbacks) // only this ramp; the sleep timer keeps ticking
         val start = SystemClock.uptimeMillis()
-        object : Runnable {
+        val step = object : Runnable {
             override fun run() {
                 val t = ((SystemClock.uptimeMillis() - start) / 1_000f).coerceAtMost(1f)
-                player.volume = t * t // squared: the ear hears loudness logarithmically, so a linear ramp jumps early
+                // Squared: the ear hears loudness logarithmically, so a linear ramp jumps early. Scaled by the
+                // sleep fade, so resuming inside the last minute comes back quiet rather than at full volume.
+                player.volume = t * t * targetVolume()
                 if (t < 1f) handler.postDelayed(this, 50)
             }
-        }.run() // first step now, so the volume is 0 before the resumed audio is heard
+        }
+        fadeStep = step
+        step.run() // first step now, so the volume is 0 before the resumed audio is heard
     }
 
     override fun onDestroy() {
@@ -229,6 +292,17 @@ class PlaybackService : MediaSessionService() {
  * (repeat-all always has a next song, so the count is what stops an all-broken queue from looping forever).
  */
 internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Boolean) = hasNext && errorsInARow < queueSize
+
+/** Sleep timer command the full player sends through its controller, with [SLEEP_MINUTES] in the args. */
+internal const val SLEEP_COMMAND = "com.rfaizm.harmoniamusic.SLEEP"
+internal const val SLEEP_MINUTES = "minutes"
+internal const val SLEEP_END_OF_TRACK = -1
+
+/** PRD phase 7: silence arrives over the last minute, so it doesn't jolt someone half asleep. */
+internal fun fadeVolume(msLeft: Long): Float {
+    val t = (msLeft / 60_000f).coerceIn(0f, 1f)
+    return t * t
+}
 
 /** Saved ids minus whatever a rescan removed, with the index still pointing at the song that was playing. */
 internal fun resumeQueue(ids: List<Int>, index: Int, songs: List<Song>): Pair<List<Song>, Int> {

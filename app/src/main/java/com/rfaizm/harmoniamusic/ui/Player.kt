@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
+import com.rfaizm.harmoniamusic.SLEEP_END_OF_TRACK
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
@@ -111,6 +112,7 @@ fun FullPlayer(
     repeatMode: Int, // Player.REPEAT_MODE_*
     volume: Float,   // device media volume, 0..1
     muted: Boolean,
+    sleep: SleepOption?,
     onClose: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
@@ -120,6 +122,7 @@ fun FullPlayer(
     onRepeat: () -> Unit,
     onVolume: (Float) -> Unit,
     onMute: () -> Unit,
+    onSleep: (SleepOption?) -> Unit,
     onLike: () -> Unit,
 ) {
     val (g0, g1) = song.gradient
@@ -247,7 +250,7 @@ fun FullPlayer(
         // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             ExtraChip(Icons.Rounded.FormatQuote, "Lyrics") {}
-            SleepTimerChip()
+            SleepTimerChip(sleep, onSleep)
         }
     }
 }
@@ -286,19 +289,31 @@ private fun ExtraChip(icon: ImageVector, text: String, onClick: () -> Unit) {
     }
 }
 
+/** PRD phase 7. [SLEEP_END_OF_TRACK] finishes the current song instead of counting minutes. */
+enum class SleepOption(val label: String, val minutes: Int) {
+    Min15("15 min", 15),
+    Min30("30 min", 30),
+    Min45("45 min", 45),
+    Min60("60 min", 60),
+    EndOfTrack("End of track", SLEEP_END_OF_TRACK),
+}
+
 @Composable
-private fun SleepTimerChip() {
+private fun SleepTimerChip(selected: SleepOption?, onSelect: (SleepOption?) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    var choice by remember { mutableStateOf<String?>(null) }
     Box {
-        ExtraChip(Icons.Rounded.Bedtime, choice?.let { "Sleep · $it" } ?: "Sleep timer") { open = true }
+        ExtraChip(Icons.Rounded.Bedtime, selected?.let { "Sleep · ${it.label}" } ?: "Sleep timer") { open = true }
         DropdownMenu(open, { open = false }, shape = RoundedCornerShape(16.dp), containerColor = colors.card) {
-            listOf("15 min", "30 min", "45 min", "60 min", "End of track", "Off").forEach { opt ->
+            SleepOption.entries.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(opt, fontSize = 14.sp, color = if (opt == "Off") colors.onSurfaceVariant else colors.onSurface) },
-                    onClick = { choice = opt.takeIf { it != "Off" }; open = false }
+                    text = { Text(option.label, fontSize = 14.sp, color = colors.onSurface) },
+                    onClick = { onSelect(option); open = false }
                 )
             }
+            DropdownMenuItem(
+                text = { Text("Off", fontSize = 14.sp, color = colors.onSurfaceVariant) },
+                onClick = { onSelect(null); open = false }
+            )
         }
     }
 }

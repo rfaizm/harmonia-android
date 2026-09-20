@@ -9,6 +9,7 @@ import android.media.AudioManager
 import android.media.AudioManager.STREAM_MUSIC
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -72,13 +73,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.os.bundleOf
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.media3.common.Player
 import androidx.media3.common.util.Util
 import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.rfaizm.harmoniamusic.PlaybackService
+import com.rfaizm.harmoniamusic.SLEEP_COMMAND
+import com.rfaizm.harmoniamusic.SLEEP_MINUTES
 import com.rfaizm.harmoniamusic.data.Library
 import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
@@ -110,7 +115,7 @@ enum class Tab(val label: String, val icon: ImageVector) {
 /**
  * Root state holder (GUIDELINE §16). Songs and playlists live in [Library]; everything else is UI state here.
  * Playback lives in [PlaybackService]; [activeId] and [isPlaying] mirror it through a MediaController.
- * Likes, play counts and playlists are saved by [Library]; settings (T11) and the last session (T12) aren't yet.
+ * Likes, play counts and playlists are saved by [Library], the switches by [Settings], the queue by the service.
  */
 @Composable
 fun HarmoniaApp() {
@@ -127,6 +132,8 @@ fun HarmoniaApp() {
     var positionMs by remember { mutableLongStateOf(0L) }
     var volume by remember { mutableFloatStateOf(0f) }
     var muted by remember { mutableStateOf(false) }
+    // Kept here, not in the chip, so it survives closing the full player; the timer itself lives in the service.
+    var sleep by remember { mutableStateOf<SleepOption?>(null) }
     val active = songs.firstOrNull { it.id == activeId }
 
     // Connected while the app is visible; the service keeps playing after it's released.
@@ -277,7 +284,7 @@ fun HarmoniaApp() {
                 active?.let {
                     FullPlayer(
                         song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
-                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted,
+                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep,
                         onClose = { fullPlayer = false },
                         onToggle = { Util.handlePlayPauseButtonAction(controller) },
                         onNext = { controller?.seekToNext() },
@@ -291,6 +298,13 @@ fun HarmoniaApp() {
                             audio.setStreamVolume(STREAM_MUSIC, (f * audio.getStreamMaxVolume(STREAM_MUSIC)).roundToInt(), 0)
                         },
                         onMute = { audio.adjustStreamVolume(STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, 0) },
+                        onSleep = { option ->
+                            sleep = option
+                            controller?.sendCustomCommand(
+                                SessionCommand(SLEEP_COMMAND, Bundle.EMPTY),
+                                bundleOf(SLEEP_MINUTES to (option?.minutes ?: 0)),
+                            )
+                        },
                         onLike = { like(it) },
                     )
                 }

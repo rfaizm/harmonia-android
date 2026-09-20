@@ -74,5 +74,22 @@ class PlaybackServiceTest {
         assertEquals(0, index)
     }
 
+    @Test
+    fun theSleepTimerPlaysAtFullVolumeUntilTheLastMinute() {
+        assertEquals(1f, fadeVolume(msLeft = 90_000), 0f)
+        assertEquals(1f, fadeVolume(msLeft = 60_000), 0f)
+    }
+
+    @Test
+    fun theSleepTimerFadesOutOverTheLastMinute() {
+        assertEquals(0.25f, fadeVolume(msLeft = 30_000), 0.001f) // squared curve, so half way is a quarter as loud
+        assertEquals(0f, fadeVolume(msLeft = 0), 0f)
+    }
+
+    @Test
+    fun theSleepTimerStaysSilentIfTheTickRunsLate() {
+        assertEquals(0f, fadeVolume(msLeft = -500), 0f)
+    }
+
     private fun song(id: Int) = Song(id, "Song $id", "Artist", "Album", 2024, 200)
 }

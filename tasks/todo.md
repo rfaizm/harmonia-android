@@ -24,10 +24,10 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T10 Likes, play counts and playlists saved to JSON in `filesDir` (`stateJson`/`parseState` round-trip test, corrupt file reads as empty), haptic on like. `Library.restore()` runs before the first scan; `Library.save()` after every like, play count and playlist change
 - [x] T11 Settings saved to `SharedPreferences` (`data/Settings.kt`) and wired into the service: ducking flips the audio content type (speech makes Media3 pause instead of duck, `audioAttributesFor` test), pause-on-unplug flips `setHandleAudioBecomingNoisy`. Crossfade and gapless switches removed (plan's open question). Smart shuffle, lite mode and lock privacy are stored for T14/T19/T15
 - [x] T12 Resume last session and `onPlaybackResumption` (`resumeQueue` test keeps the index on the same song after a rescan). Restored idle, so no notification appears until play. `Library.ensureLoaded` shares one scan between the UI and the service; a scan without permission no longer marks the library loaded
-- [ ] **Checkpoint M3:** after killing and reopening the app, everything is restored
+- [x] **Checkpoint M3:** phone check passed 2026-09-20
 
 ## M4: Remaining PRD features
-- [ ] T13 Sleep timer with a 60 s fade-out (`fadeVolume` test)
+- [x] T13 Sleep timer with a 60 s fade-out (`fadeVolume` test). A custom `SessionCommand` carries the choice to the service, which owns the timer; "End of track" uses `pauseAtEndOfMediaItems` and clears itself. Resume fade-in and sleep fade-out share one target volume so they don't fight
 - [ ] T14 Smart shuffle (`smartShuffle` tests)
 - [ ] T15 Real album art with gradient fallback, and the lock-screen privacy toggle
 - [ ] T16 Delete file (API 30+ / 29 / 24–28 branches)
