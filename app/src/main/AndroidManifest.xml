@@ -30,8 +30,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!-- Not exported: the lock screen and Bluetooth talk to the platform session, not this binder.
-             ponytail: T12's playback resumption may need it exported. -->
+        <!-- Not exported: the lock screen and Bluetooth talk to the platform session, not this binder, and
+             the receiver below is what wakes a dead process. -->
         <service
             android:name=".PlaybackService"
             android:exported="false"
@@ -40,6 +40,14 @@
                 <action android:name="androidx.media3.session.MediaSessionService" />
             </intent-filter>
         </service>
+        <!-- Lets a headset button start playback again after the process died (T12). -->
+        <receiver
+            android:name="androidx.media3.session.MediaButtonReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>

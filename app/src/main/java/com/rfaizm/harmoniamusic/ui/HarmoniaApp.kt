@@ -219,12 +219,7 @@ fun HarmoniaApp() {
 
     // First scan once permission is there; Library outlives the activity, so rotation doesn't rescan.
     // Saved likes, play counts and playlists are read first, so the scan can merge them in.
-    LaunchedEffect(granted) {
-        if (granted && !Library.loaded) {
-            Library.restore(context)
-            Library.scan(context)
-        }
-    }
+    LaunchedEffect(granted) { if (granted && !Library.loaded) Library.ensureLoaded(context) }
     val scope = rememberCoroutineScope()
     var rescanning by remember { mutableStateOf(false) }
     fun rescan() {

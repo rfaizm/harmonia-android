@@ -1,6 +1,7 @@
 package com.rfaizm.harmoniamusic
 
 import androidx.media3.common.C
+import com.rfaizm.harmoniamusic.data.Song
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -45,4 +46,33 @@ class PlaybackServiceTest {
     fun playAfterUnplugNeverRaisesAnAlreadyQuietSpeaker() {
         assertEquals(3, speakerSafeVolume(current = 3, max = 15))
     }
+
+    @Test
+    fun theResumedQueueStaysOnTheSameSong() {
+        val library = listOf(song(1), song(2), song(3))
+
+        val (queue, index) = resumeQueue(ids = listOf(1, 2, 3), index = 2, songs = library)
+
+        assertEquals(library, queue)
+        assertEquals(2, index)
+    }
+
+    @Test
+    fun aSongDeletedSinceLastTimeShiftsTheResumedIndex() {
+        // Saved song 1 is gone after a rescan, so song 3 is now at index 1, not 2.
+        val (queue, index) = resumeQueue(ids = listOf(1, 2, 3), index = 2, songs = listOf(song(2), song(3)))
+
+        assertEquals(listOf(song(2), song(3)), queue)
+        assertEquals(1, index)
+    }
+
+    @Test
+    fun aQueueWhoseSongsAreAllGoneResumesNothing() {
+        val (queue, index) = resumeQueue(ids = listOf(1, 2), index = 1, songs = emptyList())
+
+        assertEquals(emptyList<Song>(), queue)
+        assertEquals(0, index)
+    }
+
+    private fun song(id: Int) = Song(id, "Song $id", "Artist", "Album", 2024, 200)
 }

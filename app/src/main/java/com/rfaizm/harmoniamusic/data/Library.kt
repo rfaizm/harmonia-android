@@ -36,10 +36,20 @@ object Library {
     private var restored = false
     private val writes = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val writeLock = Mutex()
+    private val loadLock = Mutex() // the UI and the service both ask for the library at launch
 
     /** Needs the audio permission; call on the main thread. */
-    suspend fun scan(context: Context) {
-        val fresh = withContext(Dispatchers.IO) { query(context.contentResolver) }
+    suspend fun scan(context: Context) = loadLock.withLock { scanNow(context) }
+
+    /** Restores and scans once, whoever asks first; a second caller waits for that scan instead of repeating it. */
+    suspend fun ensureLoaded(context: Context) = loadLock.withLock {
+        restore(context)
+        if (!loaded) scanNow(context)
+    }
+
+    private suspend fun scanNow(context: Context) {
+        // Without the audio permission the query throws; leave [loaded] false so a later grant still scans.
+        val fresh = withContext(Dispatchers.IO) { runCatching { query(context.contentResolver) }.getOrNull() } ?: return
         // Nothing scanned yet means this is the first scan of the process, so the saved state is the newest.
         val merged = keepUserState(fresh, songs.toList().ifEmpty { saved })
         songs.clear()

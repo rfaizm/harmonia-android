@@ -14,6 +14,7 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.widget.Toast
 import androidx.annotation.OptIn
+import androidx.core.content.edit
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -32,6 +33,13 @@ import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.countPlay
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -44,9 +52,13 @@ class PlaybackService : MediaSessionService() {
     private lateinit var player: ExoPlayer
     private var errorsInARow = 0
     private var pausedByUnplug = false
+    private var restoring = false
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
     private val audio by lazy { getSystemService(AudioManager::class.java) } // no context before onCreate
     private val settings by lazy { getSharedPreferences(Settings.FILE, MODE_PRIVATE) }
+    // Its own file, so writing the position doesn't wake the settings listener below.
+    private val sessionStore by lazy { getSharedPreferences("session", MODE_PRIVATE) }
     private val settingsWatcher = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> applySettings() }
 
     // Earphones back in (wired, USB-C, Bluetooth, anything): the sound no longer goes to the bare speaker,
@@ -77,10 +89,12 @@ class PlaybackService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             // Counted here, not in the UI, so tracks that advance in the background count too.
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
+                if (restoring) return // putting last session back is not a play
                 item?.mediaId?.toIntOrNull()?.let {
                     Library.songs.countPlay(it)
                     Library.save(this@PlaybackService)
                 }
+                saveSession()
             }
 
             // PRD phase 2: a corrupt or missing file skips ahead instead of stalling the queue.
@@ -97,6 +111,7 @@ class PlaybackService : MediaSessionService() {
             override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
                 if (!playWhenReady) {
                     pausedByUnplug = reason == Player.PLAY_WHEN_READY_CHANGE_REASON_AUDIO_BECOMING_NOISY
+                    saveSession() // a pause is where a session usually ends
                     return
                 }
                 if (reason != Player.PLAY_WHEN_READY_CHANGE_REASON_USER_REQUEST) return
@@ -124,7 +139,54 @@ class PlaybackService : MediaSessionService() {
         val launch = Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
         session = MediaSession.Builder(this, player)
             .setSessionActivity(PendingIntent.getActivity(this, 0, launch, PendingIntent.FLAG_IMMUTABLE))
+            .setCallback(resumptionCallback)
             .build()
+        // Put the last queue back, paused. No prepare(): an idle player draws no notification, so the app
+        // reopens on the song you left without pretending something is playing.
+        scope.launch {
+            if (player.mediaItemCount > 0) return@launch
+            val last = lastSession() ?: return@launch
+            restoring = true
+            player.setMediaItems(last.mediaItems, last.startIndex, last.startPositionMs)
+            restoring = false
+        }
+    }
+
+    /** A media button after the process died: Media3 asks what to play, then starts it itself. */
+    private val resumptionCallback = object : MediaSession.Callback {
+        @OptIn(UnstableApi::class)
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            isForPlayback: Boolean,
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val future = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            scope.launch {
+                val last = lastSession()
+                if (last == null) future.setException(IllegalStateException("no saved session")) else future.set(last)
+            }
+            return future
+        }
+    }
+
+    private fun saveSession() {
+        val ids = (0 until player.mediaItemCount).mapNotNull { player.getMediaItemAt(it).mediaId.toIntOrNull() }
+        sessionStore.edit {
+            putString("ids", ids.joinToString(","))
+            putInt("index", player.currentMediaItemIndex)
+            putLong("position", player.currentPosition)
+        }
+    }
+
+    /** Waits for the library, since a media button can start this service before anything has scanned. */
+    @OptIn(UnstableApi::class) // MediaItemsWithStartPosition
+    private suspend fun lastSession(): MediaSession.MediaItemsWithStartPosition? {
+        val ids = sessionStore.getString("ids", "").orEmpty().split(",").mapNotNull(String::toIntOrNull)
+        if (ids.isEmpty()) return null
+        Library.ensureLoaded(this)
+        val (songs, index) = resumeQueue(ids, sessionStore.getInt("index", 0), Library.songs.toList())
+        if (songs.isEmpty()) return null
+        return MediaSession.MediaItemsWithStartPosition(songs.map { it.toMediaItem() }, index, sessionStore.getLong("position", 0))
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
@@ -150,6 +212,8 @@ class PlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        saveSession()
+        scope.cancel()
         settings.unregisterOnSharedPreferenceChangeListener(settingsWatcher)
         audio.unregisterAudioDeviceCallback(outputWatcher)
         handler.removeCallbacksAndMessages(null)
@@ -165,6 +229,14 @@ class PlaybackService : MediaSessionService() {
  * (repeat-all always has a next song, so the count is what stops an all-broken queue from looping forever).
  */
 internal fun shouldSkipAfterError(errorsInARow: Int, queueSize: Int, hasNext: Boolean) = hasNext && errorsInARow < queueSize
+
+/** Saved ids minus whatever a rescan removed, with the index still pointing at the song that was playing. */
+internal fun resumeQueue(ids: List<Int>, index: Int, songs: List<Song>): Pair<List<Song>, Int> {
+    val byId = songs.associateBy { it.id }
+    val queue = ids.mapNotNull { byId[it] }
+    val playing = ids.getOrNull(index)
+    return queue to queue.indexOfFirst { it.id == playing }.coerceAtLeast(0)
+}
 
 /**
  * Settings › "Lower volume for notifications". Media3 ducks for every content type except speech, where it

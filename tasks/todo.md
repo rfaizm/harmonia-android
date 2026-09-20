@@ -23,7 +23,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## M3: Persistence
 - [x] T10 Likes, play counts and playlists saved to JSON in `filesDir` (`stateJson`/`parseState` round-trip test, corrupt file reads as empty), haptic on like. `Library.restore()` runs before the first scan; `Library.save()` after every like, play count and playlist change
 - [x] T11 Settings saved to `SharedPreferences` (`data/Settings.kt`) and wired into the service: ducking flips the audio content type (speech makes Media3 pause instead of duck, `audioAttributesFor` test), pause-on-unplug flips `setHandleAudioBecomingNoisy`. Crossfade and gapless switches removed (plan's open question). Smart shuffle, lite mode and lock privacy are stored for T14/T19/T15
-- [ ] T12 Resume last session and `onPlaybackResumption`
+- [x] T12 Resume last session and `onPlaybackResumption` (`resumeQueue` test keeps the index on the same song after a rescan). Restored idle, so no notification appears until play. `Library.ensureLoaded` shares one scan between the UI and the service; a scan without permission no longer marks the library loaded
 - [ ] **Checkpoint M3:** after killing and reopening the app, everything is restored
 
 ## M4: Remaining PRD features
