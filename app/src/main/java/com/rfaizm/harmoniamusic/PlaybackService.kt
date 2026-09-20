@@ -70,7 +70,10 @@ class PlaybackService : MediaSessionService() {
         player.addListener(object : Player.Listener {
             // Counted here, not in the UI, so tracks that advance in the background count too.
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
-                item?.mediaId?.toIntOrNull()?.let(Library.songs::countPlay)
+                item?.mediaId?.toIntOrNull()?.let {
+                    Library.songs.countPlay(it)
+                    Library.save(this@PlaybackService)
+                }
             }
 
             // PRD phase 2: a corrupt or missing file skips ahead instead of stalling the queue.

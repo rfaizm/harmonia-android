@@ -108,7 +108,7 @@ enum class Tab(val label: String, val icon: ImageVector) {
 /**
  * Root state holder (GUIDELINE §16). Songs and playlists live in [Library]; everything else is UI state here.
  * Playback lives in [PlaybackService]; [activeId] and [isPlaying] mirror it through a MediaController.
- * ponytail: no persistence yet; saving lands in T10.
+ * Likes, play counts and playlists are saved by [Library]; settings (T11) and the last session (T12) aren't yet.
  */
 @Composable
 fun HarmoniaApp() {
@@ -178,9 +178,12 @@ fun HarmoniaApp() {
     fun like(s: Song) {
         val i = songs.indexOfFirst { it.id == s.id }
         songs[i] = songs[i].copy(liked = !songs[i].liked)
+        Library.save(context)
     }
-    fun addTo(name: String, ids: Collection<Int>) =
+    fun addTo(name: String, ids: Collection<Int>) {
         playlists.addSongs(name, ids, SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
+        Library.save(context)
+    }
 
     // Status bar icons follow the app theme; the full player is always dark.
     val activity = LocalContext.current as? ComponentActivity
@@ -213,7 +216,13 @@ fun HarmoniaApp() {
     }
 
     // First scan once permission is there; Library outlives the activity, so rotation doesn't rescan.
-    LaunchedEffect(granted) { if (granted && !Library.loaded) Library.scan(context) }
+    // Saved likes, play counts and playlists are read first, so the scan can merge them in.
+    LaunchedEffect(granted) {
+        if (granted && !Library.loaded) {
+            Library.restore(context)
+            Library.scan(context)
+        }
+    }
     val scope = rememberCoroutineScope()
     var rescanning by remember { mutableStateOf(false) }
     fun rescan() {
@@ -245,8 +254,8 @@ fun HarmoniaApp() {
                         t == Tab.Playlists -> PlaylistsScreen(
                             songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo,
                             onCreate = { addTo(it, emptyList()) },
-                            onRemove = { playlistId, songId -> playlists.removeSong(playlistId, songId) },
-                            onDelete = { playlists.remove(it) },
+                            onRemove = { playlistId, songId -> playlists.removeSong(playlistId, songId); Library.save(context) },
+                            onDelete = { playlists.remove(it); Library.save(context) },
                         )
                         else -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
                     }

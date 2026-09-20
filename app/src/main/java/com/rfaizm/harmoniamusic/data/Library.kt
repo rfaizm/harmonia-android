@@ -8,8 +8,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 
 /**
  * Process-level library, so rotation doesn't rescan and the playback service (T6) can reach it.
@@ -23,15 +31,75 @@ object Library {
     var loaded by mutableStateOf(false)
         private set
 
+    // Likes and play counts read from disk, as id-only songs; applied to the first scan by keepUserState.
+    private var saved = emptyList<Song>()
+    private var restored = false
+    private val writes = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val writeLock = Mutex()
+
     /** Needs the audio permission; call on the main thread. */
     suspend fun scan(context: Context) {
         val fresh = withContext(Dispatchers.IO) { query(context.contentResolver) }
-        val merged = keepUserState(fresh, songs.toList())
+        // Nothing scanned yet means this is the first scan of the process, so the saved state is the newest.
+        val merged = keepUserState(fresh, songs.toList().ifEmpty { saved })
         songs.clear()
         songs.addAll(merged)
         loaded = true
     }
+
+    /** Reads what MediaStore can't tell us. Call once before the first [scan]; later calls do nothing. */
+    suspend fun restore(context: Context) {
+        if (restored) return
+        restored = true
+        val text = withContext(Dispatchers.IO) { runCatching { stateFile(context).readText() }.getOrNull() } ?: return
+        val (savedSongs, savedPlaylists) = parseState(text)
+        saved = savedSongs
+        playlists.clear()
+        playlists.addAll(savedPlaylists)
+    }
+
+    /** Call after every like, play count or playlist change. Snapshots on the caller's thread, writes on IO. */
+    fun save(context: Context) {
+        val json = stateJson(songs.toList(), playlists.toList())
+        writes.launch { writeLock.withLock { runCatching { stateFile(context).writeText(json) } } }
+    }
+
+    private fun stateFile(context: Context) = File(context.filesDir, "library.json")
 }
+
+/** Only what a rescan can't rebuild: likes, play counts and playlists. */
+internal fun stateJson(songs: List<Song>, playlists: List<Playlist>): String {
+    val songArray = JSONArray()
+    songs.filter { it.liked || it.playCount > 0 }.forEach {
+        songArray.put(JSONObject().put("id", it.id).put("liked", it.liked).put("plays", it.playCount))
+    }
+    val playlistArray = JSONArray()
+    playlists.forEach {
+        playlistArray.put(
+            JSONObject().put("id", it.id).put("name", it.name).put("songs", JSONArray(it.songIds))
+                .put("gradient", it.gradientIndex).put("created", it.createdAt)
+        )
+    }
+    return JSONObject().put("songs", songArray).put("playlists", playlistArray).toString()
+}
+
+/**
+ * Songs come back carrying only id, liked and playCount, for [keepUserState] to merge onto a fresh scan.
+ * A truncated or hand-edited file reads as empty rather than crashing the app on launch.
+ */
+internal fun parseState(json: String): Pair<List<Song>, List<Playlist>> = runCatching {
+    val root = JSONObject(json)
+    val songs = root.getJSONArray("songs").objects().map {
+        Song(it.getInt("id"), "", "", "", 0, 0, it.optBoolean("liked"), it.optInt("plays"))
+    }
+    val playlists = root.getJSONArray("playlists").objects().map {
+        Playlist(it.getInt("id"), it.getString("name"), it.getJSONArray("songs").ints(), it.optInt("gradient"), it.optString("created"))
+    }
+    songs to playlists
+}.getOrElse { emptyList<Song>() to emptyList() }
+
+private fun JSONArray.objects() = (0 until length()).map { getJSONObject(it) }
+private fun JSONArray.ints() = (0 until length()).map { getInt(it) }
 
 // PRD phase 1: MediaStore already has the tags, so no file is opened here.
 private fun query(resolver: ContentResolver): List<Song> {

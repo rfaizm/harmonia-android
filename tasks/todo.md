@@ -18,10 +18,10 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T7 Progress polling, seek, shuffle/repeat mapping, device volume (`PlayerTest`); T6 phone check passed 2026-09-19. Volume goes through `AudioManager` (Media3 controllers drop volume commands for local playback) and CBR seeking makes recorder `.aac`/`.amr` seekable; both confirmed on the phone
 - [x] T8 Corrupt file skips to the next with a Toast, no infinite loop (`shouldSkipAfterError`, `PlaybackServiceTest`)
 - [x] T9 Noisy pause, ducking, previous restarts after 5 s, 30% speaker volume after unplug, fade-in on resume (`speakerSafeVolume` test). T8 phone check passed 2026-09-20. The 30% caps the phone's speaker volume (Android keeps it separate from headphones) instead of player gain, so nothing needs restoring
-- [ ] **Checkpoint M2:** device test covering playback, lock screen, Bluetooth, unplugging, a call, previous, and a corrupt file
+- [x] **Checkpoint M2:** phone check passed 2026-09-20. Fixed along the way: volume via `AudioManager`, CBR seeking for recorder files, and the 30% cap no longer lowering headphone volume after a replug
 
 ## M3: Persistence
-- [ ] T10 Likes, play counts and playlists saved to JSON (round-trip test), haptic feedback on like
+- [x] T10 Likes, play counts and playlists saved to JSON in `filesDir` (`stateJson`/`parseState` round-trip test, corrupt file reads as empty), haptic on like. `Library.restore()` runs before the first scan; `Library.save()` after every like, play count and playlist change
 - [ ] T11 Settings saved to `SharedPreferences` and wired into the service
 - [ ] T12 Resume last session and `onPlaybackResumption`
 - [ ] **Checkpoint M3:** after killing and reopening the app, everything is restored

@@ -83,6 +83,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -154,10 +156,11 @@ fun AlbumArt(
 fun HeartButton(liked: Boolean, onClick: () -> Unit, iconSize: Dp = 15.dp, unlikedTint: Color = colors.mutedForeground) {
     // Micro "pop" when liking (PRD phase 8).
     val scale by animateFloatAsState(if (liked) 1f else 0.9f, label = "heart")
+    val haptics = LocalHapticFeedback.current // PRD phase 8: a like is felt, not just seen
     CircleIcon(
         icon = if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
         label = if (liked) "Unlike" else "Like",
-        onClick = onClick,
+        onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick() },
         iconSize = iconSize,
         tint = if (liked) LikedRed else unlikedTint,
         modifier = Modifier.graphicsLayer { scaleX = scale; scaleY = scale },

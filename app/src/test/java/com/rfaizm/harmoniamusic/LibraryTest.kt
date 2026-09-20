@@ -1,8 +1,11 @@
 package com.rfaizm.harmoniamusic
 
+import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.countPlay
 import com.rfaizm.harmoniamusic.data.keepUserState
+import com.rfaizm.harmoniamusic.data.parseState
+import com.rfaizm.harmoniamusic.data.stateJson
 import com.rfaizm.harmoniamusic.data.toSong
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -33,6 +36,26 @@ class LibraryTest {
             listOf(Song(1, "Fixed Tag", "X", "A", 2020, 100, liked = true, playCount = 5), Song(2, "New Song", "Y", "B", 2021, 200)),
             merged,
         )
+    }
+
+    @Test
+    fun likesPlayCountsAndPlaylistsSurviveASaveAndLoad() {
+        val songs = listOf(
+            Song(1, "A", "X", "Album", 2020, 100, liked = true, playCount = 5),
+            Song(2, "B", "Y", "Album", 2021, 200),
+        )
+        val playlists = listOf(Playlist(3, "Focus Flow", listOf(2, 1), 5, "2026-07-28"))
+
+        val (savedSongs, savedPlaylists) = parseState(stateJson(songs, playlists))
+
+        // Tags come back from MediaStore, so only the user's own state is stored and merged onto a fresh scan.
+        assertEquals(songs, keepUserState(fresh = songs.map { it.copy(liked = false, playCount = 0) }, old = savedSongs))
+        assertEquals(playlists, savedPlaylists)
+    }
+
+    @Test
+    fun aCorruptSaveFileLoadsAsEmptyInsteadOfCrashing() {
+        assertEquals(emptyList<Song>() to emptyList<Playlist>(), parseState("{ truncated"))
     }
 
     @Test
