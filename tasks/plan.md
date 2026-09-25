@@ -187,6 +187,48 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
 - **T21 (optional) Indonesian translation.** Move hardcoded strings into `strings.xml` and add `values-in`. Do it one screen at a time.
 - **T22 Release checklist.** Real keystore (the user's action), Play Console declarations for the foreground-service type and `READ_MEDIA_AUDIO`, a no-data privacy policy, and an R8 release smoke test.
 
+### Loose ends
+
+Small things found while building, parked here so they aren't forgotten. Anything that comes up from now on gets
+appended to this list rather than living in a chat message. T23 has to land before T22 (the release ships the icon),
+T26 only works once the Play Store listing exists, and T24 and T25 can happen any time.
+
+- **T23 Adaptive launcher icon (S, before T22).**
+  - The icon is currently built wrong for Android 8+: the dark square is baked into the foreground layer while the
+    background layer is white, so launchers that mask to a circle or squircle show a dark square with white edges,
+    and the `monochrome` layer (the same full-colour image) makes an Android 13 themed icon a solid blob.
+  - Acceptance criteria:
+    - The foreground holds only the note on transparency, inside the middle 66% of the canvas.
+    - The background layer is the dark slate `#1E2022`, not white.
+    - `monochrome` is a silhouette of the note, or the line is removed.
+    - No white edge on circle, squircle or teardrop masks, and the note is still readable as a themed icon.
+    - The legacy `ic_launcher.webp` (API 24-25) keeps the full-bleed artwork.
+  - The artwork itself is the user's to regenerate (Android Studio > New > Image Asset); the background colour
+    change can land on its own first.
+  - Files: `res/mipmap-anydpi-v26/ic_launcher*.xml`, `res/mipmap-*/ic_launcher_foreground.webp`,
+    `res/values/ic_launcher_background.xml`.
+- **T24 Delete the template leftovers (S).**
+  - From the over-engineering review: about 120 lines of Android Studio scaffolding that nothing uses.
+  - `res/values/colors.xml` (seven unused template colours), `keepRules/rules.keep` (comments only),
+    `res/xml/backup_rules.xml` and `data_extraction_rules.xml` with their two manifest attributes,
+    `ExampleInstrumentedTest.kt` with its four `androidTestImplementation` lines, the `ui-test-manifest` line and
+    the six now-unused `libs.versions.toml` entries, and the no-op `Modifier.alpha(1f)` in a preview.
+  - Acceptance criteria: `testDebugUnitTest`, `lintDebug` and `assembleRelease` all still pass, the app still
+    launches, and backup behaviour is unchanged (no rules file means the same defaults).
+- **T25 Git hygiene (S).**
+  - Commit `12cb14e` carries the shuffle ANR fix *and* the launcher icon layers, because those files were staged
+    when it was made. Split it so each commit is one concern.
+  - The branch is still called `m2-playback` although it now holds M1 to M4. Rename it, or merge it into `main`.
+  - Acceptance criteria: each commit touches one concern, and the branch builds after the rewrite.
+  - Nothing is pushed, so the rewrite is safe; confirm with the user before rewriting history.
+- **T26 "Rate Harmonia" opens the store listing (S, after T22).**
+  - The Settings row is inert today because there is nothing to rate yet.
+  - Acceptance criteria:
+    - Tapping it opens `market://details?id=com.rfaizm.harmoniamusic`.
+    - It falls back to the `https://play.google.com/store/apps/details?id=...` page when no store app handles it.
+    - Nothing crashes on a device with no Play Store at all.
+  - Files: `SettingsScreen.kt`.
+
 ## Risks
 
 | Risk | Impact | Mitigation |
@@ -203,6 +245,10 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
 - On API 30+ the system already shows its own delete confirmation. Skip the app's red dialog there, to avoid confirming twice? [skip on 30+]
 - Should the UI be translated to Indonesian (T21)? [not now]
 
-## After approval
+## How this plan is kept
 
-Copy this plan to `tasks/plan.md` and the task checklist, with its checkpoints, to `tasks/todo.md`. Neither file exists yet. Then start M0 with `/build`.
+- This file holds the plan; `tasks/todo.md` tracks what is done, with a line per task.
+- Anything found along the way that isn't part of the current task goes into **Loose ends** above, with acceptance
+  criteria, instead of staying in a chat message.
+- Each task ends with `testDebugUnitTest` and `assembleDebug`, plus `lintDebug` at a checkpoint, and the user runs
+  the release build on a phone at every checkpoint.

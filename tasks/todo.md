@@ -41,3 +41,9 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] T21 (optional) Indonesian strings
 - [ ] T22 Release checklist (keystore, Play Console declarations, privacy policy, R8 smoke test)
 - [ ] **Checkpoint: Complete**, ready for release review
+
+## Loose ends (details in `tasks/plan.md`)
+- [ ] T23 Adaptive launcher icon: note-only foreground inside the safe zone, dark slate background, real monochrome layer (before T22)
+- [ ] T24 Delete the template leftovers (~120 lines: unused colours, keep-rules file, backup-rule templates, instrumented test stub and its deps)
+- [ ] T25 Git hygiene: split `12cb14e` (shuffle fix + icon layers), rename `m2-playback` or merge it into `main`
+- [ ] T26 "Rate Harmonia" opens the Play Store listing, with a browser fallback (after T22)
