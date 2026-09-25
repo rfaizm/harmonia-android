@@ -113,16 +113,20 @@ fun SongsScreen(
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
-            AnimatedContent(selectionMode, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "songsHeader") { selecting ->
-                if (selecting) {
-                    SelectionBar(
-                        count = selected.size,
-                        onClose = { selected = emptySet() },
-                        onSelectAll = { selected = songs.map { it.id }.toSet() },
-                    )
-                } else {
-                    Column(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 6.dp)) {
-                        SearchBar(query, { query = it })
+            Column(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 6.dp)) {
+                // Search stays put while selecting: picking 15 songs out of a long library shouldn't mean scrolling
+                // to each one (PRD phase 3 is about saving taps).
+                SearchBar(query, { query = it })
+                AnimatedContent(selectionMode, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "songsHeader") { selecting ->
+                    if (selecting) {
+                        SelectionBar(
+                            count = selected.size,
+                            filtered = query.isNotBlank(),
+                            onClose = { selected = emptySet() },
+                            // Adds what the search is showing, so selections made under an earlier search survive.
+                            onSelectAll = { selected = selected + entries.mapNotNull { (it as? Entry.Item)?.song?.id } },
+                        )
+                    } else {
                         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SortBy.entries.forEach { Pill(it.label, sortBy == it) { sortBy = it } }
                         }
@@ -187,9 +191,9 @@ fun SongsScreen(
 }
 
 @Composable
-private fun SelectionBar(count: Int, onClose: () -> Unit, onSelectAll: () -> Unit) {
+private fun SelectionBar(count: Int, filtered: Boolean, onClose: () -> Unit, onSelectAll: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        Modifier.fillMaxWidth().padding(top = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
@@ -201,7 +205,7 @@ private fun SelectionBar(count: Int, onClose: () -> Unit, onSelectAll: () -> Uni
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(Icons.Rounded.DoneAll, null, tint = colors.primary, modifier = Modifier.size(15.dp))
-            Text("Select all", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.primary)
+            Text(if (filtered) "Select matches" else "Select all", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.primary)
         }
     }
 }
