@@ -56,6 +56,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -95,8 +97,9 @@ fun SongsScreen(
 
     BackHandler(selectionMode) { selected = emptySet() }
 
-    // Drag to select (PRD phase 3 "swipe"): the row's own long press still toggles the song and turns selection
-    // mode on, and this only adds the rows the finger then travels over.
+    // Drag to select (PRD phase 3 "swipe"). The long press belongs to this gesture alone: while the row also
+    // handled it, the row consumed the event first and the drag detector was cancelled before it could start.
+    val haptics = LocalHapticFeedback.current
     val listState = rememberLazyListState()
     var dragFrom by remember { mutableStateOf<Int?>(null) }
     var dragBase by remember { mutableStateOf(emptySet<Int>()) }
@@ -163,8 +166,14 @@ fun SongsScreen(
                     .pointerInput(entries) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = { start ->
-                                dragBase = selected
-                                dragFrom = listState.rowAt(start.y)
+                                val row = listState.rowAt(start.y)
+                                // The press itself still selects that one song, exactly as it used to.
+                                (entries.getOrNull(row ?: -1) as? Entry.Item)?.let {
+                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    toggle(it.song.id)
+                                }
+                                dragBase = selected // after the toggle, so sliding back returns to it
+                                dragFrom = row
                             },
                             onDragEnd = { dragFrom = null; scrollSpeed = 0f },
                             onDragCancel = { dragFrom = null; scrollSpeed = 0f },
@@ -197,7 +206,6 @@ fun SongsScreen(
                             onAddToPlaylist = { onAddToPlaylist(it.name, listOf(e.song.id)) },
                             selectionMode = selectionMode,
                             selected = e.song.id in selected,
-                            onLongClick = { toggle(e.song.id) },
                             onDelete = { onDelete(e.song) },
                             modifier = Modifier.animateItem(),
                         )
