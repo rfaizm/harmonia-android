@@ -38,6 +38,13 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] T29 `.lrc` lyrics files beside songs, via a one-time folder grant (after T28)
 - [ ] **Checkpoint M4:** user tests each feature on a phone
 
+## M6: MVVM migration (before M5 — T19 and T20 rework the same UI)
+- [ ] T30 Tidy `data/`: split the models, the display helpers and the seed data; move `albumArtOf` into `ui/` (no behaviour change)
+- [ ] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once
+- [ ] T32 Repositories: `MusicRepository`, `LyricsRepository`, `SettingsRepository`; delete `object Library` and `object Settings`; the View stops calling the network
+- [ ] T33 ViewModels: one per screen, `@HiltViewModel` + `StateFlow` + `collectAsStateWithLifecycle`; `PlayerViewModel` takes over the controller and most of `HarmoniaApp.kt`
+- [ ] **Checkpoint M6:** full phone run of every feature from M0 to M4
+
 ## M5: Polish and release
 - [ ] T19 Light performance mode (`LocalLiteMode`, on by default for low-RAM devices)
 - [ ] T20 Mojibake repair (`CharsetDetector`, injected) and RTL audit

@@ -55,6 +55,8 @@ M3 T10 JSON persistence    T11 settings prefs → service    T12 resume session 
         │
 M4 T13 sleep timer · T14 smart shuffle · T15 album art + lock-screen privacy · T16 delete file · T17 batch selection · T18 lyrics spike · T27 row swipe
         │
+M6 T30 tidy data · T31 Hilt + data sources · T32 repositories · T33 ViewModels   ← before M5
+        │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
 ```
 
@@ -234,6 +236,56 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
     because scoped storage hides non-media files.
 
 **Checkpoint M4:** the user tests each feature on the phone.
+
+### M6: MVVM migration (runs before M5, since T19 and T20 rework the same UI)
+
+The `data/` review found the View calling the network directly (`ui/Player.kt` → `fetchLyrics`), a `@Composable`
+inside `data/AlbumArt.kt`, repository and local data source mixed together in `object Library`, and no seam to fake
+anything in a test. The app works, so this is a deliberate learning refactor towards the MVVM diagram: View →
+ViewModel → Repository → Local/Remote DataSource.
+
+Decisions taken with the user: **Hilt** for wiring, **one ViewModel per screen**, **StateFlow** for state. Four
+slices, each one shippable, buildable and phone-checked on its own. Behaviour must not change until T33.
+
+- **T30 Tidy `data/` (S, no behaviour change).**
+  - `SampleData.kt` is three things at once: split it into the models plus `cleanTag` (domain), the display helpers
+    `formatDuration`/`formatDate`/`gradientFor` (move to `ui/`), and the preview seed lists.
+  - Move the `albumArtOf` composable out of `data/AlbumArt.kt` into `ui/`; `Song.gradient` becomes a UI extension so
+    the model stops depending on Compose colours.
+  - Acceptance criteria: no Compose import in `data/` except state holders; every test still passes; the app looks
+    and behaves exactly as before.
+- **T31 Hilt and the data sources (M).**
+  - **First, prove the build**: this project has no Kotlin plugin of its own, it uses AGP 9.3.3's built-in Kotlin,
+    so KSP (`2.2.10-2.0.2`) and Hilt (`2.60.1`) must be shown to compile here before anything else moves. If they
+    don't, fall back to a hand-written container and keep the rest of the plan unchanged.
+  - New `HarmoniaApp : Application` with `@HiltAndroidApp`, `@AndroidEntryPoint` on `MainActivity` and
+    `PlaybackService` (the service is the awkward consumer: it runs with no activity).
+  - `data/local/`: `MediaStoreSource` (the scan query), `LibraryStore` (`library.json`), `SettingsStore`
+    (SharedPreferences), `ArtSource` (album art), `TagLyricsSource` (ID3 USLT), `LyricsStore` (`lyrics.json`).
+    `data/remote/`: `LrcLibSource`. Each takes the application context once, instead of a `Context` parameter on
+    every call (7 of them in `Library.kt` today).
+  - Acceptance criteria: sources are classes with injected dependencies, `Library` and `Settings` delegate to them
+    for now, and the app still scans, saves, plays and fetches lyrics exactly as before.
+- **T32 Repositories (M).**
+  - `MusicRepository` (songs, playlists, likes, play counts, scan, delete), `LyricsRepository` (tags, then cache,
+    then network — so the View stops calling `fetchLyrics` itself), `SettingsRepository`.
+  - `MusicRepository` keeps an id → song map, which also fixes the O(n·m) playlist lookups at
+    `PlaylistsScreen.kt:111`.
+  - `object Library` and `object Settings` are deleted; the UI and the service talk only to repositories.
+  - Acceptance criteria: nothing outside `data/` mentions MediaStore, SharedPreferences, files or HTTP; a fake
+    repository can be constructed in a test; the service still plays with the app closed.
+- **T33 ViewModels and StateFlow (M–L).**
+  - `SongsViewModel`, `PlaylistsViewModel`, `ExploreViewModel`, `SettingsViewModel`, `PlayerViewModel`, each
+    `@HiltViewModel`, reached with `hiltViewModel()`, exposing `StateFlow` read by `collectAsStateWithLifecycle`.
+  - `PlayerViewModel` owns the `MediaController` connection and the mirrored playback state, which is the bulk of
+    today's 392-line `HarmoniaApp.kt`; that file shrinks to wiring.
+  - Watch the state that is deliberately snapshot-like today: Liked Songs freezing its ids on open, the drag
+    selection, and the permission flow.
+  - Acceptance criteria: screens receive a ViewModel rather than a dozen callbacks; rotation keeps playback,
+    selection and scroll state; every feature from M0 to M4 still works.
+- **Checkpoint M6:** a full phone run: scan, play, notification and lock screen, queue, sleep timer, shuffle,
+  album art, delete, drag-select, search-while-selecting, lyrics from tags and online, and everything surviving a
+  restart.
 
 ### M5: Polish and release
 
