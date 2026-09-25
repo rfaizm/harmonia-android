@@ -9,6 +9,8 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +25,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -41,7 +45,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -50,9 +56,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.withFrameNanos
 import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.ui.theme.border
@@ -86,6 +94,19 @@ fun SongsScreen(
     fun toggle(id: Int) { selected = if (id in selected) selected - id else selected + id }
 
     BackHandler(selectionMode) { selected = emptySet() }
+
+    // Drag to select (PRD phase 3 "swipe"): the row's own long press still toggles the song and turns selection
+    // mode on, and this only adds the rows the finger then travels over.
+    val listState = rememberLazyListState()
+    var dragFrom by remember { mutableStateOf<Int?>(null) }
+    var dragBase by remember { mutableStateOf(emptySet<Int>()) }
+    var scrollSpeed by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(dragFrom != null) {
+        while (dragFrom != null) {
+            if (scrollSpeed != 0f) listState.scrollBy(scrollSpeed)
+            withFrameNanos { } // one step per frame, so the speed doesn't depend on how fast events arrive
+        }
+    }
 
     // derivedStateOf re-runs when the song list itself changes (like, play count), not just on query/sort.
     val entries by remember(songs) { derivedStateOf {
@@ -134,8 +155,30 @@ fun SongsScreen(
                 }
             }
             LazyColumn(
+                state = listState,
                 contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = if (selectionMode) 96.dp else 12.dp),
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Only runs after a long press, so ordinary scrolling and flinging are untouched.
+                    .pointerInput(entries) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = { start ->
+                                dragBase = selected
+                                dragFrom = listState.rowAt(start.y)
+                            },
+                            onDragEnd = { dragFrom = null; scrollSpeed = 0f },
+                            onDragCancel = { dragFrom = null; scrollSpeed = 0f },
+                        ) { change, _ ->
+                            val from = dragFrom ?: return@detectDragGesturesAfterLongPress
+                            scrollSpeed = edgeScrollSpeed(change.position.y, size.height)
+                            val to = listState.rowAt(change.position.y) ?: return@detectDragGesturesAfterLongPress
+                            // Rebuilt from the selection the drag started with, so sliding back de-selects again.
+                            val covered = (minOf(from, to)..maxOf(from, to)).mapNotNull { i ->
+                                (entries.getOrNull(i) as? Entry.Item)?.song?.id
+                            }
+                            selected = dragBase + covered
+                        }
+                    }
             ) {
                 if (entries.isEmpty()) item {
                     EmptyState(Icons.Rounded.SearchOff, "No matches", "Nothing in your library matches “$query”.")
@@ -187,6 +230,21 @@ fun SongsScreen(
             onDismiss = { sheetOpen = false },
             onPick = { onAddToPlaylist(it, selected); sheetOpen = false; selected = emptySet() },
         )
+    }
+}
+
+/** The row under the finger, letter headers included; null when the finger is past the last row. */
+private fun LazyListState.rowAt(y: Float): Int? =
+    layoutInfo.visibleItemsInfo.firstOrNull { y >= it.offset && y < it.offset + it.size }?.index
+
+/** Pixels to scroll per frame while a selection drag sits near an edge; faster the closer it gets. */
+internal fun edgeScrollSpeed(y: Float, height: Int): Float {
+    val zone = height * 0.12f
+    return when {
+        zone <= 0f -> 0f
+        y < zone -> -(zone - y) / zone * 24f
+        y > height - zone -> (y - (height - zone)) / zone * 24f
+        else -> 0f
     }
 }
 
