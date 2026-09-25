@@ -53,7 +53,7 @@ M2 T6 PlaybackService + controller ──► T7 progress/seek/modes ──► T8
         │
 M3 T10 JSON persistence    T11 settings prefs → service    T12 resume session (T6 + T10)
         │
-M4 T13 sleep timer · T14 smart shuffle · T15 album art + lock-screen privacy · T16 delete file · T17 batch selection · T18 lyrics spike
+M4 T13 sleep timer · T14 smart shuffle · T15 album art + lock-screen privacy · T16 delete file · T17 batch selection · T18 lyrics spike · T27 row swipe
         │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
 ```
@@ -196,6 +196,34 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
     has to report its bounds.
   - Verification: gestures and layout are out of reach of JVM tests, so this one is checked on the phone against
     the criteria above, with a library long enough to need scrolling.
+- **T27 Swipe a row for its safe action (S–M, after T17).**
+  - Deleting or removing a song takes three taps today: the three-dot menu, the row, then the confirmation. A
+    swipe puts the common action one gesture away without hiding the menu.
+  - Decisions taken with the user:
+    - **Swipe right-to-left**, not left-to-right: a rightward swipe near the left edge is Android's back gesture,
+      and `systemGestureExclusion` only ever wins part of that fight.
+    - **The swipe reveals an action button that has to be tapped**, it does not fire on release. Two deliberate
+      actions, so a swipe in a pocket or mid-scroll can't start deleting music.
+    - **The action depends on the screen**: inside a playlist it removes the song from that playlist and never
+      touches the file; on Songs, artist and album screens it deletes the file through the T16 flow. That keeps
+      PRD phase 7's rule that removing and deleting stay clearly apart.
+  - Built on Material 3's `SwipeToDismissBox` / `AnchoredDraggable`, which are already on the classpath, so no new
+    dependency and no hand-written gesture maths. One opt-in annotation if the API is still experimental.
+  - Acceptance criteria:
+    - Swiping a row from right to left slides it aside and holds it open, showing a red "Delete" or a neutral
+      "Remove" button depending on the screen.
+    - The row closes when the action is tapped, when the row itself is tapped, when the list scrolls, or when it is
+      swiped back. Only one row stays open at a time.
+    - "Delete" opens the same red confirmation as the menu, then the T16 delete flow. "Remove" takes the song out
+      of that playlist only, and the file is untouched.
+    - Swiping does nothing while selection mode is on, so it can't fight the T17 drag.
+    - A half swipe that is released springs back, and the list still scrolls normally.
+    - The three-dot menu keeps both actions, so nothing is only reachable by gesture.
+  - Files: `ui/Components.kt` (a swipe wrapper around `SongRow`), `ui/SongsScreen.kt`, `ui/PlaylistsScreen.kt`
+    (`PlaylistDetail` passes its remove action), `ui/ExploreScreen.kt`.
+  - Verification: gestures are out of reach of JVM tests, so this is a phone check against the criteria above. The
+    actions underneath are already covered: T16's tests for deleting, `removeSong` for playlists. The RTL mirror of
+    the gesture is checked in T20's audit.
 - **T18 Lyrics spike (timeboxed).**
   - Read embedded USLT or SYLT lyrics through Media3 metadata and wire up the Lyrics chip.
   - `.lrc` sidecars only through an optional SAF folder grant, and only if the user wants it.

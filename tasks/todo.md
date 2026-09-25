@@ -33,6 +33,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T16 Delete file: `ui/DeleteSong.kt` holds all three paths behind `rememberSongDeleter` (`deletePathFor` test). Our red dialog comes first on every version; `WRITE_EXTERNAL_STORAGE` (`maxSdkVersion=28`) is asked for only when a delete is confirmed on Android 7–9, with a rationale and a settings link after a permanent denial. Deleting removes the song from the queue, library and every playlist (`removeSongEverywhere` test). **Android 7–10 paths are unverified — no emulator here**
 - [ ] T17 Batch selection: (a) search bar stays usable in selection mode, "Select all" adds the matches; (b) drag to select after a long press
 - [ ] T18 Lyrics spike, embedded lyrics first (timeboxed)
+- [ ] T27 Swipe a row right-to-left to reveal Delete (Songs/artist/album) or Remove (inside a playlist), tapped to confirm — after T17
 - [ ] **Checkpoint M4:** user tests each feature on a phone
 
 ## M5: Polish and release
