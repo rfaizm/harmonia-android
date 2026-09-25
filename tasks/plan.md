@@ -53,7 +53,7 @@ M2 T6 PlaybackService + controller ──► T7 progress/seek/modes ──► T8
         │
 M3 T10 JSON persistence    T11 settings prefs → service    T12 resume session (T6 + T10)
         │
-M4 T13 sleep timer · T14 smart shuffle · T15 album art + lock-screen privacy · T16 delete file · T17 drag-select · T18 lyrics spike
+M4 T13 sleep timer · T14 smart shuffle · T15 album art + lock-screen privacy · T16 delete file · T17 batch selection · T18 lyrics spike
         │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
 ```
@@ -168,8 +168,34 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
   - API 29: `RecoverableSecurityException`.
   - API 24–28: `WRITE_EXTERNAL_STORAGE` (`maxSdkVersion=28`) plus `ContentResolver.delete`.
   - On success, remove the song from the library, playlists and queue.
-- **T17 Drag to select (S–M, PRD phase 3 "swipe").**
-  - After a long press, dragging extends the selection, using `detectDragGesturesAfterLongPress` together with `LazyListState.layoutInfo`.
+- **T17 Batch selection: search while selecting, then drag to select (S–M, PRD phase 3).**
+  - PRD phase 3 asks for "menggeser (*swipe*) atau *tap* untuk memilih lagu": tapping works today, the swipe half
+    doesn't. Selection mode also replaces the whole header, so the search bar disappears exactly when it is needed
+    and the next song to add has to be found by scrolling the library by hand.
+  - Two halves, shippable as two commits; the search one is small and lands first.
+  - **(a) Search stays available while selecting.**
+    - The search bar stays on screen in selection mode; only the row beneath it swaps between the sort pills and
+      the selection controls, so the bar never moves as the mode changes.
+    - Acceptance criteria:
+      - Long-press a song, then type in the search bar: the list filters and the selection is kept.
+      - Songs picked under one query stay selected after the query changes or is cleared, and the count and the
+        "Add N songs" button count all of them together.
+      - "Select all" adds what the search is currently showing to the existing selection instead of replacing it
+        with the whole library, and reads "Select matches" while a query is active.
+      - Tapping a row still toggles selection instead of playing, and Back still clears the selection.
+  - **(b) Drag to select.**
+    - After the long press, keeping the finger down and sliding selects every row it passes, via
+      `detectDragGesturesAfterLongPress` with `LazyListState.layoutInfo` to map the finger's Y position to a row.
+    - Acceptance criteria:
+      - Dragging away from the long-pressed row selects each row passed; dragging back over them de-selects again.
+      - Dragging to the top or bottom edge scrolls the list, so a drag can continue past one screenful.
+      - Letter headers are passed over, never selected.
+      - The list doesn't scroll by itself during a selection drag, and normal scrolling still works without a long
+        press.
+  - Files: `ui/SongsScreen.kt` (header layout, `SelectionBar`, the drag modifier); `ui/Components.kt` only if a row
+    has to report its bounds.
+  - Verification: gestures and layout are out of reach of JVM tests, so this one is checked on the phone against
+    the criteria above, with a library long enough to need scrolling.
 - **T18 Lyrics spike (timeboxed).**
   - Read embedded USLT or SYLT lyrics through Media3 metadata and wire up the Lyrics chip.
   - `.lrc` sidecars only through an optional SAF folder grant, and only if the user wants it.
