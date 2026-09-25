@@ -565,7 +565,8 @@ fun PermissionEmptyState(blocked: Boolean = false, onGrant: () -> Unit = {}) = E
     Icons.Rounded.FolderOpen,
     "Let Harmonia find your music",
     if (blocked) "Access was turned off. Open settings, tap Permissions and allow Music and audio."
-    else "We only read audio files on this device to build your library. Nothing leaves your phone.",
+    else "We only read audio files on this device to build your library. Nothing leaves your phone unless you " +
+        "switch on the optional lyrics lookup.",
     if (blocked) "Open settings" else "Grant access",
     onGrant,
 )

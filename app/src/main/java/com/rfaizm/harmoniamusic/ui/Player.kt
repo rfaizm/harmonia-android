@@ -47,7 +47,9 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -57,6 +59,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,6 +71,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -76,7 +80,13 @@ import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.rfaizm.harmoniamusic.SLEEP_END_OF_TRACK
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.LyricsCache
+import com.rfaizm.harmoniamusic.data.LyricsResult
+import com.rfaizm.harmoniamusic.data.Settings
+import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.albumArtOf
+import com.rfaizm.harmoniamusic.data.fetchLyrics
+import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -307,24 +317,59 @@ private fun ExtraChip(icon: ImageVector, text: String, onClick: () -> Unit) {
 @Composable
 private fun LyricsChip(song: Song, lyrics: String?) {
     var open by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // Anything found online before, so the same song needs no network a second time.
+    var found by remember(song.id) { mutableStateOf<String?>(null) }
+    var looking by remember(song.id) { mutableStateOf(false) }
+    var miss by remember(song.id) { mutableStateOf<LyricsResult?>(null) }
+    val shown = lyrics ?: found
+    LaunchedEffect(song.id) { if (lyrics == null) found = LyricsCache.get(context, song.id) }
+
     ExtraChip(Icons.Rounded.FormatQuote, "Lyrics") { open = true }
-    if (open) {
-        ModalBottomSheet(onDismissRequest = { open = false }, containerColor = colors.card) {
-            Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
-                Text(song.displayTitle, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-                Text(song.displayArtist, fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
-                if (lyrics == null) {
+    if (!open) return
+    ModalBottomSheet(onDismissRequest = { open = false }, containerColor = colors.card) {
+        Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
+            Text(song.displayTitle, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text(song.displayArtist, fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
+            when {
+                shown != null -> Text(
+                    shown,
+                    fontSize = 15.sp,
+                    lineHeight = 24.sp,
+                    modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                )
+                looking -> CircularProgressIndicator(Modifier.padding(vertical = 8.dp), color = colors.primary)
+                else -> {
                     Text(
-                        "This file has no lyrics saved in it. Harmonia reads lyrics from the song's own tags and never looks them up online.",
+                        when (miss) {
+                            LyricsResult.Offline -> "Couldn't reach the lyrics service. Check your connection and try again."
+                            LyricsResult.NotFound -> "No lyrics found for this song."
+                            else -> "This file has no lyrics saved in it."
+                        },
                         fontSize = 14.sp, color = colors.mutedForeground, lineHeight = 20.sp,
                     )
-                } else {
-                    Text(
-                        lyrics,
-                        fontSize = 15.sp,
-                        lineHeight = 24.sp,
-                        modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
-                    )
+                    if (Settings[Key.OnlineLyrics]) {
+                        TextButton({
+                            looking = true
+                            scope.launch {
+                                // The only moment this app uses the network, and only because it was tapped.
+                                val result = fetchLyrics(song)
+                                looking = false
+                                miss = result
+                                if (result is LyricsResult.Found) {
+                                    found = result.text
+                                    LyricsCache.put(context, song.id, result.text)
+                                }
+                            }
+                        }) { Text(if (miss == null) "Find lyrics online" else "Try again", fontWeight = FontWeight.Bold) }
+                    } else {
+                        Text(
+                            "Harmonia only reads lyrics saved inside a file. You can switch on “Look up lyrics online” in Settings.",
+                            fontSize = 13.sp, color = colors.mutedForeground, lineHeight = 19.sp,
+                            modifier = Modifier.padding(top = 10.dp),
+                        )
+                    }
                 }
             }
         }

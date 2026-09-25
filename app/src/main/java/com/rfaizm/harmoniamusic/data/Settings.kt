@@ -18,6 +18,7 @@ object Settings {
         SmartShuffle(true),   // used by T14
         LiteMode(false),      // used by T19
         LockPrivacy(false),   // used by T15
+        OnlineLyrics(false),  // the only setting that lets the app touch the network
     }
 
     internal const val FILE = "settings"

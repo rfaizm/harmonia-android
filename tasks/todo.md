@@ -34,7 +34,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T17 Batch selection: (a) search bar stays usable in selection mode, "Select all" adds the matches; (b) drag after a long press selects the rows the finger covers, with edge auto-scroll (`edgeScrollSpeed` test). The row's own long press is untouched, so tap-selection still works if the gesture misbehaves. **Gestures need a phone check**
 - [x] T18 Lyrics: the Lyrics chip opens a sheet with the song's embedded ID3 `USLT` lyrics (`parseUslt` test), or an honest note when the file has none. The service extracts them because `Format.toBundle()` drops track metadata before it reaches a controller, and publishes them beside the sleep timer in the session extras. **Not covered: M4A/FLAC tags, synchronised `SYLT`, and `.lrc` files — see the spike's findings in `tasks/plan.md`**
 - [ ] T27 Swipe a row right-to-left to reveal Delete (Songs/artist/album) or Remove (inside a playlist), tapped to confirm — after T17
-- [ ] T28 Optional online lyrics via LRCLIB: off by default, fetched only on tap, cached on the phone; reword the offline promise and update T22
+- [x] T28 Optional online lyrics via LRCLIB (`data/LyricsOnline.kt`; `lyricsFrom`, `stripLrcTimestamps`, `lyricsUrl` tests): off by default behind a Settings switch that asks first, fetched only when "Find lyrics online" is tapped, cached in `lyrics.json` so a song needs the network at most once. Offline promise reworded in the permission screen and About row. **T22 still has to cover it in the privacy policy and Data safety form**
 - [ ] T29 `.lrc` lyrics files beside songs, via a one-time folder grant (after T28)
 - [ ] **Checkpoint M4:** user tests each feature on a phone
 
