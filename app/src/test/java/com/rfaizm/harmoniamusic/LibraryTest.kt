@@ -15,7 +15,8 @@ class LibraryTest {
     fun blankTitleFallsBackToTheFileNameWithoutExtension() {
         val song = toSong(42, title = " ", artist = "Aurelia Vance", album = "Quiet Hours", year = 2023, durationMs = 214_900, fileName = "Morning_Light.mp3")
 
-        assertEquals(Song(42, "Morning_Light", "Aurelia Vance", "Quiet Hours", 2023, 214), song)
+        // The file name is kept as well, so a .lrc beside the song can be found later (T29).
+        assertEquals(Song(42, "Morning_Light", "Aurelia Vance", "Quiet Hours", 2023, 214, fileName = "Morning_Light.mp3"), song)
     }
 
     @Test

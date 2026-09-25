@@ -86,6 +86,7 @@ import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.albumArtOf
 import com.rfaizm.harmoniamusic.data.fetchLyrics
+import com.rfaizm.harmoniamusic.data.readLrc
 import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
@@ -324,7 +325,10 @@ private fun LyricsChip(song: Song, lyrics: String?) {
     var looking by remember(song.id) { mutableStateOf(false) }
     var miss by remember(song.id) { mutableStateOf<LyricsResult?>(null) }
     val shown = lyrics ?: found
-    LaunchedEffect(song.id) { if (lyrics == null) found = LyricsCache.get(context, song.id) }
+    // Offline first: a .lrc beside the song, then anything found online before. Neither touches the network.
+    LaunchedEffect(song.id) {
+        if (lyrics == null) found = readLrc(context, song) ?: LyricsCache.get(context, song.id)
+    }
 
     ExtraChip(Icons.Rounded.FormatQuote, "Lyrics") { open = true }
     if (!open) return

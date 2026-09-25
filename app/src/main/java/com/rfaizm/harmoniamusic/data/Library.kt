@@ -140,6 +140,7 @@ internal fun toSong(id: Long, title: String?, artist: String?, album: String?, y
     album = album.known() ?: "Unknown album",
     year = year,
     duration = (durationMs / 1000).toInt(),
+    fileName = fileName.orEmpty(),
 )
 
 private fun String?.known() = takeUnless { it.isNullOrBlank() || it == MediaStore.UNKNOWN_STRING }

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.rounded.BlurOn
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Lyrics
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Shuffle
@@ -29,6 +30,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import android.content.Intent
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -43,6 +49,14 @@ import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 @Composable
 fun SettingsScreen(onRescan: () -> Unit) {
     var confirmOnlineLyrics by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    // PRD phase 9 "Lirik Lokal": scoped storage hides .lrc files, so the user points at their music folder once.
+    val pickLyricsFolder = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocumentTree()) { folder ->
+        if (folder != null) {
+            runCatching { context.contentResolver.takePersistableUriPermission(folder, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            Settings.lyricsFolder = folder.toString()
+        }
+    }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text("Settings", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 14.dp))
@@ -58,6 +72,13 @@ fun SettingsScreen(onRescan: () -> Unit) {
             ToggleRow(Icons.Rounded.Shuffle, "Smart shuffle", "Spread out songs by the same artist", Key.SmartShuffle)
             Divider()
             SettingsRow(Icons.Rounded.Bedtime, "Sleep timer", "Off · fades out over the last minute", onClick = {}) { Chevron() }
+            Divider()
+            SettingsRow(
+                Icons.Rounded.Lyrics,
+                "Lyrics folder",
+                Settings.lyricsFolder?.let { "Reading .lrc files from ${folderLabel(it)}" } ?: "Not set · for .lrc files saved next to your songs",
+                onClick = { pickLyricsFolder.launch(null) },
+            ) { Chevron() }
             Divider()
             // The one switch that lets the app reach the network, so turning it on asks first.
             SettingsRow(
@@ -115,6 +136,9 @@ fun SettingsScreen(onRescan: () -> Unit) {
 @Composable
 private fun ToggleRow(icon: ImageVector, label: String, sub: String, key: Key) =
     SettingsRow(icon, label, sub, onClick = { Settings[key] = !Settings[key] }) { HarmoniaSwitch(Settings[key]) { Settings[key] = it } }
+
+/** The tail of a document-tree uri is the readable part, e.g. "primary:Music". */
+private fun folderLabel(uri: String) = Uri.decode(uri.substringAfterLast("%3A").substringAfterLast(':')).ifBlank { "your folder" }
 
 @Composable
 private fun Divider() = HorizontalDivider(color = colors.border)

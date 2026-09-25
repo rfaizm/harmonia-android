@@ -2,7 +2,10 @@ package com.rfaizm.harmoniamusic.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.content.edit
 
 /**
@@ -23,8 +26,11 @@ object Settings {
 
     internal const val FILE = "settings"
 
+    private const val FOLDER_KEY = "lyricsFolder"
+
     private var prefs: SharedPreferences? = null
     private val values = mutableStateMapOf<Key, Boolean>()
+    private var folder by mutableStateOf<String?>(null)
 
     /** Called by both the activity and the service, whichever starts first; the second call does nothing. */
     fun init(context: Context) {
@@ -32,7 +38,16 @@ object Settings {
         val stored = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
         prefs = stored
         Key.entries.forEach { values[it] = stored.getBoolean(it.name, it.default) }
+        folder = stored.getString(FOLDER_KEY, null)
     }
+
+    /** The folder the user granted for `.lrc` files (T29), or null while none is granted. */
+    var lyricsFolder: String?
+        get() = folder
+        set(value) {
+            folder = value
+            prefs?.edit { if (value == null) remove(FOLDER_KEY) else putString(FOLDER_KEY, value) }
+        }
 
     operator fun get(key: Key) = values[key] ?: key.default
 

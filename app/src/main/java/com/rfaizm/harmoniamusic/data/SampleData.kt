@@ -30,6 +30,8 @@ data class Song(
     val duration: Int,   // seconds
     val liked: Boolean = false,
     val playCount: Int = 0,
+    /** As MediaStore names it, so a `.lrc` beside the song can be found (T29). Empty for the preview seeds. */
+    val fileName: String = "",
 ) {
     val gradient get() = gradientFor(id)
     // Cleaned once per instance, not on every recomposition.
