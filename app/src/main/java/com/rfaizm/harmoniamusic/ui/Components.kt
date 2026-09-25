@@ -3,6 +3,8 @@ package com.rfaizm.harmoniamusic.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.unit.IntOffset
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.StartOffset
@@ -21,6 +23,10 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -32,6 +38,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -70,6 +77,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameMillis
@@ -92,6 +100,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -109,6 +118,7 @@ import com.rfaizm.harmoniamusic.ui.theme.destructive
 import com.rfaizm.harmoniamusic.ui.theme.muted
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 import kotlin.math.min
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 
 val colors @Composable get() = MaterialTheme.colorScheme
@@ -312,10 +322,10 @@ fun SongRow(
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    /** The user asked to delete this song; the screen shows the warning, since the swipe action asks too. */
     onDelete: (() -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
-    var confirmDelete by remember { mutableStateOf(false) }
     val bg by animateColorAsState(
         when {
             selected -> colors.primary.copy(alpha = 0.18f)
@@ -369,14 +379,12 @@ fun SongRow(
                         onDismiss = { menuOpen = false },
                         onAddToPlaylist = onAddToPlaylist,
                         onRemoveFromPlaylist = onRemoveFromPlaylist,
-                        onDeleteFile = { menuOpen = false; confirmDelete = true },
+                        onDeleteFile = { menuOpen = false; onDelete?.invoke() },
                     )
                 }
             }
         }
     }
-    // PRD phase 7: our own warning first, even on Android 11+ where the system asks again afterwards.
-    if (confirmDelete) DeleteFileDialog(song, onDismiss = { confirmDelete = false }, onConfirm = { confirmDelete = false; onDelete?.invoke() })
 }
 
 @Composable
@@ -478,6 +486,78 @@ fun DeleteFileDialog(song: Song, onDismiss: () -> Unit, onConfirm: () -> Unit = 
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = colors.mutedForeground) } },
     )
+}
+
+private val SWIPE_ACTION_WIDTH = 88.dp
+
+/** Rest open after the finger lifts? Half the action counts, and so does a quick flick that never got that far. */
+internal fun swipeSettlesOpen(offset: Float, width: Float, velocity: Float) =
+    if (velocity > 400f) false else offset < -width / 2 || velocity < -800f
+
+/**
+ * Slides [content] to the left to reveal one action (T27). The action still has to be tapped, so a swipe on its
+ * own never deletes anything, and only the row the caller marks [open] stays open.
+ */
+@Composable
+fun SwipeRow(
+    open: Boolean,
+    enabled: Boolean,
+    label: String,
+    icon: ImageVector,
+    tint: Color,
+    onOpenChange: (Boolean) -> Unit,
+    onAction: () -> Unit,
+    content: @Composable () -> Unit,
+) {
+    val width = with(LocalDensity.current) { SWIPE_ACTION_WIDTH.toPx() }
+    val offset = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    // Follows the caller: opening another row, scrolling, or selection mode starting all close this one.
+    LaunchedEffect(open, enabled) { offset.animateTo(if (open && enabled) -width else 0f) }
+
+    Box(Modifier.fillMaxWidth().wrapContentHeight()) {
+        Row(Modifier.matchParentSize(), horizontalArrangement = Arrangement.End) {
+            Column(
+                Modifier
+                    .width(SWIPE_ACTION_WIDTH)
+                    .fillMaxHeight()
+                    .padding(vertical = 4.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(tint.copy(alpha = 0.12f))
+                    .clickable { onOpenChange(false); onAction() },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Icon(icon, null, tint = tint, modifier = Modifier.size(18.dp))
+                Text(label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = tint, modifier = Modifier.padding(top = 2.dp))
+            }
+        }
+        Box(
+            Modifier
+                .offset { IntOffset(offset.value.roundToInt(), 0) }
+                .background(colors.background)
+                .draggable(
+                    orientation = Orientation.Horizontal,
+                    enabled = enabled,
+                    state = rememberDraggableState { delta ->
+                        scope.launch { offset.snapTo((offset.value + delta).coerceIn(-width, 0f)) }
+                    },
+                    onDragStopped = { velocity ->
+                        val settled = swipeSettlesOpen(offset.value, width, velocity)
+                        onOpenChange(settled)
+                        offset.animateTo(if (settled) -width else 0f)
+                    },
+                )
+        ) {
+            content()
+            // While open, a tap anywhere on the row closes it instead of playing the song.
+            if (open) Box(
+                Modifier
+                    .matchParentSize()
+                    .clickable(remember { MutableInteractionSource() }, indication = null) { onOpenChange(false) }
+            )
+        }
+    }
 }
 
 /** Custom switch (GUIDELINE §5.9). */

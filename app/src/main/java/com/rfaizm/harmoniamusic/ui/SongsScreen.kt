@@ -34,6 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.SearchOff
@@ -66,6 +67,7 @@ import androidx.compose.runtime.withFrameNanos
 import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.ui.theme.border
+import com.rfaizm.harmoniamusic.ui.theme.destructive
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.muted
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
@@ -101,6 +103,10 @@ fun SongsScreen(
     // handled it, the row consumed the event first and the drag detector was cancelled before it could start.
     val haptics = LocalHapticFeedback.current
     val listState = rememberLazyListState()
+    // Only one row sits open, and scrolling or starting a selection closes it (T27).
+    var openRow by remember { mutableStateOf<Int?>(null) }
+    var confirmDelete by remember { mutableStateOf<Song?>(null) }
+    LaunchedEffect(listState.isScrollInProgress, selectionMode) { if (listState.isScrollInProgress || selectionMode) openRow = null }
     var dragFrom by remember { mutableStateOf<Int?>(null) }
     var dragBase by remember { mutableStateOf(emptySet<Int>()) }
     var scrollSpeed by remember { mutableFloatStateOf(0f) }
@@ -195,7 +201,15 @@ fun SongsScreen(
                 items(entries, key = { if (it is Entry.Item) it.song.id else "h" + (it as Entry.Header).letter }) { e ->
                     when (e) {
                         is Entry.Header -> LetterDivider(e.letter)
-                        is Entry.Item -> SongRow(
+                        is Entry.Item -> SwipeRow(
+                            open = openRow == e.song.id,
+                            enabled = !selectionMode,
+                            label = "Delete",
+                            icon = Icons.Rounded.DeleteForever,
+                            tint = colors.destructive,
+                            onOpenChange = { openRow = if (it) e.song.id else null },
+                            onAction = { confirmDelete = e.song },
+                        ) { SongRow(
                             song = e.song,
                             index = e.index,
                             active = e.song.id == activeId,
@@ -206,9 +220,9 @@ fun SongsScreen(
                             onAddToPlaylist = { onAddToPlaylist(it.name, listOf(e.song.id)) },
                             selectionMode = selectionMode,
                             selected = e.song.id in selected,
-                            onDelete = { onDelete(e.song) },
+                            onDelete = { confirmDelete = e.song },
                             modifier = Modifier.animateItem(),
-                        )
+                        ) }
                     }
                 }
             }
@@ -229,6 +243,11 @@ fun SongsScreen(
                 text = { Text("Add ${selected.size} ${if (selected.size == 1) "song" else "songs"}", fontWeight = FontWeight.Bold) },
             )
         }
+    }
+
+    confirmDelete?.let { song ->
+        // PRD phase 7: the warning comes from the screen now, because the menu and the swipe both ask for it.
+        DeleteFileDialog(song, onDismiss = { confirmDelete = null }, onConfirm = { confirmDelete = null; onDelete(song) })
     }
 
     if (sheetOpen) {

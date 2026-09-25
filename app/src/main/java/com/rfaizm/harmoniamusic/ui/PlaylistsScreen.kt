@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -37,6 +38,8 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.DeleteForever
+import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -45,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -262,7 +266,13 @@ fun PlaylistDetail(
     onDeleteSong: (Song) -> Unit,
     onRemove: ((Song) -> Unit)?,
 ) {
-    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
+    val listState = rememberLazyListState()
+    // Only one row sits open, and scrolling closes it (T27).
+    var openRow by remember { mutableStateOf<Int?>(null) }
+    var confirmDelete by remember { mutableStateOf<Song?>(null) }
+    LaunchedEffect(listState.isScrollInProgress) { if (listState.isScrollInProgress) openRow = null }
+
+    LazyColumn(Modifier.fillMaxSize(), state = listState, contentPadding = PaddingValues(bottom = 16.dp)) {
         item {
             Column(
                 Modifier.padding(horizontal = 16.dp).padding(top = 4.dp, bottom = 12.dp).fillMaxWidth()
@@ -298,14 +308,29 @@ fun PlaylistDetail(
             }
         }
         itemsIndexed(songs, key = { _, s -> s.id }) { i, s ->
-            SongRow(
-                song = s, index = i, active = s.id == activeId, isPlaying = isPlaying, playlists = playlists,
-                onClick = { onPlay(s, songs) }, onLike = { onLike(s) },
-                onAddToPlaylist = { onAddToPlaylist(it.name, listOf(s.id)) }, showIndex = true,
-                onDelete = { onDeleteSong(s) },
-                onRemoveFromPlaylist = onRemove?.let { remove -> { remove(s) } },
-                modifier = Modifier.padding(horizontal = 8.dp).alpha(if (fadeUnliked && !s.liked) 0.4f else 1f),
-            )
+            // Inside a playlist the swipe takes the song out of it; on an artist or album screen it deletes the file.
+            SwipeRow(
+                open = openRow == s.id,
+                enabled = true,
+                label = if (onRemove != null) "Remove" else "Delete",
+                icon = if (onRemove != null) Icons.Rounded.RemoveCircleOutline else Icons.Rounded.DeleteForever,
+                tint = if (onRemove != null) colors.mutedForeground else colors.destructive,
+                onOpenChange = { openRow = if (it) s.id else null },
+                onAction = { if (onRemove != null) onRemove(s) else confirmDelete = s },
+            ) {
+                SongRow(
+                    song = s, index = i, active = s.id == activeId, isPlaying = isPlaying, playlists = playlists,
+                    onClick = { onPlay(s, songs) }, onLike = { onLike(s) },
+                    onAddToPlaylist = { onAddToPlaylist(it.name, listOf(s.id)) }, showIndex = true,
+                    onDelete = { confirmDelete = s },
+                    onRemoveFromPlaylist = onRemove?.let { remove -> { remove(s) } },
+                    modifier = Modifier.padding(horizontal = 8.dp).alpha(if (fadeUnliked && !s.liked) 0.4f else 1f),
+                )
+            }
         }
+    }
+
+    confirmDelete?.let { song ->
+        DeleteFileDialog(song, onDismiss = { confirmDelete = null }, onConfirm = { confirmDelete = null; onDeleteSong(song) })
     }
 }
