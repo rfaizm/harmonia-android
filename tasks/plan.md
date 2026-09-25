@@ -246,6 +246,36 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
 - **T21 (optional) Indonesian translation.** Move hardcoded strings into `strings.xml` and add `values-in`. Do it one screen at a time.
 - **T22 Release checklist.** Real keystore (the user's action), Play Console declarations for the foreground-service type and `READ_MEDIA_AUDIO`, a no-data privacy policy, and an R8 release smoke test.
 
+- **T28 Optional online lyrics (M, beyond the PRD).**
+  - T18 reads lyrics from a song's tags and most files carry none, so the sheet usually says "no lyrics". This is
+    the first feature that would make Harmonia use the internet, so it is opt-in and the offline promise is
+    reworded rather than quietly broken.
+  - Decisions taken with the user: **off until switched on**, **nothing sent unless "Find lyrics online" is
+    tapped** (no background lookups, no library scanning), and `.lrc` files handled separately in T29.
+  - Source: **LRCLIB** (`https://lrclib.net/api/get?artist_name=&track_name=&album_name=&duration=`, falling back
+    to `/api/search`), free, no key, no account, and checked live while planning. It asks for a `User-Agent`
+    naming the app. **Any non-200 means "no lyrics right now"**: a nonsense track answered 503, not 404, so 404
+    must not be special-cased and an outage has to look like a normal miss.
+  - Acceptance criteria:
+    - With the switch off, the sheet offers no lookup and the app sends nothing.
+    - Turning the switch on first shows what will be sent (title, artist, album, length), to whom, and when.
+    - A song with no lyrics of its own shows "Find lyrics online"; tapping it finds and shows them.
+    - A song that has lyrics in its tags never offers the lookup and never fetches.
+    - Anything found is saved on the phone, so the same song shows lyrics later with no network at all.
+    - No network gives a clear "couldn't reach the lyrics service", a miss gives "no lyrics found", and neither
+      hangs or crashes.
+  - Files: `AndroidManifest.xml` (`INTERNET`), new `data/LyricsOnline.kt` (`HttpURLConnection` + `org.json`, no new
+    dependency; pure `lyricsFrom`, `stripLrcTimestamps` and `lyricsUrl` are unit-tested), a `lyrics.json` cache in
+    `filesDir`, `data/Settings.kt`, `ui/SettingsScreen.kt`, `ui/Player.kt`, `ui/Components.kt` (promise wording).
+  - **T22 must be updated**: the privacy policy and Data safety form need the optional lookup, and the store
+    listing must not present the lyrics as Harmonia's own content.
+- **T29 `.lrc` lyrics files (S–M, after T28).**
+  - What PRD phase 9 actually asked for: a `Song.lrc` beside the audio file. Scoped storage hides non-media files,
+    so it needs a one-time folder grant via `ACTION_OPEN_DOCUMENT_TREE`.
+  - Reuses `stripLrcTimestamps` from T28, and is the base for karaoke-style scrolling lyrics later.
+  - Acceptance criteria: after granting a folder, a song with a matching `.lrc` shows those lyrics with no network;
+    without a grant nothing changes; the grant survives a restart.
+
 ### Loose ends
 
 Small things found while building, parked here so they aren't forgotten. Anything that comes up from now on gets
