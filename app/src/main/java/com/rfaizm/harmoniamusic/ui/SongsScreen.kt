@@ -76,6 +76,7 @@ fun SongsScreen(
     onPlay: (song: Song, queue: List<Song>) -> Unit,
     onLike: (Song) -> Unit,
     onAddToPlaylist: (name: String, ids: Collection<Int>) -> Unit,
+    onDelete: (Song) -> Unit,
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var sortBy by rememberSaveable { mutableStateOf(SortBy.AZ) }
@@ -150,6 +151,7 @@ fun SongsScreen(
                             selectionMode = selectionMode,
                             selected = e.song.id in selected,
                             onLongClick = { toggle(e.song.id) },
+                            onDelete = { onDelete(e.song) },
                             modifier = Modifier.animateItem(),
                         )
                     }

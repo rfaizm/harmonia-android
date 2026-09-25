@@ -196,6 +196,15 @@ fun HarmoniaApp() {
         songs[i] = songs[i].copy(liked = !songs[i].liked)
         Library.save(context)
     }
+    // T16: the file is gone, so take the song out of the queue (Media3 moves on by itself) and the library.
+    val deleteSong = rememberSongDeleter { song ->
+        controller?.let { c ->
+            (c.mediaItemCount - 1 downTo 0)
+                .filter { c.getMediaItemAt(it).mediaId == song.id.toString() }
+                .forEach(c::removeMediaItem)
+        }
+        Library.remove(context, song.id)
+    }
     fun addTo(name: String, ids: Collection<Int>) {
         playlists.addSongs(name, ids, SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
         Library.save(context)
@@ -261,14 +270,15 @@ fun HarmoniaApp() {
                             CircularProgressIndicator(color = colors.primary)
                         }
                         songs.isEmpty() -> NoMusicEmptyState(rescanning, ::rescan)
-                        t == Tab.Songs -> SongsScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
+                        t == Tab.Songs -> SongsScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo, deleteSong)
                         t == Tab.Playlists -> PlaylistsScreen(
                             songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo,
                             onCreate = { addTo(it, emptyList()) },
                             onRemove = { playlistId, songId -> playlists.removeSong(playlistId, songId); Library.save(context) },
                             onDelete = { playlists.remove(it); Library.save(context) },
+                            onDeleteSong = deleteSong,
                         )
-                        else -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo)
+                        else -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo, deleteSong)
                     }
                 }
                 AnimatedVisibility(

@@ -71,6 +71,7 @@ fun ExploreScreen(
     onPlay: (song: Song, queue: List<Song>) -> Unit,
     onLike: (Song) -> Unit,
     onAddToPlaylist: (name: String, ids: Collection<Int>) -> Unit,
+    onDeleteSong: (Song) -> Unit,
 ) {
     var albumsView by rememberSaveable { mutableStateOf(false) }
     // Open artist or album name (which one follows albumsView); local state, like PlaylistsScreen.
@@ -88,7 +89,8 @@ fun ExploreScreen(
                 name = open, createdAt = null, gradient = gradientFor(list.firstOrNull()?.id ?: 0),
                 icon = if (albumsView) Icons.Rounded.Album else Icons.Rounded.Mic,
                 songs = list, playlists = playlists, fadeUnliked = false, activeId = activeId, isPlaying = isPlaying,
-                onBack = { openName = null }, onPlay = onPlay, onLike = onLike, onAddToPlaylist = onAddToPlaylist, onRemove = null,
+                onBack = { openName = null }, onPlay = onPlay, onLike = onLike, onAddToPlaylist = onAddToPlaylist,
+                onDeleteSong = onDeleteSong, onRemove = null,
             )
         } else {
             Column(Modifier.fillMaxSize()) {

@@ -90,6 +90,7 @@ fun PlaylistsScreen(
     onCreate: (String) -> Unit,
     onRemove: (playlistId: Int, songId: Int) -> Unit,
     onDelete: (Playlist) -> Unit,
+    onDeleteSong: (Song) -> Unit,
 ) {
     var openId by rememberSaveable { mutableStateOf<Int?>(null) }
     BackHandler(openId != null) { openId = null }
@@ -117,6 +118,7 @@ fun PlaylistsScreen(
                 onPlay = onPlay,
                 onLike = onLike,
                 onAddToPlaylist = onAddToPlaylist,
+                onDeleteSong = onDeleteSong,
                 onRemove = playlist?.let { p -> { s: Song -> onRemove(p.id, s.id) } },
             )
         }
@@ -257,6 +259,7 @@ fun PlaylistDetail(
     onPlay: (song: Song, queue: List<Song>) -> Unit,
     onLike: (Song) -> Unit,
     onAddToPlaylist: (name: String, ids: Collection<Int>) -> Unit,
+    onDeleteSong: (Song) -> Unit,
     onRemove: ((Song) -> Unit)?,
 ) {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 16.dp)) {
@@ -299,6 +302,7 @@ fun PlaylistDetail(
                 song = s, index = i, active = s.id == activeId, isPlaying = isPlaying, playlists = playlists,
                 onClick = { onPlay(s, songs) }, onLike = { onLike(s) },
                 onAddToPlaylist = { onAddToPlaylist(it.name, listOf(s.id)) }, showIndex = true,
+                onDelete = { onDeleteSong(s) },
                 onRemoveFromPlaylist = onRemove?.let { remove -> { remove(s) } },
                 modifier = Modifier.padding(horizontal = 8.dp).alpha(if (fadeUnliked && !s.liked) 0.4f else 1f),
             )

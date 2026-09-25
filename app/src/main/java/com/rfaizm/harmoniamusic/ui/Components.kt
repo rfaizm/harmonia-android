@@ -312,6 +312,7 @@ fun SongRow(
     selected: Boolean = false,
     onLongClick: (() -> Unit)? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -374,7 +375,8 @@ fun SongRow(
             }
         }
     }
-    if (confirmDelete) DeleteFileDialog(song, onDismiss = { confirmDelete = false })
+    // PRD phase 7: our own warning first, even on Android 11+ where the system asks again afterwards.
+    if (confirmDelete) DeleteFileDialog(song, onDismiss = { confirmDelete = false }, onConfirm = { confirmDelete = false; onDelete?.invoke() })
 }
 
 @Composable
@@ -452,7 +454,7 @@ private fun MenuRow(icon: ImageVector, text: String, color: Color, onClick: () -
 }
 
 @Composable
-fun DeleteFileDialog(song: Song, onDismiss: () -> Unit) {
+fun DeleteFileDialog(song: Song, onDismiss: () -> Unit, onConfirm: () -> Unit = onDismiss) {
     AlertDialog(
         onDismissRequest = onDismiss,
         containerColor = colors.card,
@@ -470,7 +472,7 @@ fun DeleteFileDialog(song: Song, onDismiss: () -> Unit) {
             )
         },
         confirmButton = {
-            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = colors.destructive, contentColor = Color.White)) {
+            Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = colors.destructive, contentColor = Color.White)) {
                 Text("Delete", fontWeight = FontWeight.Bold)
             }
         },

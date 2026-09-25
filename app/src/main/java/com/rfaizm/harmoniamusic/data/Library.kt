@@ -68,6 +68,13 @@ object Library {
         playlists.addAll(savedPlaylists)
     }
 
+    /** The song's file is gone, so drop it from the library and every playlist. */
+    fun remove(context: Context, songId: Int) {
+        songs.removeAll { it.id == songId }
+        playlists.removeSongEverywhere(songId)
+        save(context)
+    }
+
     /** Call after every like, play count or playlist change. Snapshots on the caller's thread, writes on IO. */
     fun save(context: Context) {
         val json = stateJson(songs.toList(), playlists.toList())

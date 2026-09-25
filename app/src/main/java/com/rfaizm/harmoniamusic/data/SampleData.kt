@@ -54,6 +54,11 @@ fun MutableList<Playlist>.addSongs(name: String, ids: Collection<Int>, today: St
     else add(Playlist((maxOfOrNull { it.id } ?: 0) + 1, name, ids.distinct(), size + 3, today))
 }
 
+/** After the file is deleted the song shouldn't linger anywhere (T16). */
+fun MutableList<Playlist>.removeSongEverywhere(songId: Int) {
+    forEachIndexed { i, p -> if (songId in p.songIds) this[i] = p.copy(songIds = p.songIds - songId) }
+}
+
 fun MutableList<Playlist>.removeSong(playlistId: Int, songId: Int) {
     val i = indexOfFirst { it.id == playlistId }
     if (i >= 0) this[i] = this[i].copy(songIds = this[i].songIds - songId)
