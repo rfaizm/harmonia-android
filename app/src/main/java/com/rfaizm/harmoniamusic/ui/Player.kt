@@ -14,13 +14,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +45,9 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -74,6 +80,7 @@ import com.rfaizm.harmoniamusic.data.albumArtOf
 import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
 import com.rfaizm.harmoniamusic.ui.theme.card
+import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
 fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> Unit, onNext: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
@@ -116,6 +123,7 @@ fun FullPlayer(
     volume: Float,   // device media volume, 0..1
     muted: Boolean,
     sleep: SleepOption?,
+    lyrics: String?,
     onClose: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
@@ -254,7 +262,7 @@ fun FullPlayer(
 
         // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            ExtraChip(Icons.Rounded.FormatQuote, "Lyrics") {}
+            LyricsChip(song, lyrics)
             SleepTimerChip(sleep, onSleep)
         }
     }
@@ -291,6 +299,35 @@ private fun ExtraChip(icon: ImageVector, text: String, onClick: () -> Unit) {
     ) {
         Icon(icon, null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(15.dp))
         Text(text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.8f))
+    }
+}
+
+/** PRD phase 9: whatever the file carries in its tags, or an honest note that it carries none. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun LyricsChip(song: Song, lyrics: String?) {
+    var open by remember { mutableStateOf(false) }
+    ExtraChip(Icons.Rounded.FormatQuote, "Lyrics") { open = true }
+    if (open) {
+        ModalBottomSheet(onDismissRequest = { open = false }, containerColor = colors.card) {
+            Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
+                Text(song.displayTitle, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+                Text(song.displayArtist, fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
+                if (lyrics == null) {
+                    Text(
+                        "This file has no lyrics saved in it. Harmonia reads lyrics from the song's own tags and never looks them up online.",
+                        fontSize = 14.sp, color = colors.mutedForeground, lineHeight = 20.sp,
+                    )
+                } else {
+                    Text(
+                        lyrics,
+                        fontSize = 15.sp,
+                        lineHeight = 24.sp,
+                        modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+                    )
+                }
+            }
+        }
     }
 }
 

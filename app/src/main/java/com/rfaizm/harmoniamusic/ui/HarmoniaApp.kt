@@ -82,6 +82,7 @@ import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.rfaizm.harmoniamusic.PlaybackService
+import com.rfaizm.harmoniamusic.LYRICS
 import com.rfaizm.harmoniamusic.SLEEP_COMMAND
 import com.rfaizm.harmoniamusic.SLEEP_MINUTES
 import com.rfaizm.harmoniamusic.data.Library
@@ -134,6 +135,8 @@ fun HarmoniaApp() {
     var muted by remember { mutableStateOf(false) }
     // Mirrors the service's timer, so the chip goes back to "Off" by itself once the timer fires.
     var sleep by remember { mutableStateOf<SleepOption?>(null) }
+    // Read from the song's tags by the service; track metadata never reaches a controller on its own.
+    var lyrics by remember { mutableStateOf<String?>(null) }
     val active = songs.firstOrNull { it.id == activeId }
 
     // Connected while the app is visible; the service keeps playing after it's released.
@@ -147,6 +150,7 @@ fun HarmoniaApp() {
             .setListener(object : MediaController.Listener {
                 override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
                     sleep = sleepOptionOf(extras.getInt(SLEEP_MINUTES))
+                    lyrics = extras.getString(LYRICS)
                 }
             })
             .buildAsync()
@@ -167,6 +171,7 @@ fun HarmoniaApp() {
             })
             sync()
             sleep = sleepOptionOf(c.sessionExtras.getInt(SLEEP_MINUTES)) // a timer may already be running
+            lyrics = c.sessionExtras.getString(LYRICS)
             controller = c
         }, ContextCompat.getMainExecutor(context))
         onStopOrDispose {
@@ -301,7 +306,7 @@ fun HarmoniaApp() {
                 active?.let {
                     FullPlayer(
                         song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
-                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep,
+                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics,
                         onClose = { fullPlayer = false },
                         onToggle = { Util.handlePlayPauseButtonAction(controller) },
                         onNext = { controller?.seekToNext() },

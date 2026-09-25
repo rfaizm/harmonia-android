@@ -25,9 +25,11 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.extractor.metadata.id3.BinaryFrame
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.MediaSession
@@ -39,6 +41,7 @@ import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.countPlay
+import com.rfaizm.harmoniamusic.data.parseUslt
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -62,6 +65,8 @@ class PlaybackService : MediaSessionService() {
     private var pausedByUnplug = false
     private var restoring = false
     private var sleepAt = 0L // uptime when the sleep timer pauses playback, 0 when off
+    private var sleepMinutes = 0 // what the chip should show
+    private var lyrics: String? = null
     private var shuffledQueue = 0 // signature of the queue the current shuffle order was built for
     private var fadeStep: Runnable? = null
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -101,6 +106,8 @@ class PlaybackService : MediaSessionService() {
             // Counted here, not in the UI, so tracks that advance in the background count too.
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
                 if (restoring) return // putting last session back is not a play
+                lyrics = null // the next song's tags haven't been read yet
+                publishExtras()
                 item?.mediaId?.toIntOrNull()?.let {
                     Library.songs.countPlay(it)
                     Library.save(this@PlaybackService)
@@ -147,6 +154,12 @@ class PlaybackService : MediaSessionService() {
                 if (reason != Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) return
                 errorsInARow = 0
                 if (player.shuffleModeEnabled) applyShuffleOrder(newOrder = false)
+            }
+
+            // Track metadata never reaches a controller (Format.toBundle drops it), so lyrics are read here.
+            override fun onTracksChanged(tracks: Tracks) {
+                lyrics = lyricsIn(tracks)
+                publishExtras()
             }
 
             override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
@@ -242,9 +255,24 @@ class PlaybackService : MediaSessionService() {
         sleepAt = if (minutes > 0) SystemClock.uptimeMillis() + minutes * 60_000L else 0L
         player.volume = targetVolume()
         if (sleepAt > 0L) handler.post(sleepTick)
-        // The chip can't know when a timer fires, so the service is the one source of truth for it.
-        session?.setSessionExtras(bundleOf(SLEEP_MINUTES to minutes))
+        sleepMinutes = minutes
+        publishExtras()
     }
+
+    /** The chip can't know when a timer fires and can't read tags, so the service publishes both together. */
+    private fun publishExtras() {
+        session?.setSessionExtras(bundleOf(SLEEP_MINUTES to sleepMinutes, LYRICS to lyrics))
+    }
+
+    /** The first USLT frame across the song's tracks, if it carries anything readable. */
+    @OptIn(UnstableApi::class) // Format.metadata, Metadata entries, BinaryFrame
+    private fun lyricsIn(tracks: Tracks): String? = tracks.groups
+        .asSequence()
+        .mapNotNull { it.getTrackFormat(0).metadata }
+        .flatMap { metadata -> (0 until metadata.length()).asSequence().map { metadata.get(it) } }
+        .filterIsInstance<BinaryFrame>()
+        .filter { it.id == "USLT" }
+        .firstNotNullOfOrNull { parseUslt(it.data) }
 
     private val sleepTick = object : Runnable {
         override fun run() {
@@ -385,6 +413,7 @@ internal fun smartShuffle(artists: List<String>, first: Int, random: Random): Li
 /** Sleep timer command the full player sends through its controller, with [SLEEP_MINUTES] in the args. */
 internal const val SLEEP_COMMAND = "com.rfaizm.harmoniamusic.SLEEP"
 internal const val SLEEP_MINUTES = "minutes"
+internal const val LYRICS = "lyrics"
 internal const val SLEEP_END_OF_TRACK = -1
 
 /** PRD phase 7: silence arrives over the last minute, so it doesn't jolt someone half asleep. */

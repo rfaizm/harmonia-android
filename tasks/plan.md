@@ -224,9 +224,14 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
   - Verification: gestures are out of reach of JVM tests, so this is a phone check against the criteria above. The
     actions underneath are already covered: T16's tests for deleting, `removeSong` for playlists. The RTL mirror of
     the gesture is checked in T20's audit.
-- **T18 Lyrics spike (timeboxed).**
-  - Read embedded USLT or SYLT lyrics through Media3 metadata and wire up the Lyrics chip.
-  - `.lrc` sidecars only through an optional SAF folder grant, and only if the user wants it.
+- **T18 Lyrics spike (timeboxed). Done; what the spike found:**
+  - Media3 has no lyrics field and no USLT frame type, so unknown ID3 frames arrive as `BinaryFrame` raw bytes.
+    `parseUslt` reads the payload (encoding byte, language, description, text) and is unit-tested.
+  - `Format.toBundle()` drops track metadata, so a `MediaController` never sees it: the service reads the frame on
+    `onTracksChanged` and publishes the text in the session extras, next to the sleep timer.
+  - Still open, each its own task when wanted: MP4/M4A (`©lyr`) and FLAC tags, which Media3 doesn't map either;
+    synchronised `SYLT` lyrics that scroll with playback; and `.lrc` sidecar files, which need an SAF folder grant
+    because scoped storage hides non-media files.
 
 **Checkpoint M4:** the user tests each feature on the phone.
 
