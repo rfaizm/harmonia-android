@@ -33,8 +33,9 @@ sealed interface LyricsResult {
  * sends nothing but this one song's tags (PRD phase 9 asks for local lyrics; this is the opt-in extra).
  */
 suspend fun fetchLyrics(song: Song): LyricsResult = withContext(Dispatchers.IO) {
-    // The exact endpoint matches on album and length; the search is the looser second try.
-    for (url in listOf(lyricsUrl(song), searchUrl(song))) {
+    // The exact endpoint needs a real artist; with only a track name the search is the one that can answer.
+    val attempts = if (song.displayArtist == UNKNOWN_ARTIST) listOf(searchUrl(song)) else listOf(lyricsUrl(song), searchUrl(song))
+    for (url in attempts) {
         val body = read(url).getOrElse { return@withContext LyricsResult.Offline }
         lyricsFrom(body.orEmpty())?.let { return@withContext LyricsResult.Found(it) }
     }
@@ -59,20 +60,36 @@ private fun read(url: String): Result<String?> = runCatching {
 internal fun lyricsUrl(song: Song) = "$API/get?artist_name=${esc(song.displayArtist)}&track_name=${esc(song.displayTitle)}" +
     "&album_name=${esc(song.album)}&duration=${song.duration}"
 
-internal fun searchUrl(song: Song) = "$API/search?artist_name=${esc(song.displayArtist)}&track_name=${esc(song.displayTitle)}"
+/** A file with no artist tag would otherwise search for an artist literally called "Unknown artist". */
+internal fun searchUrl(song: Song) = "$API/search?track_name=${esc(song.displayTitle)}" +
+    if (song.displayArtist == UNKNOWN_ARTIST) "" else "&artist_name=${esc(song.displayArtist)}"
 
 private fun esc(value: String): String = URLEncoder.encode(value, "UTF-8")
 
-/** Plain lyrics if the answer has them, otherwise the synced ones with their timestamps taken off. */
+/**
+ * Plain lyrics if the answer has them, otherwise the synced ones with their timestamps taken off. A search answers
+ * with many entries and most of them carry no lyrics at all, so this takes the first that actually does.
+ */
 internal fun lyricsFrom(json: String): String? = runCatching {
-    val answer = when (val parsed = JSONTokener(json).nextValue()) {
-        is JSONArray -> if (parsed.length() > 0) parsed.getJSONObject(0) else return null
-        is JSONObject -> parsed
-        else -> return null
+    when (val parsed = JSONTokener(json).nextValue()) {
+        is JSONArray -> (0 until parsed.length()).asSequence()
+            .mapNotNull { parsed.optJSONObject(it) }
+            .firstNotNullOfOrNull { wordsIn(it) }
+        is JSONObject -> wordsIn(parsed)
+        else -> null
     }
-    if (answer.optBoolean("instrumental")) return null
-    answer.optString("plainLyrics").trim().ifEmpty { stripLrcTimestamps(answer.optString("syncedLyrics")) }.ifEmpty { null }
 }.getOrNull()
+
+private fun wordsIn(entry: JSONObject): String? {
+    if (entry.optBoolean("instrumental")) return null
+    return entry.text("plainLyrics").ifEmpty { stripLrcTimestamps(entry.text("syncedLyrics")) }.ifEmpty { null }
+}
+
+/**
+ * A field that may be JSON null. Android's org.json returns the string "null" for those, while the desktop one
+ * used by the unit tests returns "", so neither the app nor the tests can trust optString on its own.
+ */
+private fun JSONObject.text(name: String) = if (isNull(name)) "" else optString(name).trim()
 
 /** Turns `[00:12.00]Line` into `Line`, and drops the `[ar:...]` style header lines of an LRC file. */
 internal fun stripLrcTimestamps(text: String): String = text.lineSequence()

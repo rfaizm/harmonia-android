@@ -348,7 +348,8 @@ private fun LyricsChip(song: Song, lyrics: String?) {
                     Text(
                         when (miss) {
                             LyricsResult.Offline -> "Couldn't reach the lyrics service. Check your connection and try again."
-                            LyricsResult.NotFound -> "No lyrics found for this song."
+                            // Names what was searched for, so a bad tag is visible rather than a silent miss.
+                            LyricsResult.NotFound -> "No lyrics found for “${song.displayTitle}” by “${song.displayArtist}”."
                             else -> "This file has no lyrics saved in it."
                         },
                         fontSize = 14.sp, color = colors.mutedForeground, lineHeight = 20.sp,

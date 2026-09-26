@@ -3,8 +3,10 @@ package com.rfaizm.harmoniamusic
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.lyricsFrom
 import com.rfaizm.harmoniamusic.data.lyricsUrl
+import com.rfaizm.harmoniamusic.data.searchUrl
 import com.rfaizm.harmoniamusic.data.stripLrcTimestamps
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,10 +27,33 @@ class LyricsOnlineTest {
     }
 
     @Test
-    fun readsTheFirstResultOfASearch() {
-        val json = """[{"plainLyrics":"From the search","instrumental":false}]"""
+    fun readsTheFirstSearchResultThatActuallyHasLyrics() {
+        // Most results carry no lyrics at all, so taking result zero finds nothing most of the time.
+        val json = """[
+            {"plainLyrics":null,"syncedLyrics":null,"instrumental":false},
+            {"plainLyrics":null,"syncedLyrics":null,"instrumental":true},
+            {"plainLyrics":"The third one has them","instrumental":false}
+        ]"""
 
-        assertEquals("From the search", lyricsFrom(json))
+        assertEquals("The third one has them", lyricsFrom(json))
+    }
+
+    @Test
+    fun aJsonNullIsNotLyrics() {
+        // Android's org.json returns the string "null" here where the desktop one returns "", so this is read
+        // with isNull instead of trusting optString.
+        assertNull(lyricsFrom("""{"plainLyrics":null,"syncedLyrics":null,"instrumental":false}"""))
+        assertEquals("Only synced", lyricsFrom("""{"plainLyrics":null,"syncedLyrics":"[00:10.00]Only synced"}"""))
+    }
+
+    @Test
+    fun anUnknownArtistIsLeftOutOfTheSearch() {
+        val tagless = Song(2, "Yellow", "Unknown artist", "Unknown album", 0, 269)
+
+        val url = searchUrl(tagless)
+
+        assertTrue(url, "track_name=Yellow" in url)
+        assertFalse(url, "artist_name" in url) // sending it finds four wrong songs instead of the right one
     }
 
     @Test

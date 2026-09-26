@@ -132,11 +132,14 @@ private fun query(resolver: ContentResolver): List<Song> {
     }.orEmpty()
 }
 
+/** What a song with no artist tag is called, and what the online lookup must not search for. */
+internal const val UNKNOWN_ARTIST = "Unknown artist"
+
 /** PRD phase 2: an empty title falls back to the file name; missing tags get readable placeholders. */
 internal fun toSong(id: Long, title: String?, artist: String?, album: String?, year: Int, durationMs: Long, fileName: String?) = Song(
     id = id.toInt(), // ponytail: MediaStore _ID fits Int on real devices; make Song.id a Long if one ever overflows
     title = title.known() ?: fileName?.substringBeforeLast('.').known() ?: "Unknown title",
-    artist = artist.known() ?: "Unknown artist",
+    artist = artist.known() ?: UNKNOWN_ARTIST,
     album = album.known() ?: "Unknown album",
     year = year,
     duration = (durationMs / 1000).toInt(),
