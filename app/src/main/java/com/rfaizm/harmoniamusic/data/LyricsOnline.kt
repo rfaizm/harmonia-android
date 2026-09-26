@@ -1,21 +1,15 @@
 package com.rfaizm.harmoniamusic.data
 
 import android.content.Context
+import com.rfaizm.harmoniamusic.data.remote.ApiConfig
+import com.rfaizm.harmoniamusic.data.remote.dto.LyricsDto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
 import org.json.JSONObject
-import org.json.JSONTokener
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
-import java.net.URLEncoder
-
-private const val API = "https://lrclib.net/api"
-private const val USER_AGENT = "Harmonia/1.0 (offline music player; com.rfaizm.harmoniamusic)"
-private const val TIMEOUT_MS = 10_000
+import java.io.IOException
 
 /** What one lookup came back with, so the player can say which of these happened rather than just "nothing". */
 sealed interface LyricsResult {
@@ -29,73 +23,39 @@ sealed interface LyricsResult {
 }
 
 /**
- * Looks lyrics up at lrclib.net. Only ever called when the user taps the button with the setting switched on, and
- * sends nothing but this one song's tags (PRD phase 9 asks for local lyrics; this is the opt-in extra).
+ * Looks lyrics up through [ApiConfig]'s service. Only ever called when the user taps the button with the setting
+ * switched on, and sends nothing but this one song's tags (PRD phase 9 asks for local lyrics; this is the extra).
  */
 suspend fun fetchLyrics(song: Song): LyricsResult = withContext(Dispatchers.IO) {
-    // The exact endpoint needs a real artist; with only a track name the search is the one that can answer.
-    val attempts = if (song.displayArtist == UNKNOWN_ARTIST) listOf(searchUrl(song)) else listOf(lyricsUrl(song), searchUrl(song))
-    for (url in attempts) {
-        val body = read(url).getOrElse { return@withContext LyricsResult.Offline }
-        lyricsFrom(body.orEmpty())?.let { return@withContext LyricsResult.Found(it) }
-    }
-    LyricsResult.NotFound
-}
-
-/** The body of a 200, null for any other status, and a failure only when the service couldn't be reached. */
-private fun read(url: String): Result<String?> = runCatching {
-    (URL(url).openConnection() as HttpURLConnection).run {
-        connectTimeout = TIMEOUT_MS
-        readTimeout = TIMEOUT_MS
-        setRequestProperty("User-Agent", USER_AGENT)
-        try {
-            // A song it doesn't know answers 503 as readily as 404, so anything but 200 counts as "no lyrics".
-            if (responseCode == HttpURLConnection.HTTP_OK) inputStream.bufferedReader().use { it.readText() } else null
-        } finally {
-            disconnect()
+    val service = ApiConfig.lyricsService
+    val artist = artistQuery(song)
+    try {
+        // The exact endpoint needs a real artist, so a tagless file goes straight to the search.
+        if (artist != null) {
+            val exact = service.getLyrics(artist, song.displayTitle, song.album, song.duration).body()
+            wordsIn(exact)?.let { return@withContext LyricsResult.Found(it) }
         }
+        val results = service.searchLyrics(song.displayTitle, artist).body().orEmpty()
+        lyricsIn(results)?.let { LyricsResult.Found(it) } ?: LyricsResult.NotFound
+    } catch (e: IOException) {
+        LyricsResult.Offline // no connection, timed out, dns failed
+    } catch (e: Exception) {
+        LyricsResult.NotFound // an answer we couldn't read is no better than no answer
     }
 }
 
-internal fun lyricsUrl(song: Song) = "$API/get?artist_name=${esc(song.displayArtist)}&track_name=${esc(song.displayTitle)}" +
-    "&album_name=${esc(song.album)}&duration=${song.duration}"
+/** Null when the file has no artist tag: searching for an artist called "Unknown artist" finds the wrong songs. */
+internal fun artistQuery(song: Song) = song.displayArtist.takeIf { it != UNKNOWN_ARTIST }
 
-/** A file with no artist tag would otherwise search for an artist literally called "Unknown artist". */
-internal fun searchUrl(song: Song) = "$API/search?track_name=${esc(song.displayTitle)}" +
-    if (song.displayArtist == UNKNOWN_ARTIST) "" else "&artist_name=${esc(song.displayArtist)}"
+/** A search answers with many entries and most carry no lyrics, so this takes the first that actually does. */
+internal fun lyricsIn(results: List<LyricsDto>): String? = results.firstNotNullOfOrNull { wordsIn(it) }
 
-private fun esc(value: String): String = URLEncoder.encode(value, "UTF-8")
-
-/**
- * Plain lyrics if the answer has them, otherwise the synced ones with their timestamps taken off. A search answers
- * with many entries and most of them carry no lyrics at all, so this takes the first that actually does.
- */
-internal fun lyricsFrom(json: String): String? = runCatching {
-    when (val parsed = JSONTokener(json).nextValue()) {
-        is JSONArray -> (0 until parsed.length()).asSequence()
-            .mapNotNull { parsed.optJSONObject(it) }
-            .firstNotNullOfOrNull { wordsIn(it) }
-        is JSONObject -> wordsIn(parsed)
-        else -> null
-    }
-}.getOrNull()
-
-private fun wordsIn(entry: JSONObject): String? {
-    if (entry.optBoolean("instrumental")) return null
-    return entry.text("plainLyrics").ifEmpty { stripLrcTimestamps(entry.text("syncedLyrics")) }.ifEmpty { null }
+/** Plain lyrics if the entry has them, otherwise the synced ones with their timestamps taken off. */
+internal fun wordsIn(entry: LyricsDto?): String? {
+    if (entry == null || entry.instrumental) return null
+    val plain = entry.plainLyrics?.trim().orEmpty()
+    return plain.ifEmpty { stripLrcTimestamps(entry.syncedLyrics.orEmpty()) }.ifEmpty { null }
 }
-
-/**
- * A field that may be JSON null. Android's org.json returns the string "null" for those, while the desktop one
- * used by the unit tests returns "", so neither the app nor the tests can trust optString on its own.
- */
-private fun JSONObject.text(name: String) = if (isNull(name)) "" else optString(name).trim()
-
-/** Turns `[00:12.00]Line` into `Line`, and drops the `[ar:...]` style header lines of an LRC file. */
-internal fun stripLrcTimestamps(text: String): String = text.lineSequence()
-    .map { it.replace(Regex("""^(\[\d+:\d+(?:[.:]\d+)?])+"""), "").trim() }
-    .filterNot { it.isEmpty() || it.matches(Regex("""^\[[a-zA-Z]+:.*]$""")) }
-    .joinToString("\n")
 
 /**
  * Lyrics found online, kept on the phone so a song needs the network at most once and still shows them offline.

@@ -29,3 +29,9 @@ internal fun parseUslt(payload: ByteArray): String? {
     if (start >= payload.size) return null
     return String(payload, start, payload.size - start, charset).trim().ifEmpty { null }
 }
+
+/** Turns `[00:12.00]Line` into `Line`, and drops the `[ar:...]` style header lines of an LRC file. */
+internal fun stripLrcTimestamps(text: String): String = text.lineSequence()
+    .map { it.replace(Regex("""^(\[\d+:\d+(?:[.:]\d+)?])+"""), "").trim() }
+    .filterNot { it.isEmpty() || it.matches(Regex("""^\[[a-zA-Z]+:.*]$""")) }
+    .joinToString("\n")
