@@ -1,8 +1,6 @@
 package com.rfaizm.harmoniamusic
 
 import com.google.gson.Gson
-import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.data.artistQuery
 import com.rfaizm.harmoniamusic.data.lyricsIn
 import com.rfaizm.harmoniamusic.data.remote.dto.LyricsDto
 import com.rfaizm.harmoniamusic.data.stripLrcTimestamps
@@ -59,13 +57,6 @@ class LyricsOnlineTest {
 
         assertNull(results[0].plainLyrics)
         assertEquals("Look at the stars", lyricsIn(results))
-    }
-
-    @Test
-    fun aFileWithNoArtistTagSearchesByTitleAlone() {
-        // Sending "Unknown artist" finds four wrong songs instead of the right one, so it is left out.
-        assertNull(artistQuery(Song(2, "Yellow", "Unknown artist", "Unknown album", 0, 269)))
-        assertEquals("Coldplay", artistQuery(Song(3, "Yellow", "Coldplay", "Parachutes", 2000, 269)))
     }
 
     @Test

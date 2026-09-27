@@ -10,6 +10,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import kotlin.math.abs
 
 /** What one lookup came back with, so the player can say which of these happened rather than just "nothing". */
 sealed interface LyricsResult {
@@ -22,21 +23,29 @@ sealed interface LyricsResult {
     data object Offline : LyricsResult
 }
 
+/** One way of asking for a song's lyrics. A null [artist] is the title alone, which only a matching length confirms. */
+data class LyricsQuery(val artist: String?, val title: String)
+
 /**
  * Looks lyrics up through [ApiConfig]'s service. Only ever called when the user taps the button with the setting
  * switched on, and sends nothing but this one song's tags (PRD phase 9 asks for local lyrics; this is the extra).
+ * [playerArtist] is what the player read from the file itself, which MediaStore sometimes misses (SPEC.md S2).
  */
-suspend fun fetchLyrics(song: Song): LyricsResult = withContext(Dispatchers.IO) {
+suspend fun fetchLyrics(song: Song, playerArtist: String?): LyricsResult = withContext(Dispatchers.IO) {
     val service = ApiConfig.lyricsService
-    val artist = artistQuery(song)
     try {
-        // The exact endpoint needs a real artist, so a tagless file goes straight to the search.
-        if (artist != null) {
-            val exact = service.getLyrics(artist, song.displayTitle, song.album, song.duration).body()
-            wordsIn(exact)?.let { return@withContext LyricsResult.Found(it) }
+        for (query in lyricsQueries(song, playerArtist)) {
+            // The exact endpoint needs an artist; when there is one it is the most precise answer.
+            if (query.artist != null) {
+                service.getLyrics(query.artist, query.title, song.album, song.duration).body()
+                    ?.takeIf { matches(it, query, song.duration) }
+                    ?.let(::wordsIn)
+                    ?.let { return@withContext LyricsResult.Found(it) }
+            }
+            val results = service.searchLyrics(query.title, query.artist).body().orEmpty()
+            lyricsIn(results.filter { matches(it, query, song.duration) })?.let { return@withContext LyricsResult.Found(it) }
         }
-        val results = service.searchLyrics(song.displayTitle, artist).body().orEmpty()
-        lyricsIn(results)?.let { LyricsResult.Found(it) } ?: LyricsResult.NotFound
+        LyricsResult.NotFound
     } catch (e: IOException) {
         LyricsResult.Offline // no connection, timed out, dns failed
     } catch (e: Exception) {
@@ -44,8 +53,56 @@ suspend fun fetchLyrics(song: Song): LyricsResult = withContext(Dispatchers.IO) 
     }
 }
 
-/** Null when the file has no artist tag: searching for an artist called "Unknown artist" finds the wrong songs. */
-internal fun artistQuery(song: Song) = song.displayArtist.takeIf { it != UNKNOWN_ARTIST }
+/**
+ * Who and what to ask for, best first (SPEC.md S1, S2): the song's own tags, then the artist the player read, then
+ * what the file name says, then the title alone. Each is tried only if the one before found nothing it could
+ * trust, and the "Unknown artist" placeholder is never sent.
+ */
+internal fun lyricsQueries(song: Song, playerArtist: String?): List<LyricsQuery> {
+    val guess = guessFromFileName(song.fileName)
+    return buildList {
+        if (song.displayArtist != UNKNOWN_ARTIST) add(LyricsQuery(song.displayArtist, song.displayTitle))
+        playerArtist?.let(::cleanTag)?.takeIf { it.isNotBlank() && it != UNKNOWN_ARTIST }
+            ?.let { add(LyricsQuery(it, song.displayTitle)) }
+        guess?.let { (artist, title) -> add(LyricsQuery(artist, title)) }
+        add(LyricsQuery(null, guess?.second ?: song.displayTitle))
+    }.distinctBy { key(it.artist.orEmpty()) + "|" + key(it.title) }
+}
+
+/**
+ * SPEC.md S1: "Coldplay - Yellow.mp3" names its artist and title, as most downloaded files do. The parts are cleaned
+ * the way tags are, so a "y2mate.com - " prefix or an "(Official Video)" suffix drops away. A bare track number in
+ * front ("01 - Yellow") is not an artist.
+ */
+internal fun guessFromFileName(fileName: String): Pair<String, String>? {
+    val parts = fileName.substringBeforeLast('.')
+        .split(" - ", " \u2013 ", " \u2014 ") // hyphen, en dash, em dash
+        .map(::cleanTag)
+        .filter { it.isNotBlank() }
+    if (parts.size < 2) return null
+    val artist = parts.first()
+    if (artist.all { it.isDigit() || it.isWhitespace() }) return null
+    return artist to parts.drop(1).joinToString(" ")
+}
+
+/**
+ * SPEC.md S3: an entry counts only if it is this very song. Its title must match once cleaned, and then either the
+ * artist matches too, or the length is within a few seconds. A live version or a video rip by the right artist
+ * passes; a different song that happens to share a title does not.
+ */
+internal fun matches(entry: LyricsDto, query: LyricsQuery, durationSec: Int): Boolean {
+    if (!sameText(entry.trackName, query.title)) return false
+    val sameLength = entry.duration?.let { abs(it - durationSec) <= LENGTH_TOLERANCE_SEC } == true
+    val sameArtist = query.artist != null && sameText(entry.artistName, query.artist)
+    return sameArtist || sameLength
+}
+
+private const val LENGTH_TOLERANCE_SEC = 3
+
+private fun sameText(a: String?, b: String?) = a != null && b != null && key(a).let { it.isNotEmpty() && it == key(b) }
+
+/** Case, spacing, punctuation and bracketed extras don't make two titles different songs. */
+private fun key(text: String) = cleanTag(text).lowercase().filter(Char::isLetterOrDigit)
 
 /** A search answers with many entries and most carry no lyrics, so this takes the first that actually does. */
 internal fun lyricsIn(results: List<LyricsDto>): String? = results.firstNotNullOfOrNull { wordsIn(it) }

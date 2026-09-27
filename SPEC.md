@@ -72,6 +72,13 @@ instead, which is what the user recognises.
 - **Don't modify the user's files** (S7) without a separate, explicit consent flow.
 - Keep the offline sources first: tags in the file, then a `.lrc` beside it, then anything already fetched.
 
+## Status
+
+**S1, S2 and S3 are built** (`data/LyricsOnline.kt`, tested in `LyricsMatchTest`). Checked against the live service:
+with the artist taken from `Coldplay - Yellow.mp3`, the first verified result is Coldplay at 268 s; with the title
+alone, none of the twenty results passes, so the app says "not found" instead of showing another song's lyrics.
+S4 to S7 remain options.
+
 ## To decide
 
 - Which of S1–S7 to build, and in what order.

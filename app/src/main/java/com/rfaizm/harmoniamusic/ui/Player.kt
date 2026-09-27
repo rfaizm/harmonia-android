@@ -86,6 +86,7 @@ import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.albumArtOf
 import com.rfaizm.harmoniamusic.data.fetchLyrics
+import com.rfaizm.harmoniamusic.data.lyricsQueries
 import com.rfaizm.harmoniamusic.data.readLrc
 import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.data.formatDuration
@@ -135,6 +136,7 @@ fun FullPlayer(
     muted: Boolean,
     sleep: SleepOption?,
     lyrics: String?,
+    playerArtist: String?,
     onClose: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
@@ -273,7 +275,7 @@ fun FullPlayer(
 
         // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            LyricsChip(song, lyrics)
+            LyricsChip(song, lyrics, playerArtist)
             SleepTimerChip(sleep, onSleep)
         }
     }
@@ -316,7 +318,7 @@ private fun ExtraChip(icon: ImageVector, text: String, onClick: () -> Unit) {
 /** PRD phase 9: whatever the file carries in its tags, or an honest note that it carries none. */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun LyricsChip(song: Song, lyrics: String?) {
+private fun LyricsChip(song: Song, lyrics: String?, playerArtist: String?) {
     var open by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -325,6 +327,8 @@ private fun LyricsChip(song: Song, lyrics: String?) {
     var looking by remember(song.id) { mutableStateOf(false) }
     var miss by remember(song.id) { mutableStateOf<LyricsResult?>(null) }
     val shown = lyrics ?: found
+    // The best guess at who and what this is; for a tagless file that means the player's tag or the file name.
+    val asked = remember(song, playerArtist) { lyricsQueries(song, playerArtist).first() }
     // Offline first: a .lrc beside the song, then anything found online before. Neither touches the network.
     LaunchedEffect(song.id) {
         if (lyrics == null) found = readLrc(context, song) ?: LyricsCache.get(context, song.id)
@@ -335,7 +339,11 @@ private fun LyricsChip(song: Song, lyrics: String?) {
     ModalBottomSheet(onDismissRequest = { open = false }, containerColor = colors.card) {
         Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
             Text(song.displayTitle, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-            Text(song.displayArtist, fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
+            Text(
+                // "Unknown artist" helps nobody here; the guessed artist, or else the file name, is what's recognisable.
+                asked.artist ?: song.fileName.substringBeforeLast('.').ifEmpty { song.displayArtist },
+                fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp),
+            )
             when {
                 shown != null -> Text(
                     shown,
@@ -349,7 +357,8 @@ private fun LyricsChip(song: Song, lyrics: String?) {
                         when (miss) {
                             LyricsResult.Offline -> "Couldn't reach the lyrics service. Check your connection and try again."
                             // Names what was searched for, so a bad tag is visible rather than a silent miss.
-                            LyricsResult.NotFound -> "No lyrics found for “${song.displayTitle}” by “${song.displayArtist}”."
+                            LyricsResult.NotFound -> asked.artist?.let { "No lyrics found for “${asked.title}” by “$it”." }
+                                ?: "No lyrics found for “${asked.title}”."
                             else -> "This file has no lyrics saved in it."
                         },
                         fontSize = 14.sp, color = colors.mutedForeground, lineHeight = 20.sp,
@@ -359,7 +368,7 @@ private fun LyricsChip(song: Song, lyrics: String?) {
                             looking = true
                             scope.launch {
                                 // The only moment this app uses the network, and only because it was tapped.
-                                val result = fetchLyrics(song)
+                                val result = fetchLyrics(song, playerArtist)
                                 looking = false
                                 miss = result
                                 if (result is LyricsResult.Found) {

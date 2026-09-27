@@ -40,6 +40,7 @@ import com.rfaizm.harmoniamusic.data.Library
 import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
 import com.rfaizm.harmoniamusic.data.countPlay
 import com.rfaizm.harmoniamusic.data.parseUslt
 import com.google.common.util.concurrent.Futures
@@ -445,6 +446,13 @@ internal fun speakerSafeVolume(current: Int, max: Int) = min(current, (max * 0.3
 fun Song.toMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaId(id.toString())
     .setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id.toLong()))
-    // Cleaned tags, so the notification and lock screen match the app.
-    .setMediaMetadata(MediaMetadata.Builder().setTitle(displayTitle).setArtist(displayArtist).setAlbumTitle(album).build())
+    // Cleaned tags, so the notification and lock screen match the app. An unknown artist is left unset rather than
+    // written as the placeholder, so an artist the player reads from the file itself can show through (SPEC.md S2).
+    .setMediaMetadata(
+        MediaMetadata.Builder()
+            .setTitle(displayTitle)
+            .setArtist(displayArtist.takeIf { it != UNKNOWN_ARTIST })
+            .setAlbumTitle(album)
+            .build()
+    )
     .build()

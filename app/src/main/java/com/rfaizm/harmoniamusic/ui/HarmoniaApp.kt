@@ -137,6 +137,8 @@ fun HarmoniaApp() {
     var sleep by remember { mutableStateOf<SleepOption?>(null) }
     // Read from the song's tags by the service; track metadata never reaches a controller on its own.
     var lyrics by remember { mutableStateOf<String?>(null) }
+    // The artist the player read from the file, which MediaStore sometimes misses (SPEC.md S2).
+    var playerArtist by remember { mutableStateOf<String?>(null) }
     val active = songs.firstOrNull { it.id == activeId }
 
     // Connected while the app is visible; the service keeps playing after it's released.
@@ -165,6 +167,7 @@ fun HarmoniaApp() {
                 repeatMode = c.repeatMode
                 volume = c.deviceVolume / c.deviceInfo.maxVolume.coerceAtLeast(1).toFloat()
                 muted = c.isDeviceMuted
+                playerArtist = c.mediaMetadata.artist?.toString()
             }
             c.addListener(object : Player.Listener {
                 override fun onEvents(player: Player, events: Player.Events) = sync()
@@ -306,7 +309,7 @@ fun HarmoniaApp() {
                 active?.let {
                     FullPlayer(
                         song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
-                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics,
+                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics, playerArtist = playerArtist,
                         onClose = { fullPlayer = false },
                         onToggle = { Util.handlePlayPauseButtonAction(controller) },
                         onNext = { controller?.seekToNext() },
