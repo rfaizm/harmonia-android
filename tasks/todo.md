@@ -56,7 +56,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 
 ## M9: Alphabet index scroller (after M8, before M6)
 - [x] T41 A–Z index bar beside the Songs list jumps to a letter; first fix the grouping (`letterOf` with accents folded, "#" last, each letter once — two "#" headings crash the tab today)
-- [ ] T42 Letter bubble beside the finger, current-letter highlight while scrolling, TalkBack labels
+- [x] T42 Letter bubble beside the finger, current-letter highlight while scrolling, TalkBack labels (built with the T41 redesign in `ui/AlphabetIndex.kt`, matched to GUIDELINE §5.2, §5.4, §5.8, §10)
 - [ ] **Checkpoint M9:** phone check on the release build (jump A↔Z, other sorts hide the bar, drag-select and swipes still work)
 
 ## M6: MVVM migration (before M5 — T19 and T20 rework the same UI)

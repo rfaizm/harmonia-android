@@ -5,6 +5,7 @@ import com.rfaizm.harmoniamusic.ui.azOrder
 import com.rfaizm.harmoniamusic.ui.edgeScrollSpeed
 import com.rfaizm.harmoniamusic.ui.letterAt
 import com.rfaizm.harmoniamusic.ui.letterOf
+import com.rfaizm.harmoniamusic.ui.sectionAt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -50,6 +51,18 @@ class SongsScreenTest {
     fun slidingPastEitherEndOfTheBarKeepsTheEndLetter() {
         assertEquals(0, letterAt(y = -40f, height = 270, count = 27))
         assertEquals(26, letterAt(y = 400f, height = 270, count = 27))
+    }
+
+    @Test
+    fun theBarLightsTheGroupAtTheTopOfTheList() {
+        // Headings sit at rows 0, 5 and 9: rows 1-4 belong to the first group, 5-8 to the second, and so on.
+        val headingRows = listOf(0, 5, 9)
+
+        assertEquals(0, sectionAt(headingRows, firstVisibleRow = 0))
+        assertEquals(0, sectionAt(headingRows, firstVisibleRow = 4))
+        assertEquals(1, sectionAt(headingRows, firstVisibleRow = 5))
+        assertEquals(2, sectionAt(headingRows, firstVisibleRow = 40))
+        assertEquals(-1, sectionAt(emptyList(), firstVisibleRow = 3))
     }
 
     private fun song(id: Int, title: String) = Song(id, title, "Artist", "Album", 2024, 200)

@@ -494,6 +494,18 @@ Decisions:
     - TalkBack reads and activates the letters.
   - Files: `ui/SongsScreen.kt`. The pure "current letter from the first visible row" helper is tested in
     `SongsScreenTest`.
+- **T41 redesign (user feedback, 2026-10-02): "I don't like how it's built."** The first bar was plain grey letters
+  with no container, no active state and no feedback under the finger, which ignored the design system. It was
+  rebuilt in `ui/AlphabetIndex.kt` and took T42 in with it.
+  - **At rest:** a slim muted capsule, like an inactive sort pill (§5.4), with extra-bold letters (§5.8).
+  - **While scrolling:** the group at the top of the list is lit sage on a `primary/15` dot, as the nav bar lights
+    its tab (§5.2). It is read through `derivedStateOf`, so only the bar redraws.
+  - **On touch:**
+    - the capsule tints sage, and the letter under the finger pops with a spring;
+    - a 56 dp sage bubble shows that letter beside the bar. It appears on the touched letter, then glides with the
+      mini player's spring (340/30, §10).
+  - **Accessibility:** each letter is a TalkBack button ("Jump to E", "Jump to other titles" for #).
+  - **Checks:** a light and a dark `@Preview`, and `sectionAt` is unit-tested.
 - **Checkpoint M9:** on the phone, release build:
   - jump to Z and back to A, letter by letter, with no stutter;
   - switch to Recent and back;

@@ -10,14 +10,8 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.border
@@ -149,6 +143,8 @@ fun SongsScreen(
     } }
     // Where each letter's heading sits, for the index bar (T41).
     val headings = remember(entries) { entries.withIndex().mapNotNull { (i, e) -> (e as? Entry.Header)?.let { it.letter to i } } }
+    // Changes only when the list scrolls into another letter, so the bar isn't redrawn on every row.
+    val section by remember(headings) { derivedStateOf { sectionAt(headings.map { it.second }, listState.firstVisibleItemIndex) } }
     val scope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
@@ -241,6 +237,7 @@ fun SongsScreen(
                 if (sortBy == SortBy.AZ && headings.size >= 2) {
                     AlphabetIndex(
                         letters = headings.map { it.first },
+                        currentSection = { section },
                         onPick = { i -> scope.launch { listState.scrollToItem(headings[i].second) } },
                         // Clear of the "Add N songs" button while selecting.
                         modifier = Modifier.align(Alignment.CenterVertically).padding(end = 4.dp, bottom = if (selectionMode) 80.dp else 0.dp),
@@ -293,48 +290,6 @@ internal fun edgeScrollSpeed(y: Float, height: Int): Float {
         y < zone -> -(zone - y) / zone * 24f
         y > height - zone -> (y - (height - zone)) / zone * 24f
         else -> 0f
-    }
-}
-
-/**
- * T41: the letters the list has, down its right side, beside the rows rather than over their buttons. Touching or
- * sliding along it jumps the list straight to that letter's heading, with a light tick each time the letter changes.
- */
-@Composable
-private fun AlphabetIndex(letters: List<String>, onPick: (index: Int) -> Unit, modifier: Modifier = Modifier) {
-    val haptics = LocalHapticFeedback.current
-    val pick by rememberUpdatedState(onPick)
-    Column(
-        modifier
-            .width(24.dp)
-            .heightIn(max = 20.dp * letters.size) // a few letters stay close together instead of spreading out
-            .fillMaxHeight()
-            .pointerInput(letters) {
-                awaitEachGesture {
-                    var last = -1
-                    fun touch(y: Float) {
-                        val i = letterAt(y, size.height, letters.size)
-                        if (i == last) return
-                        last = i
-                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        pick(i)
-                    }
-                    val down = awaitFirstDown()
-                    down.consume()
-                    touch(down.position.y)
-                    drag(down.id) { change ->
-                        change.consume()
-                        touch(change.position.y)
-                    }
-                }
-            },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        letters.forEach { letter ->
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                Text(letter, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.mutedForeground)
-            }
-        }
     }
 }
 
@@ -438,7 +393,3 @@ internal fun letterOf(title: String): String {
 internal fun azOrder(songs: List<Song>): List<Pair<String, Song>> = songs
     .map { letterOf(it.displayTitle) to it }
     .sortedWith(compareBy({ it.first == "#" }, { it.first }, { it.second.displayTitle.lowercase() }))
-
-/** Which of [count] evenly spread letters a finger at [y] is on; past either end it keeps the end letter. */
-internal fun letterAt(y: Float, height: Int, count: Int): Int =
-    if (height <= 0 || count <= 0) 0 else (y / height * count).toInt().coerceIn(0, count - 1)
