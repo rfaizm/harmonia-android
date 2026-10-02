@@ -449,8 +449,10 @@ Decisions:
   the bar never covers the heart or "⋮" buttons and never steals a row's touches.
 - **It shows only with A–Z sort** and at least two letter groups. Searching keeps it while the results still span
   two letters, and selection mode keeps it, because jumping while picking songs saves the same scrolling.
-- **Only the letters the library has** are listed, spread evenly down the bar and capped at about 20 dp each. Every
-  letter then does something, and a full column still fits a short screen.
+- **Only the letters the library has** are listed, spread evenly down the bar, so every letter does something.
+  *Changed after the phone check (2026-10-02):* the bar runs the list's full height, from the first heading to just
+  above the mini player. A slot is still capped at 48 dp, a touch target's height, so a search showing two letters
+  stays compact. At first it was capped at 18 dp per letter, which left it short and floating mid-list.
 - **The jump is instant** (`scrollToItem`, no animation), with a light haptic tick each time the letter under the
   finger changes. Touching jumps too, not just sliding.
 - **"#" goes last**, as in the phone's contacts app, and accented letters count as their plain letter ("É" is "E").

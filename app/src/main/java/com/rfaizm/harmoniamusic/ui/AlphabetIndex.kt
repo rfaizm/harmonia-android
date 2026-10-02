@@ -59,7 +59,9 @@ import com.rfaizm.harmoniamusic.ui.theme.muted
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 import kotlin.math.roundToInt
 
-private val LETTER_HEIGHT = 18.dp
+// The bar runs the list's full height, which is what the user asked for: an 18 dp-per-letter cap left it short and
+// floating mid-list. A slot still stops at a touch target's height, so a search showing two letters stays compact.
+private val MAX_LETTER_HEIGHT = 48.dp
 private val TRACK_PADDING = 6.dp
 private val TOUCH_WIDTH = 28.dp // wider than the capsule it shows, so a thumb finds it easily
 private val BUBBLE_SIZE = 56.dp
@@ -102,7 +104,7 @@ fun AlphabetIndex(letters: List<String>, currentSection: () -> Int, onPick: (ind
     Box(
         modifier
             .width(TOUCH_WIDTH)
-            .heightIn(max = LETTER_HEIGHT * letters.size + TRACK_PADDING * 2)
+            .heightIn(max = MAX_LETTER_HEIGHT * letters.size + TRACK_PADDING * 2)
             .fillMaxHeight()
             .onSizeChanged { heightPx = it.height }
             .pointerInput(letters) {
