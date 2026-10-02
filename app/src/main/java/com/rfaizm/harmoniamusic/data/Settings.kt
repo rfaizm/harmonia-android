@@ -29,6 +29,7 @@ object Settings {
     private const val FOLDER_KEY = "lyricsFolder"
 
     private var prefs: SharedPreferences? = null
+    private var timing: SharedPreferences? = null
     private val values = mutableStateMapOf<Key, Boolean>()
     private var folder by mutableStateOf<String?>(null)
 
@@ -39,6 +40,18 @@ object Settings {
         prefs = stored
         Key.entries.forEach { values[it] = stored.getBoolean(it.name, it.default) }
         folder = stored.getString(FOLDER_KEY, null)
+        timing = context.applicationContext.getSharedPreferences("lyrics_timing", Context.MODE_PRIVATE)
+    }
+
+    /**
+     * How far the user moved one song's synced lyrics, in ms; positive shows them later. LRCLIB's copies of a song
+     * disagree by seconds and a video rip can have a longer intro, so no automatic pick fits every file. Kept in its
+     * own file, because the playback service re-applies its settings on every change to the main one.
+     */
+    fun lyricsShift(songId: Int): Int = timing?.getInt(songId.toString(), 0) ?: 0
+
+    fun setLyricsShift(songId: Int, ms: Int) {
+        timing?.edit { if (ms == 0) remove(songId.toString()) else putInt(songId.toString(), ms) }
     }
 
     /** The folder the user granted for `.lrc` files (T29), or null while none is granted. */

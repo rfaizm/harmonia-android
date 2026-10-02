@@ -381,6 +381,18 @@ Decisions:
     - Tapping while paused starts playing from that line.
     - Scrolling away to read isn't pulled back while the finger is down, and the view returns 3 s after letting go.
   - Files: `ui/Player.kt`. The seek maths reuses `progressOf`, which is already tested.
+- **T39 timing fix (found on the phone, 2026-10-02).** The highlight ran early on some songs and late on others.
+  - Cause: LRCLIB keeps many uploads of one song, and their timings disagree by seconds. For Coldplay's "Yellow",
+    the singing starts at 32.47, 33.8 or 35.66 s depending on the upload, and the app took whichever synced copy
+    came first. Untagged files also sent the album "Unknown album", which matched an upload literally named that.
+  - Fix:
+    - `lyricsIn` takes the synced copy closest in length to the file.
+    - The placeholder album is no longer sent.
+    - The clock is read every 50 ms instead of 100 ms.
+    - Synced lyrics get **Earlier / Later** buttons (0.5 s steps), saved per song in their own preferences file.
+      This is because no automatic pick can know the file's own version, for example a video rip with a longer
+      intro.
+  - T40's tap-to-seek must add the song's saved shift to the line's time.
 - **Checkpoint M8:** a phone check on the release build, with no lag while the list follows the song:
   - a song with synced online lyrics follows the music;
   - tapping a line jumps there;

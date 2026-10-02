@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.withFrameMillis
 import com.rfaizm.harmoniamusic.data.LyricLine
@@ -59,6 +60,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -359,7 +361,7 @@ private fun LyricsView(song: Song, lyrics: String?, playerArtist: String?, posit
 
     Box(modifier.padding(horizontal = 28.dp), contentAlignment = Alignment.CenterStart) {
         when {
-            lines.isNotEmpty() -> SyncedLyrics(lines, position)
+            lines.isNotEmpty() -> SyncedLyrics(lines, song.id, position)
             shown != null -> Column(Modifier.fillMaxSize()) {
                 Text(
                     "NOT SYNCED TO THE SONG", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
@@ -408,41 +410,71 @@ private fun LyricsView(song: Song, lyrics: String?, playerArtist: String?, posit
     }
 }
 
-/** Lyrics that follow the song: the line being sung is lit and kept a third of the way down. */
+/**
+ * Lyrics that follow the song: the line being sung is lit and kept a third of the way down. Earlier and Later move
+ * this song's timing in half seconds, and the app remembers it (see [Settings.lyricsShift]).
+ */
 @Composable
-private fun SyncedLyrics(lines: List<LyricLine>, position: () -> Long) {
+private fun SyncedLyrics(lines: List<LyricLine>, songId: Int, position: () -> Long) {
     val readPosition by rememberUpdatedState(position)
     var positionMs by remember { mutableLongStateOf(readPosition()) }
     LaunchedEffect(Unit) {
         while (true) {
             positionMs = readPosition()
-            delay(100)
+            delay(50)
             withFrameMillis { } // no frames come while the app is in the background, so this loop rests too
         }
     }
-    // The clock ticks ten times a second, but only a change of line gets past this and redraws anything.
-    val current by remember(lines) { derivedStateOf { currentLine(lines, positionMs) } }
+    var shift by remember(songId) { mutableIntStateOf(Settings.lyricsShift(songId)) }
+    fun moveBy(ms: Int) {
+        shift += ms
+        Settings.setLyricsShift(songId, shift)
+    }
+    // The clock ticks twenty times a second, but only a change of line gets past this and redraws anything.
+    val current by remember(lines) { derivedStateOf { currentLine(lines, positionMs - shift) } }
     // Opens on the line being sung rather than scrolling down to it from the top.
     val listState = remember(lines) { LazyListState(current.coerceAtLeast(0)) }
     LaunchedEffect(current, listState) { listState.animateScrollToItem(current.coerceAtLeast(0)) }
 
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        LazyColumn(
-            Modifier.fillMaxSize(),
-            state = listState,
-            // Scrolling a line to the top puts it a third of the way down, with what's coming next below it.
-            contentPadding = PaddingValues(top = maxHeight / 3, bottom = maxHeight * 2 / 3),
-        ) {
-            itemsIndexed(lines) { i, line ->
-                val alpha by animateFloatAsState(if (i == current) 1f else 0.4f, label = "lyricLine")
-                Text(
-                    line.text.ifEmpty { "♪" }, // a pause in the singing
-                    fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, color = Color.White,
-                    modifier = Modifier.padding(vertical = 8.dp).graphicsLayer { this.alpha = alpha },
-                )
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (shift != 0) Text("%+.1f s".format(shift / 1000f), fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
+            TimingButton("Earlier") { moveBy(-SHIFT_STEP_MS) }
+            TimingButton("Later") { moveBy(SHIFT_STEP_MS) }
+        }
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            LazyColumn(
+                Modifier.fillMaxSize(),
+                state = listState,
+                // Scrolling a line to the top puts it a third of the way down, with what's coming next below it.
+                contentPadding = PaddingValues(top = maxHeight / 3, bottom = maxHeight * 2 / 3),
+            ) {
+                itemsIndexed(lines) { i, line ->
+                    val alpha by animateFloatAsState(if (i == current) 1f else 0.4f, label = "lyricLine")
+                    Text(
+                        line.text.ifEmpty { "♪" }, // a pause in the singing
+                        fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, color = Color.White,
+                        modifier = Modifier.padding(vertical = 8.dp).graphicsLayer { this.alpha = alpha },
+                    )
+                }
             }
         }
     }
+}
+
+private const val SHIFT_STEP_MS = 500
+
+@Composable
+private fun TimingButton(text: String, onClick: () -> Unit) {
+    Text(
+        text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.8f),
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.10f))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+    )
 }
 
 /** PRD phase 7. [SLEEP_END_OF_TRACK] finishes the current song instead of counting minutes. */

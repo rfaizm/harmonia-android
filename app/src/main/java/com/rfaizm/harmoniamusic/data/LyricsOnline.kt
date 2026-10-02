@@ -36,12 +36,14 @@ suspend fun fetchLyrics(song: Song, playerArtist: String?): LyricsResult = withC
     try {
         for (query in lyricsQueries(song, playerArtist)) {
             // The exact endpoint needs an artist; when there is one it is the most precise answer.
-            val exact = query.artist?.let { service.getLyrics(it, query.title, song.album, song.duration).body() }
+            // The "Unknown album" placeholder is never sent: LRCLIB took it literally and matched a stray upload.
+            val album = song.album.takeIf { it != UNKNOWN_ALBUM }
+            val exact = query.artist?.let { service.getLyrics(it, query.title, album, song.duration).body() }
                 ?.takeIf { matches(it, query, song.duration) }
             syncedIn(exact)?.let { return@withContext LyricsResult.Found(it) }
             // Plain only, or no exact match: the search may still hold a synced copy of the same song.
             val results = service.searchLyrics(query.title, query.artist).body().orEmpty().filter { matches(it, query, song.duration) }
-            lyricsIn(listOfNotNull(exact) + results)?.let { return@withContext LyricsResult.Found(it) }
+            lyricsIn(listOfNotNull(exact) + results, song.duration)?.let { return@withContext LyricsResult.Found(it) }
         }
         LyricsResult.NotFound
     } catch (e: IOException) {
@@ -103,11 +105,15 @@ private fun sameText(a: String?, b: String?) = a != null && b != null && key(a).
 private fun key(text: String) = cleanTag(text).lowercase().filter(Char::isLetterOrDigit)
 
 /**
- * A search answers with many entries and most carry no lyrics. The first synced ones win, since they let the player
- * follow the song (T39); otherwise the first that has any.
+ * A search answers with many entries and most carry no lyrics. Synced ones win, since they let the player follow the
+ * song (T39). LRCLIB keeps many copies of one song whose timings disagree by seconds, so the synced copy closest in
+ * length to the file is taken: it's the likeliest to be timed for the same recording. Otherwise the first with any.
  */
-internal fun lyricsIn(results: List<LyricsDto>): String? =
-    results.firstNotNullOfOrNull { syncedIn(it) } ?: results.firstNotNullOfOrNull { wordsIn(it) }
+internal fun lyricsIn(results: List<LyricsDto>, durationSec: Int): String? =
+    results.filter { syncedIn(it) != null }
+        .minByOrNull { entry -> entry.duration?.let { abs(it - durationSec) } ?: Double.MAX_VALUE }
+        ?.let(::syncedIn)
+        ?: results.firstNotNullOfOrNull { wordsIn(it) }
 
 /** Synced lyrics if the entry has them, timestamps and all, otherwise the plain ones. */
 internal fun wordsIn(entry: LyricsDto?): String? =

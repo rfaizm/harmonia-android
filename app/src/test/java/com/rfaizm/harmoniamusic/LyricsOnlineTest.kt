@@ -28,7 +28,21 @@ class LyricsOnlineTest {
         // The exact lookup can answer plain only while the search holds a synced copy of the same song.
         val results = listOf(LyricsDto(plainLyrics = "Plain"), LyricsDto(plainLyrics = "Plain too", syncedLyrics = "[00:01.00]Synced"))
 
-        assertEquals("[00:01.00]Synced", lyricsIn(results))
+        assertEquals("[00:01.00]Synced", lyricsIn(results, durationSec = 200))
+    }
+
+    @Test
+    fun theSyncedCopyClosestInLengthToTheFileWins() {
+        // Real LRCLIB data for Coldplay's "Yellow": the first copy starts singing 3 s before the others, and taking
+        // it made the highlight run early. The copy timed for a recording of the file's own length is the best bet.
+        val results = listOf(
+            LyricsDto(duration = 268.0, syncedLyrics = "[00:32.47]Look at the stars"),
+            LyricsDto(duration = 290.0, syncedLyrics = "[00:35.66]Look at the stars"),
+            LyricsDto(duration = 269.0, syncedLyrics = "[00:35.66]Look at the stars (269)"),
+            LyricsDto(duration = null, syncedLyrics = "[00:10.00]No length given"),
+        )
+
+        assertEquals("[00:35.66]Look at the stars (269)", lyricsIn(results, durationSec = 269))
     }
 
     @Test
@@ -40,12 +54,12 @@ class LyricsOnlineTest {
             LyricsDto(plainLyrics = "The third one has them"),
         )
 
-        assertEquals("The third one has them", lyricsIn(results))
+        assertEquals("The third one has them", lyricsIn(results, durationSec = 200))
     }
 
     @Test
     fun anEmptyOrInstrumentalAnswerHasNoLyrics() {
-        assertNull(lyricsIn(emptyList()))
+        assertNull(lyricsIn(emptyList(), durationSec = 200))
         assertNull(wordsIn(null))
         assertNull(wordsIn(LyricsDto(instrumental = true, plainLyrics = "ignored", syncedLyrics = "[00:01.00]ignored")))
         assertNull(wordsIn(LyricsDto(plainLyrics = "   ")))
@@ -63,6 +77,6 @@ class LyricsOnlineTest {
         val results = Gson().fromJson(json, Array<LyricsDto>::class.java).toList()
 
         assertNull(results[0].plainLyrics)
-        assertEquals("Look at the stars", lyricsIn(results))
+        assertEquals("Look at the stars", lyricsIn(results, durationSec = 200))
     }
 }
