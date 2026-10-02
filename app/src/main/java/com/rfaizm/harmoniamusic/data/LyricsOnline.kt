@@ -23,8 +23,11 @@ sealed interface LyricsResult {
     data object Offline : LyricsResult
 }
 
-/** One way of asking for a song's lyrics. A null [artist] is the title alone, which only a matching length confirms. */
-data class LyricsQuery(val artist: String?, val title: String)
+/**
+ * One way of asking for a song's lyrics. A null [artist] is the title alone, which only a matching length confirms.
+ * [fromFileName] marks the two halves of a file name, where either may be the artist, so the artist must match too.
+ */
+data class LyricsQuery(val artist: String?, val title: String, val fromFileName: Boolean = false)
 
 /**
  * Looks lyrics up through [ApiConfig]'s service. Only ever called when the user taps the button with the setting
@@ -59,16 +62,26 @@ suspend fun fetchLyrics(song: Song, playerArtist: String?): LyricsResult = withC
  * trust, and the "Unknown artist" placeholder is never sent.
  */
 internal fun lyricsQueries(song: Song, playerArtist: String?): List<LyricsQuery> {
+    val artists = listOfNotNull(
+        song.displayArtist.takeIf { it != UNKNOWN_ARTIST },
+        playerArtist?.let(::cleanTag)?.takeIf { it.isNotBlank() && it != UNKNOWN_ARTIST },
+    )
     val guess = guessFromFileName(song.fileName)
+    // With no title tag the title is the file name, and half of a split file name may well be the artist.
+    val titleIsFileName = song.fileName.isNotEmpty() && song.title == song.fileName.substringBeforeLast('.')
     return buildList {
-        fun addFor(artist: String) {
+        artists.forEach { artist ->
             add(LyricsQuery(artist, titleWithout(artist, song.displayTitle)))
             add(LyricsQuery(artist, song.displayTitle)) // in case the title really starts with the artist's name
         }
-        if (song.displayArtist != UNKNOWN_ARTIST) addFor(song.displayArtist)
-        playerArtist?.let(::cleanTag)?.takeIf { it.isNotBlank() && it != UNKNOWN_ARTIST }?.let(::addFor)
-        guess?.let { (artist, title) -> add(LyricsQuery(artist, title)) }
-        add(LyricsQuery(null, guess?.second ?: firstOrNull()?.title ?: song.displayTitle))
+        // "Artist - Title" is the usual order, but "Title - Artist" is common too, so both are tried.
+        guess?.let { (first, second) ->
+            add(LyricsQuery(first, second, fromFileName = true))
+            add(LyricsQuery(second, first, fromFileName = true))
+        }
+        if (guess == null || !titleIsFileName) {
+            add(LyricsQuery(null, artists.firstOrNull()?.let { titleWithout(it, song.displayTitle) } ?: song.displayTitle))
+        }
     }.distinctBy { key(it.artist.orEmpty()) + "|" + key(it.title) }
 }
 
@@ -111,13 +124,14 @@ internal fun guessFromFileName(fileName: String): Pair<String, String>? {
 /**
  * SPEC.md S3: an entry counts only if it is this very song. Its title must match once cleaned, and then either the
  * artist matches too, or the length is within a few seconds. A live version or a video rip by the right artist
- * passes; a different song that happens to share a title does not.
+ * passes; a different song that happens to share a title does not. A guess from the file name needs the artist:
+ * LRCLIB has uploads with the fields swapped (title "Coldplay", artist "Clocks"), and the length alone let one through.
  */
 internal fun matches(entry: LyricsDto, query: LyricsQuery, durationSec: Int): Boolean {
     if (!sameText(entry.trackName, query.title)) return false
     val sameLength = entry.duration?.let { abs(it - durationSec) <= LENGTH_TOLERANCE_SEC } == true
     val sameArtist = query.artist != null && sameText(entry.artistName, query.artist)
-    return sameArtist || sameLength
+    return sameArtist || (sameLength && !query.fromFileName)
 }
 
 private const val LENGTH_TOLERANCE_SEC = 3

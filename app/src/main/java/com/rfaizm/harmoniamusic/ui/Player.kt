@@ -377,9 +377,13 @@ private fun LyricsView(song: Song, lyrics: String?, playerArtist: String?, posit
                 Text(
                     when (miss) {
                         LyricsResult.Offline -> "Couldn't reach the lyrics service. Check your connection and try again."
-                        // Names what was searched for, so a bad tag is visible rather than a silent miss.
-                        LyricsResult.NotFound -> asked.artist?.let { "No lyrics found for “${asked.title}” by “$it”." }
-                            ?: "No lyrics found for “${asked.title}”."
+                        // Names what was searched for, so a bad tag is visible rather than a silent miss. A file name
+                        // was searched both ways round, so it's shown as it reads, not as a guessed artist and title.
+                        LyricsResult.NotFound -> when {
+                            asked.fromFileName -> "No lyrics found for “${asked.artist} - ${asked.title}”."
+                            asked.artist != null -> "No lyrics found for “${asked.title}” by “${asked.artist}”."
+                            else -> "No lyrics found for “${asked.title}”."
+                        }
                         else -> "This file has no lyrics saved in it."
                     },
                     fontSize = 15.sp, color = Color.White.copy(alpha = 0.75f), lineHeight = 22.sp,

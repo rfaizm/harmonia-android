@@ -399,6 +399,18 @@ Decisions:
     The whole title is still tried next, for titles that really start with the artist's name ("Queen of the
     Night"). The title-only query also uses the cleaned title.
   - Checked live: the cleaned title finds 17 synced copies.
+- **T39 file-name order fix (found on the phone, 2026-10-02).** Files named "Title - Artist" with no artist tag were
+  split the wrong way round.
+  - "Viva la Vida - Coldplay" searched for the title "Coldplay" by the artist "Viva la Vida" and found nothing.
+  - "The Scientist - Coldplay" showed the lyrics of **Clocks**. The title-only fallback searched for "Coldplay",
+    and LRCLIB has mislabelled uploads (title "Coldplay", artist "Clocks", 308.6 s). That passed the ±3 s length
+    check against the 309 s song.
+  - Fix:
+    - A split file name is tried both ways round (`fromFileName = true`), and such a guess needs the artist to
+      match as well; the length alone no longer counts.
+    - Half of a file name is never searched as the title alone. A real title tag still is.
+    - "Not found" shows the file name as it reads.
+  - Checked live: both songs find the right synced lyrics the other way round.
 - **Checkpoint M8:** a phone check on the release build, with no lag while the list follows the song:
   - a song with synced online lyrics follows the music;
   - tapping a line jumps there;

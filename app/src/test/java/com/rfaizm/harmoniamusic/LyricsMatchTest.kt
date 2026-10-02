@@ -51,17 +51,45 @@ class LyricsMatchTest {
     }
 
     @Test
-    fun aTaglessFileTriesThePlayersArtistThenTheFileNameThenTheTitleAlone() {
+    fun aTaglessFileTriesThePlayersArtistThenTheFileNameBothWays() {
         val queries = lyricsQueries(tagless, playerArtist = "Coldplay (Official)")
 
         assertEquals(
             listOf(
                 LyricsQuery("Coldplay", "Yellow"),          // what the player read, taken out of the title we have
                 LyricsQuery("Coldplay", "Coldplay Yellow"), // the title whole, in case it really starts that way
-                LyricsQuery(null, "Yellow"),                // last resort, only trusted if the length matches
+                LyricsQuery("Yellow", "Coldplay", fromFileName = true), // the file name read the other way round
             ),
             queries,
         )
+    }
+
+    // Which half of the file name is the artist
+
+    @Test
+    fun aFileNamedTitleFirstIsTriedTheOtherWayRoundToo() {
+        // "Title - Artist" is common too, and searching the artist as the title found nothing for this file.
+        val song = Song(6, "Viva la Vida - Coldplay", "Unknown artist", "Unknown album", 0, 242, fileName = "Viva la Vida - Coldplay.mp3")
+
+        assertEquals(
+            listOf(LyricsQuery("Viva la Vida", "Coldplay", fromFileName = true), LyricsQuery("Coldplay", "Viva la Vida", fromFileName = true)),
+            lyricsQueries(song, playerArtist = null),
+        )
+    }
+
+    @Test
+    fun halfOfAFileNameIsNeverSearchedAsTheTitleAlone() {
+        // Either half may be the artist, and the title "Coldplay" alone found a mislabelled upload of Clocks.
+        val song = Song(7, "The Scientist - Coldplay", "Unknown artist", "Unknown album", 0, 309, fileName = "The Scientist - Coldplay.mp3")
+
+        assertTrue(lyricsQueries(song, playerArtist = null).none { it.artist == null })
+    }
+
+    @Test
+    fun aRealTitleTagIsStillSearchedAlone() {
+        val song = Song(8, "The Scientist", "Unknown artist", "Unknown album", 0, 309, fileName = "track01.mp3")
+
+        assertEquals(LyricsQuery(null, "The Scientist"), lyricsQueries(song, playerArtist = null).last())
     }
 
     // The artist inside the title
@@ -125,6 +153,17 @@ class LyricsMatchTest {
         val live = LyricsDto(trackName = "Yellow (Live)", artistName = "Coldplay", duration = 291.0)
 
         assertTrue(matches(live, LyricsQuery("Coldplay", "Yellow"), durationSec = 269))
+    }
+
+    @Test
+    fun aGuessFromTheFileNameNeedsTheArtistToMatchToo() {
+        // Real LRCLIB uploads swap the fields: title "Coldplay", artist "Clocks", 308.6 s, nearly the length of
+        // "The Scientist". Read the wrong way round, that file name would take it on the length alone.
+        val mislabelled = LyricsDto(trackName = "Coldplay", artistName = "Clocks", duration = 308.610612)
+        val right = LyricsDto(trackName = "The Scientist", artistName = "Coldplay", duration = 309.0)
+
+        assertFalse(matches(mislabelled, LyricsQuery("The Scientist", "Coldplay", fromFileName = true), durationSec = 309))
+        assertTrue(matches(right, LyricsQuery("Coldplay", "The Scientist", fromFileName = true), durationSec = 309))
     }
 
     @Test
