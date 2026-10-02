@@ -39,7 +39,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] **Checkpoint M4:** user tests each feature on a phone
 
 ## M7: CI/CD on free services (before M6, so the refactor is checked on every push)
-- [ ] T34 Put the project on GitHub: `gradlew` executable, `.gitattributes`, secrets in `.gitignore`, commit email decision, `main` up to date, public repo, first push (absorbs T25)
+- [x] T34 Put the project on GitHub: `gradlew` executable, `.gitattributes`, secrets in `.gitignore`, the mixed commit split, every commit moved to the private noreply email, AI co-author lines removed, `main` up to date, live at github.com/rfaizm/harmonia-android
 - [ ] T35 CI on every push and pull request: tests, lint and a debug build on Java 25, reports kept on failure, README badge
 - [ ] T36 Real signing and version numbers: upload keystore made by the user, signing and `versionCode` from CI secrets, debug fallback locally
 - [ ] T37 Tag → signed `.aab` and `.apk` attached to a GitHub Release
@@ -62,6 +62,6 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 
 ## Loose ends (details in `tasks/plan.md`)
 - [ ] T23 Adaptive launcher icon: note-only foreground inside the safe zone, dark slate background, real monochrome layer (before T22)
-- [ ] T24 Delete the template leftovers (~120 lines: unused colours, keep-rules file, backup-rule templates, instrumented test stub and its deps)
+- [ ] T24 Delete the template leftovers (unused colours, backup-rule templates, instrumented test stub and its deps). **Keep `keepRules/rules.keep`: it now holds the Gson DTO rule**
 - [x] T25 Git hygiene: the commit that mixed the shuffle fix with the icon layers is split in two (done in T34, before the first push); `main` catches up in T34
 - [ ] T26 "Rate Harmonia" opens the Play Store listing, with a browser fallback (after T22)

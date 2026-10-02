@@ -397,10 +397,10 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
     change can land on its own first.
   - Files: `res/mipmap-anydpi-v26/ic_launcher*.xml`, `res/mipmap-*/ic_launcher_foreground.webp`,
     `res/values/ic_launcher_background.xml`.
-- **T24 Delete the template leftovers (S).**
+- **T24 Delete the template leftovers (S).** Not `keepRules/rules.keep`: since the Retrofit change it holds the
+  rule that keeps the lyrics DTO's fields through R8, so deleting it would break the release build.
   - From the over-engineering review: about 120 lines of Android Studio scaffolding that nothing uses.
-  - `res/values/colors.xml` (seven unused template colours), `keepRules/rules.keep` (comments only),
-    `res/xml/backup_rules.xml` and `data_extraction_rules.xml` with their two manifest attributes,
+  - `res/values/colors.xml` (seven unused template colours),     `res/xml/backup_rules.xml` and `data_extraction_rules.xml` with their two manifest attributes,
     `ExampleInstrumentedTest.kt` with its four `androidTestImplementation` lines, the `ui-test-manifest` line and
     the six now-unused `libs.versions.toml` entries, and the no-op `Modifier.alpha(1f)` in a preview.
   - Acceptance criteria: `testDebugUnitTest`, `lintDebug` and `assembleRelease` all still pass, the app still
