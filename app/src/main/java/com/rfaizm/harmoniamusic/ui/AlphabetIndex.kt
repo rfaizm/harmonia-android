@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -63,7 +63,9 @@ import kotlin.math.roundToInt
 // floating mid-list. A slot still stops at a touch target's height, so a search showing two letters stays compact.
 private val MAX_LETTER_HEIGHT = 48.dp
 private val TRACK_PADDING = 6.dp
-private val TOUCH_WIDTH = 28.dp // wider than the capsule it shows, so a thumb finds it easily
+private val TRACK_WIDTH = 26.dp // wide enough for a lit dot that can be seen on a tall bar
+private val TOUCH_WIDTH = 32.dp // wider than the capsule it shows, so a thumb finds it easily
+private val DOT_INSET = 2.dp
 private val BUBBLE_SIZE = 56.dp
 private val BUBBLE_GAP = 8.dp
 
@@ -135,7 +137,7 @@ fun AlphabetIndex(letters: List<String>, currentSection: () -> Int, onPick: (ind
         Column(
             Modifier
                 .fillMaxHeight()
-                .width(20.dp)
+                .width(TRACK_WIDTH)
                 .clip(CircleShape)
                 .background(track)
                 .padding(vertical = TRACK_PADDING),
@@ -172,7 +174,8 @@ fun AlphabetIndex(letters: List<String>, currentSection: () -> Int, onPick: (ind
 
 @Composable
 private fun IndexLetter(letter: String, lit: Boolean, pressed: Boolean, onActivate: () -> Unit, modifier: Modifier) {
-    val scale by animateFloatAsState(if (pressed) 1.25f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "indexLetter")
+    // A small pop: the dot already nearly fills the capsule's width, and a bigger one would be cut off at its edges.
+    val scale by animateFloatAsState(if (pressed) 1.15f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "indexLetter")
     Box(
         modifier
             .fillMaxWidth()
@@ -186,17 +189,20 @@ private fun IndexLetter(letter: String, lit: Boolean, pressed: Boolean, onActiva
     ) {
         Box(
             Modifier
-                .size(16.dp)
+                // The largest circle the letter's slot holds, so the dot grows with a tall bar and shrinks on a
+                // crowded one; a fixed 16 dp dot looked lost once the bar ran the list's full height.
+                .padding(DOT_INSET)
+                .aspectRatio(1f)
                 .graphicsLayer { scaleX = scale; scaleY = scale }
                 .background(if (lit) colors.primary.copy(alpha = 0.15f) else Color.Transparent, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                letter, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
-                // The theme's body style brings a 24 sp line height: the 16 dp dot cut that box short and drew it
-                // from the top, which left the letter about 4 dp below the dot's centre. A line as tall as the
-                // letter keeps it centred (Nunito's own ink sits 0.02 em off, too little to see).
-                lineHeight = 10.sp,
+                letter, fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                // The theme's body style brings a 24 sp line height: a dot smaller than that cut the box short and
+                // drew it from the top, which left the letter about 4 dp below the dot's centre. A line as tall as
+                // the letter keeps it centred (Nunito's own ink sits 0.02 em off, too little to see).
+                lineHeight = 11.sp,
                 color = if (lit || pressed) colors.primary else colors.mutedForeground,
             )
         }

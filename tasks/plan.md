@@ -453,6 +453,10 @@ Decisions:
   *Changed after the phone check (2026-10-02):* the bar runs the list's full height, from the first heading to just
   above the mini player. A slot is still capped at 48 dp, a touch target's height, so a search showing two letters
   stays compact. At first it was capped at 18 dp per letter, which left it short and floating mid-list.
+  The lit dot then looked too small on the taller bar. It is now the largest circle a letter's slot holds (2 dp
+  inset), about 22 dp on the user's phone, instead of a fixed 16 dp. To make that possible, the capsule widened
+  from 20 to 26 dp, the touch strip from 28 to 32 dp and the letters from 10 to 11 sp, and the press pop dropped
+  to 1.15× so the dot stays inside the capsule.
 - **The jump is instant** (`scrollToItem`, no animation), with a light haptic tick each time the letter under the
   finger changes. Touching jumps too, not just sliding.
 - **"#" goes last**, as in the phone's contacts app, and accented letters count as their plain letter ("É" is "E").
