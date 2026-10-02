@@ -59,6 +59,8 @@ M7 T34 GitHub · T35 CI · T36 signing · T37 tag release · T38 Play upload   �
         │
 M8 T39 synced lyrics follow the song ──► T40 tap a line to play from it   ← next, before M6
         │
+M9 T41 A–Z index bar jumps to a letter ──► T42 letter bubble + current-letter highlight   ← after M8
+        │
 M6 T30 tidy data · T31 Hilt + data sources · T32 repositories · T33 ViewModels   ← before M5
         │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
@@ -423,6 +425,81 @@ Decisions:
   - plain lyrics show as before;
   - the no-lyrics states work as before.
 
+### M9: Alphabet index scroller (after M8, before M6)
+
+Reaching a song near the end of a long A–Z list means a long scroll. The user wants the column of letters that
+contact apps have: touch or slide a finger along it and the list jumps to that letter.
+
+What exists to build on:
+- With A–Z sort, `SongsScreen` already builds `Entry.Header(letter)` rows, so each letter's position in the list is
+  known, and a jump is one `listState.scrollToItem(index)`.
+- Drag-select is a long-press gesture on the `LazyColumn` itself, and `SwipeRow` handles horizontal swipes on rows.
+- The heart and the "⋮" menu sit at the right end of every `SongRow`.
+
+A bug found while reading, which this milestone depends on:
+- The A–Z sort compares lowercased titles, but the heading for anything outside A–Z is "#".
+- Digits and symbols sort **before** "a", while accented and non-Latin titles ("Élan", "夜に駆ける") sort **after**
+  "z". A library with both gets **two "#" headings**.
+- Both headings get the list key `"h#"`. Compose rejects duplicate keys, so that library would **crash the Songs
+  tab**.
+- An accented title also gets a "#" heading instead of its letter.
+
+Decisions:
+- **The bar sits beside the list, not on top of it.** The list loses about 24 dp of width while the bar shows, but
+  the bar never covers the heart or "⋮" buttons and never steals a row's touches.
+- **It shows only with A–Z sort** and at least two letter groups. Searching keeps it while the results still span
+  two letters, and selection mode keeps it, because jumping while picking songs saves the same scrolling.
+- **Only the letters the library has** are listed, spread evenly down the bar and capped at about 20 dp each. Every
+  letter then does something, and a full column still fits a short screen.
+- **The jump is instant** (`scrollToItem`, no animation), with a light haptic tick each time the letter under the
+  finger changes. Touching jumps too, not just sliding.
+- **"#" goes last**, as in the phone's contacts app, and accented letters count as their plain letter ("É" is "E").
+- The bar lives in `SongsScreen.kt` for now. Artists and Albums in Explore can reuse it later if wanted.
+- Not in scope: an index for Recent and Most played, which have no letter order; scrolling by the letters of the
+  artist's name.
+
+- **T41 A–Z index bar jumps to a letter (M).**
+  - The grouping fix comes first, as pure tested functions:
+    - `letterOf(title)` strips accents (`java.text.Normalizer`, available on every API level) and returns "A"–"Z",
+      or "#" for anything else.
+    - The A–Z sort orders by letter group first ("#" last), then by title, so each letter heading appears exactly
+      once.
+  - `AlphabetIndex` is a narrow column in a `Row` beside the `LazyColumn`:
+    - It lists the letters present.
+    - A touch or drag finds the letter under the finger (`letterAt(y, height, count)`, a clamped pure function) and
+      calls `scrollToItem` on that letter's heading.
+    - A haptic tick plays when the letter changes.
+  - Tests in `SongsScreenTest`:
+    - `letterOf`: a plain letter, an accented letter, a digit, a non-Latin title, an empty title.
+    - The A–Z order: digit-led, accented and non-Latin titles together give one "#" heading, last, and every letter
+      once.
+    - `letterAt`: the top, the bottom, and past both ends.
+  - Acceptance:
+    - With A–Z sort, sliding down the bar jumps the list letter by letter, and touching "S" shows the S songs at
+      the top.
+    - The bar is gone in Recent and Most played.
+    - Row swipes, drag-select, the heart and the "⋮" menu all work as before.
+    - A library with "21 Guns", "Élan" and a Japanese title opens without a crash. "Élan" sits under E, and the
+      other two share one "#" at the end.
+  - Files: `ui/SongsScreen.kt`, `SongsScreenTest.kt`.
+- **T42 Letter bubble and current-letter highlight (S).**
+  - A large letter bubble appears beside the finger while it is on the bar, since the finger covers the bar's
+    letter.
+  - While the list scrolls normally, the bar highlights the letter of the group at the top, so the bar also shows
+    where you are. This uses `derivedStateOf` on the first visible item, so it redraws only when the letter changes.
+  - Accessibility: each letter is announced as "Jump to E" and can be activated with TalkBack.
+  - Acceptance:
+    - The bubble follows the finger and shows the letter jumped to.
+    - The highlighted letter follows a normal scroll or fling.
+    - TalkBack reads and activates the letters.
+  - Files: `ui/SongsScreen.kt`. The pure "current letter from the first visible row" helper is tested in
+    `SongsScreenTest`.
+- **Checkpoint M9:** on the phone, release build:
+  - jump to Z and back to A, letter by letter, with no stutter;
+  - switch to Recent and back;
+  - drag-select and row swipes still work;
+  - search results keep the bar while they span two letters.
+
 ### M6: MVVM migration (runs before M5, since T19 and T20 rework the same UI)
 
 The `data/` review found the View calling the network directly (`ui/Player.kt` → `fetchLyrics`), a `@Composable`
@@ -565,6 +642,7 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
 | Scoped-storage delete behaves differently on each API level | Med | T16 is isolated with three explicit branches. |
 | Lyrics are blocked by storage rules | Med | Timeboxed spike, embedded lyrics first. |
 | Synced lyrics run early or late (a radio edit timed against the album version) | Med | S3's ±3 s length check already filters other versions. A manual offset can follow if it shows up on the phone. |
+| A slide on the A–Z bar at the right edge is taken as the system Back gesture | Low | Back is a horizontal swipe inwards, and the bar reads vertical slides. The bar keeps the list's 8 dp margin from the edge. Checked on the phone at Checkpoint M9. |
 | The lyrics view fights the user's finger, or stutters on a low-end phone | Med | T40 pauses the following while scrolling. The line number goes through `derivedStateOf`, so only a line change redraws. Judge on the release build. |
 
 ## Open questions (defaults in brackets; they don't block M0 to M3)

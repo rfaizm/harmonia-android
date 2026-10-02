@@ -54,6 +54,11 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] T40 Tap a line to play from it (seek to the line's time plus the song's saved shift); scrolling by hand pauses the following for 3 s
 - [ ] **Checkpoint M8:** phone check on the release build (follows the song, tap to jump, controls still work, plain and no-lyrics states)
 
+## M9: Alphabet index scroller (after M8, before M6)
+- [ ] T41 A–Z index bar beside the Songs list jumps to a letter; first fix the grouping (`letterOf` with accents folded, "#" last, each letter once — two "#" headings crash the tab today)
+- [ ] T42 Letter bubble beside the finger, current-letter highlight while scrolling, TalkBack labels
+- [ ] **Checkpoint M9:** phone check on the release build (jump A↔Z, other sorts hide the bar, drag-select and swipes still work)
+
 ## M6: MVVM migration (before M5 — T19 and T20 rework the same UI)
 - [ ] T30 Tidy `data/`: split the models, the display helpers and the seed data; move `albumArtOf` into `ui/` (no behaviour change)
 - [ ] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once
