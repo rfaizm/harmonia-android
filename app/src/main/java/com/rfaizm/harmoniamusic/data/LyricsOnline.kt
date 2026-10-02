@@ -74,10 +74,11 @@ internal fun lyricsQueries(song: Song, playerArtist: String?): List<LyricsQuery>
             add(LyricsQuery(artist, titleWithout(artist, song.displayTitle)))
             add(LyricsQuery(artist, song.displayTitle)) // in case the title really starts with the artist's name
         }
-        // "Artist - Title" is the usual order, but "Title - Artist" is common too, so both are tried.
+        // "Artist - Title" is the usual order, but "Title - Artist" is common too, so both are tried. Some downloaders
+        // add the channel after the title ("Harry Styles - Sign of the Times - Harry Styles"), so the artist comes off.
         guess?.let { (first, second) ->
-            add(LyricsQuery(first, second, fromFileName = true))
-            add(LyricsQuery(second, first, fromFileName = true))
+            add(LyricsQuery(first, titleWithout(first, second), fromFileName = true))
+            add(LyricsQuery(second, titleWithout(second, first), fromFileName = true))
         }
         if (guess == null || !titleIsFileName) {
             add(LyricsQuery(null, artists.firstOrNull()?.let { titleWithout(it, song.displayTitle) } ?: song.displayTitle))

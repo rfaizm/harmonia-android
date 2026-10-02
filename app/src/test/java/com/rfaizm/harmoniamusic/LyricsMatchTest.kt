@@ -78,6 +78,17 @@ class LyricsMatchTest {
     }
 
     @Test
+    fun theArtistComesOffATitleGuessedFromTheFileNameToo() {
+        // Some downloaders add the channel name after the video title, so the artist ends up in the title part.
+        val song = Song(
+            9, "Harry Styles - Sign of the Times - Harry Styles", "Unknown artist", "Unknown album", 0, 341,
+            fileName = "Harry Styles - Sign of the Times - Harry Styles.mp3",
+        )
+
+        assertEquals(LyricsQuery("Harry Styles", "Sign of the Times", fromFileName = true), lyricsQueries(song, playerArtist = null).first())
+    }
+
+    @Test
     fun halfOfAFileNameIsNeverSearchedAsTheTitleAlone() {
         // Either half may be the artist, and the title "Coldplay" alone found a mislabelled upload of Clocks.
         val song = Song(7, "The Scientist - Coldplay", "Unknown artist", "Unknown album", 0, 309, fileName = "The Scientist - Coldplay.mp3")
