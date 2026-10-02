@@ -1,6 +1,19 @@
 package com.rfaizm.harmoniamusic.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.withFrameMillis
+import com.rfaizm.harmoniamusic.data.LyricLine
+import com.rfaizm.harmoniamusic.data.currentLine
+import com.rfaizm.harmoniamusic.data.parseLrc
+import kotlinx.coroutines.delay
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
@@ -21,10 +34,8 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,10 +56,8 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -92,7 +101,6 @@ import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
 import com.rfaizm.harmoniamusic.ui.theme.card
-import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
 fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> Unit, onNext: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
@@ -137,6 +145,7 @@ fun FullPlayer(
     sleep: SleepOption?,
     lyrics: String?,
     playerArtist: String?,
+    position: () -> Long, // the player's clock in ms, read only while synced lyrics are on screen
     onClose: () -> Unit,
     onToggle: () -> Unit,
     onNext: () -> Unit,
@@ -156,6 +165,8 @@ fun FullPlayer(
     val seek by rememberUpdatedState(onSeek) // the gesture detectors below outlive a single onSeek lambda
     // The real volume arrives a moment later via the player, so the thumb follows the finger meanwhile.
     var volumeDrag by remember { mutableStateOf<Float?>(null) }
+    // Stays on across songs, like the art it replaces; closing the player brings the art back.
+    var showLyrics by remember { mutableStateOf(false) }
     BackHandler(onBack = onClose)
 
     Column(
@@ -173,29 +184,10 @@ fun FullPlayer(
             HeartButton(song.liked, onLike, iconSize = 18.dp, unlikedTint = Color.White)
         }
 
-        // 2. Album art — remounts per song, breathes with play state
-        Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 40.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
-            key(song.id) {
-                var appeared by remember { mutableStateOf(false) }
-                LaunchedEffect(Unit) { appeared = true }
-                val artSpring = spring<Float>(dampingRatio = 0.71f, stiffness = 240f)
-                val scale by animateFloatAsState(if (!appeared) 0.82f else if (isPlaying) 1f else 0.88f, artSpring, label = "artScale")
-                val alpha by animateFloatAsState(if (appeared) 1f else 0f, artSpring, label = "artAlpha")
-                val art = albumArtOf(song.id)
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
-                        .shadow(32.dp, RoundedCornerShape(24.dp), ambientColor = g1, spotColor = g1)
-                        .clip(RoundedCornerShape(24.dp))
-                        .background(gradientBrush(song.gradient)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                    else Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(80.dp))
-                }
-            }
+        // 2. Album art, or the lyrics in its place (T39), so the controls below keep working while they're read
+        Crossfade(showLyrics, Modifier.weight(1f).fillMaxWidth(), label = "artOrLyrics") { lyricsShown ->
+            if (lyricsShown) LyricsView(song, lyrics, playerArtist, position, Modifier.fillMaxSize().padding(vertical = 16.dp))
+            else PlayerArt(song, isPlaying)
         }
 
         // 3. Song info
@@ -275,8 +267,37 @@ fun FullPlayer(
 
         // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            LyricsChip(song, lyrics, playerArtist)
+            ExtraChip(Icons.Rounded.FormatQuote, "Lyrics", active = showLyrics) { showLyrics = !showLyrics }
             SleepTimerChip(sleep, onSleep)
+        }
+    }
+}
+
+/** The big album art: remounts per song, breathes with play state. */
+@Composable
+private fun PlayerArt(song: Song, isPlaying: Boolean) {
+    val (_, g1) = song.gradient
+    Box(Modifier.fillMaxSize().padding(horizontal = 40.dp, vertical = 16.dp), contentAlignment = Alignment.Center) {
+        key(song.id) {
+            var appeared by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) { appeared = true }
+            val artSpring = spring<Float>(dampingRatio = 0.71f, stiffness = 240f)
+            val scale by animateFloatAsState(if (!appeared) 0.82f else if (isPlaying) 1f else 0.88f, artSpring, label = "artScale")
+            val alpha by animateFloatAsState(if (appeared) 1f else 0f, artSpring, label = "artAlpha")
+            val art = albumArtOf(song.id)
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(1f)
+                    .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
+                    .shadow(32.dp, RoundedCornerShape(24.dp), ambientColor = g1, spotColor = g1)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(gradientBrush(song.gradient)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.45f), modifier = Modifier.size(80.dp))
+            }
         }
     }
 }
@@ -304,9 +325,9 @@ private fun ModeButton(icon: ImageVector, label: String, active: Boolean, onClic
 }
 
 @Composable
-private fun ExtraChip(icon: ImageVector, text: String, onClick: () -> Unit) {
+private fun ExtraChip(icon: ImageVector, text: String, active: Boolean = false, onClick: () -> Unit) {
     Row(
-        Modifier.clip(CircleShape).background(Color.White.copy(alpha = 0.10f)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
+        Modifier.clip(CircleShape).background(Color.White.copy(alpha = if (active) 0.25f else 0.10f)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
@@ -315,11 +336,12 @@ private fun ExtraChip(icon: ImageVector, text: String, onClick: () -> Unit) {
     }
 }
 
-/** PRD phase 9: whatever the file carries in its tags, or an honest note that it carries none. */
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * PRD phase 9 and T39: the lyrics, in the album art's place. Synced ones follow the song, plain ones just scroll,
+ * and with none there is an honest note and, when the setting is on, the online lookup.
+ */
 @Composable
-private fun LyricsChip(song: Song, lyrics: String?, playerArtist: String?) {
-    var open by remember { mutableStateOf(false) }
+private fun LyricsView(song: Song, lyrics: String?, playerArtist: String?, position: () -> Long, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // Anything found online before, so the same song needs no network a second time.
@@ -327,6 +349,7 @@ private fun LyricsChip(song: Song, lyrics: String?, playerArtist: String?) {
     var looking by remember(song.id) { mutableStateOf(false) }
     var miss by remember(song.id) { mutableStateOf<LyricsResult?>(null) }
     val shown = lyrics ?: found
+    val lines = remember(shown) { shown?.let(::parseLrc).orEmpty() }
     // The best guess at who and what this is; for a tagless file that means the player's tag or the file name.
     val asked = remember(song, playerArtist) { lyricsQueries(song, playerArtist).first() }
     // Offline first: a .lrc beside the song, then anything found online before. Neither touches the network.
@@ -334,57 +357,89 @@ private fun LyricsChip(song: Song, lyrics: String?, playerArtist: String?) {
         if (lyrics == null) found = readLrc(context, song) ?: LyricsCache.get(context, song.id)
     }
 
-    ExtraChip(Icons.Rounded.FormatQuote, "Lyrics") { open = true }
-    if (!open) return
-    ModalBottomSheet(onDismissRequest = { open = false }, containerColor = colors.card) {
-        Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
-            Text(song.displayTitle, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-            Text(
-                // "Unknown artist" helps nobody here; the guessed artist, or else the file name, is what's recognisable.
-                asked.artist ?: song.fileName.substringBeforeLast('.').ifEmpty { song.displayArtist },
-                fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp),
-            )
-            when {
-                shown != null -> Text(
-                    shown,
-                    fontSize = 15.sp,
-                    lineHeight = 24.sp,
-                    modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState()),
+    Box(modifier.padding(horizontal = 28.dp), contentAlignment = Alignment.CenterStart) {
+        when {
+            lines.isNotEmpty() -> SyncedLyrics(lines, position)
+            shown != null -> Column(Modifier.fillMaxSize()) {
+                Text(
+                    "NOT SYNCED TO THE SONG", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
+                    color = Color.White.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 12.dp),
                 )
-                looking -> CircularProgressIndicator(Modifier.padding(vertical = 8.dp), color = colors.primary)
-                else -> {
-                    Text(
-                        when (miss) {
-                            LyricsResult.Offline -> "Couldn't reach the lyrics service. Check your connection and try again."
-                            // Names what was searched for, so a bad tag is visible rather than a silent miss.
-                            LyricsResult.NotFound -> asked.artist?.let { "No lyrics found for “${asked.title}” by “$it”." }
-                                ?: "No lyrics found for “${asked.title}”."
-                            else -> "This file has no lyrics saved in it."
-                        },
-                        fontSize = 14.sp, color = colors.mutedForeground, lineHeight = 20.sp,
-                    )
-                    if (Settings[Key.OnlineLyrics]) {
-                        TextButton({
-                            looking = true
-                            scope.launch {
-                                // The only moment this app uses the network, and only because it was tapped.
-                                val result = fetchLyrics(song, playerArtist)
-                                looking = false
-                                miss = result
-                                if (result is LyricsResult.Found) {
-                                    found = result.text
-                                    LyricsCache.put(context, song.id, result.text)
-                                }
+                Text(
+                    shown, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp, color = Color.White.copy(alpha = 0.9f),
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                )
+            }
+            looking -> CircularProgressIndicator(Modifier.align(Alignment.Center), color = Color.White)
+            else -> Column {
+                Text(
+                    when (miss) {
+                        LyricsResult.Offline -> "Couldn't reach the lyrics service. Check your connection and try again."
+                        // Names what was searched for, so a bad tag is visible rather than a silent miss.
+                        LyricsResult.NotFound -> asked.artist?.let { "No lyrics found for “${asked.title}” by “$it”." }
+                            ?: "No lyrics found for “${asked.title}”."
+                        else -> "This file has no lyrics saved in it."
+                    },
+                    fontSize = 15.sp, color = Color.White.copy(alpha = 0.75f), lineHeight = 22.sp,
+                )
+                if (Settings[Key.OnlineLyrics]) {
+                    TextButton({
+                        looking = true
+                        scope.launch {
+                            // The only moment this app uses the network, and only because it was tapped.
+                            val result = fetchLyrics(song, playerArtist)
+                            looking = false
+                            miss = result
+                            if (result is LyricsResult.Found) {
+                                found = result.text
+                                LyricsCache.put(context, song.id, result.text)
                             }
-                        }) { Text(if (miss == null) "Find lyrics online" else "Try again", fontWeight = FontWeight.Bold) }
-                    } else {
-                        Text(
-                            "Harmonia only reads lyrics saved inside a file. You can switch on “Look up lyrics online” in Settings.",
-                            fontSize = 13.sp, color = colors.mutedForeground, lineHeight = 19.sp,
-                            modifier = Modifier.padding(top = 10.dp),
-                        )
-                    }
+                        }
+                    }) { Text(if (miss == null) "Find lyrics online" else "Try again", fontWeight = FontWeight.Bold, color = Color.White) }
+                } else {
+                    Text(
+                        "Harmonia only reads lyrics saved inside a file. You can switch on “Look up lyrics online” in Settings.",
+                        fontSize = 13.sp, color = Color.White.copy(alpha = 0.55f), lineHeight = 19.sp,
+                        modifier = Modifier.padding(top = 10.dp),
+                    )
                 }
+            }
+        }
+    }
+}
+
+/** Lyrics that follow the song: the line being sung is lit and kept a third of the way down. */
+@Composable
+private fun SyncedLyrics(lines: List<LyricLine>, position: () -> Long) {
+    val readPosition by rememberUpdatedState(position)
+    var positionMs by remember { mutableLongStateOf(readPosition()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            positionMs = readPosition()
+            delay(100)
+            withFrameMillis { } // no frames come while the app is in the background, so this loop rests too
+        }
+    }
+    // The clock ticks ten times a second, but only a change of line gets past this and redraws anything.
+    val current by remember(lines) { derivedStateOf { currentLine(lines, positionMs) } }
+    // Opens on the line being sung rather than scrolling down to it from the top.
+    val listState = remember(lines) { LazyListState(current.coerceAtLeast(0)) }
+    LaunchedEffect(current, listState) { listState.animateScrollToItem(current.coerceAtLeast(0)) }
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        LazyColumn(
+            Modifier.fillMaxSize(),
+            state = listState,
+            // Scrolling a line to the top puts it a third of the way down, with what's coming next below it.
+            contentPadding = PaddingValues(top = maxHeight / 3, bottom = maxHeight * 2 / 3),
+        ) {
+            itemsIndexed(lines) { i, line ->
+                val alpha by animateFloatAsState(if (i == current) 1f else 0.4f, label = "lyricLine")
+                Text(
+                    line.text.ifEmpty { "♪" }, // a pause in the singing
+                    fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, color = Color.White,
+                    modifier = Modifier.padding(vertical = 8.dp).graphicsLayer { this.alpha = alpha },
+                )
             }
         }
     }

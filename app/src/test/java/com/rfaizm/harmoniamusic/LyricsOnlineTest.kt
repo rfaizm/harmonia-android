@@ -3,7 +3,6 @@ package com.rfaizm.harmoniamusic
 import com.google.gson.Gson
 import com.rfaizm.harmoniamusic.data.lyricsIn
 import com.rfaizm.harmoniamusic.data.remote.dto.LyricsDto
-import com.rfaizm.harmoniamusic.data.stripLrcTimestamps
 import com.rfaizm.harmoniamusic.data.wordsIn
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -11,17 +10,25 @@ import org.junit.Test
 
 class LyricsOnlineTest {
     @Test
-    fun takesThePlainLyricsWhenTheyAreThere() {
-        val entry = LyricsDto(plainLyrics = "Line one\nLine two", syncedLyrics = "[00:12.00]Line one")
+    fun prefersTheSyncedLyricsAndKeepsTheirTimes() {
+        // The times are what lets the player follow the song (T39).
+        val entry = LyricsDto(plainLyrics = "Line one\nLine two", syncedLyrics = "[00:12.00]Line one\n[00:15.30]Line two")
 
-        assertEquals("Line one\nLine two", wordsIn(entry))
+        assertEquals("[00:12.00]Line one\n[00:15.30]Line two", wordsIn(entry))
     }
 
     @Test
-    fun fallsBackToTheSyncedLyricsWithoutTheirTimestamps() {
-        val entry = LyricsDto(plainLyrics = "", syncedLyrics = "[00:12.00]Line one\n[00:15.30]Line two")
+    fun fallsBackToThePlainLyricsWhenNothingIsSynced() {
+        assertEquals("Line one", wordsIn(LyricsDto(plainLyrics = "Line one", syncedLyrics = null)))
+        assertEquals("Line one", wordsIn(LyricsDto(plainLyrics = "Line one", syncedLyrics = "  ")))
+    }
 
-        assertEquals("Line one\nLine two", wordsIn(entry))
+    @Test
+    fun aSyncedResultBeatsAnEarlierPlainOne() {
+        // The exact lookup can answer plain only while the search holds a synced copy of the same song.
+        val results = listOf(LyricsDto(plainLyrics = "Plain"), LyricsDto(plainLyrics = "Plain too", syncedLyrics = "[00:01.00]Synced"))
+
+        assertEquals("[00:01.00]Synced", lyricsIn(results))
     }
 
     @Test
@@ -40,7 +47,7 @@ class LyricsOnlineTest {
     fun anEmptyOrInstrumentalAnswerHasNoLyrics() {
         assertNull(lyricsIn(emptyList()))
         assertNull(wordsIn(null))
-        assertNull(wordsIn(LyricsDto(instrumental = true, plainLyrics = "ignored")))
+        assertNull(wordsIn(LyricsDto(instrumental = true, plainLyrics = "ignored", syncedLyrics = "[00:01.00]ignored")))
         assertNull(wordsIn(LyricsDto(plainLyrics = "   ")))
     }
 
@@ -57,12 +64,5 @@ class LyricsOnlineTest {
 
         assertNull(results[0].plainLyrics)
         assertEquals("Look at the stars", lyricsIn(results))
-    }
-
-    @Test
-    fun stripsTimestampsAndLrcHeaderLines() {
-        val lrc = "[ar:Aurelia Vance]\n[ti:Quiet Harbour]\n[00:01.00]First\n[00:04.25]Second\n"
-
-        assertEquals("First\nSecond", stripLrcTimestamps(lrc))
     }
 }

@@ -30,8 +30,35 @@ internal fun parseUslt(payload: ByteArray): String? {
     return String(payload, start, payload.size - start, charset).trim().ifEmpty { null }
 }
 
-/** Turns `[00:12.00]Line` into `Line`, and drops the `[ar:...]` style header lines of an LRC file. */
-internal fun stripLrcTimestamps(text: String): String = text.lineSequence()
-    .map { it.replace(Regex("""^(\[\d+:\d+(?:[.:]\d+)?])+"""), "").trim() }
-    .filterNot { it.isEmpty() || it.matches(Regex("""^\[[a-zA-Z]+:.*]$""")) }
-    .joinToString("\n")
+/** One line of synced lyrics and the moment it is sung. A blank [text] is a pause in the singing. */
+data class LyricLine(val timeMs: Long, val text: String)
+
+private val STAMP = Regex("""\[(\d+):(\d{1,2})(?:[.:](\d{1,3}))?]""")
+private val LEADING_STAMPS = Regex("""^(?:\[\d+:\d{1,2}(?:[.:]\d{1,3})?]\s*)+""")
+private val WORD_STAMP = Regex("""<\d+:\d{1,2}(?:[.:]\d{1,3})?>""")
+private val OFFSET = Regex("""^\[offset:\s*([+-]?\d+)\s*]$""", RegexOption.IGNORE_CASE)
+
+/**
+ * The timed lines of LRC text (`[01:02.50]line`), in the order they are sung, or nothing when the text has no times,
+ * which is how plain lyrics are told apart. Header lines like `[ar:...]` are skipped, `[offset:...]` is applied, and
+ * enhanced LRC's per-word marks are removed, since the player highlights whole lines.
+ */
+internal fun parseLrc(text: String): List<LyricLine> {
+    val lines = text.lines().map { it.trim() }
+    // A positive offset shows every line that many milliseconds earlier.
+    val offset = lines.firstNotNullOfOrNull { OFFSET.matchEntire(it)?.groupValues?.get(1)?.toLongOrNull() } ?: 0
+    return lines.flatMap { line ->
+        val stamps = LEADING_STAMPS.find(line)?.value ?: return@flatMap emptyList()
+        val words = line.substring(stamps.length).replace(WORD_STAMP, "").trim()
+        STAMP.findAll(stamps).map { LyricLine((millisOf(it) - offset).coerceAtLeast(0), words) }.toList()
+    }.sortedBy { it.timeMs }
+}
+
+private fun millisOf(stamp: MatchResult): Long {
+    val (minutes, seconds, fraction) = stamp.destructured
+    // ".5" is half a second and ".05" five hundredths, so the fraction is read as thousandths after padding.
+    return minutes.toLong() * 60_000 + seconds.toLong() * 1_000 + fraction.padEnd(3, '0').toLong()
+}
+
+/** The line being sung at [positionMs]: the last one already reached, or -1 during the intro. */
+internal fun currentLine(lines: List<LyricLine>, positionMs: Long): Int = lines.indexOfLast { it.timeMs <= positionMs }

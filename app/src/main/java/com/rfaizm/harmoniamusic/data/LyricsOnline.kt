@@ -36,14 +36,12 @@ suspend fun fetchLyrics(song: Song, playerArtist: String?): LyricsResult = withC
     try {
         for (query in lyricsQueries(song, playerArtist)) {
             // The exact endpoint needs an artist; when there is one it is the most precise answer.
-            if (query.artist != null) {
-                service.getLyrics(query.artist, query.title, song.album, song.duration).body()
-                    ?.takeIf { matches(it, query, song.duration) }
-                    ?.let(::wordsIn)
-                    ?.let { return@withContext LyricsResult.Found(it) }
-            }
-            val results = service.searchLyrics(query.title, query.artist).body().orEmpty()
-            lyricsIn(results.filter { matches(it, query, song.duration) })?.let { return@withContext LyricsResult.Found(it) }
+            val exact = query.artist?.let { service.getLyrics(it, query.title, song.album, song.duration).body() }
+                ?.takeIf { matches(it, query, song.duration) }
+            syncedIn(exact)?.let { return@withContext LyricsResult.Found(it) }
+            // Plain only, or no exact match: the search may still hold a synced copy of the same song.
+            val results = service.searchLyrics(query.title, query.artist).body().orEmpty().filter { matches(it, query, song.duration) }
+            lyricsIn(listOfNotNull(exact) + results)?.let { return@withContext LyricsResult.Found(it) }
         }
         LyricsResult.NotFound
     } catch (e: IOException) {
@@ -104,15 +102,19 @@ private fun sameText(a: String?, b: String?) = a != null && b != null && key(a).
 /** Case, spacing, punctuation and bracketed extras don't make two titles different songs. */
 private fun key(text: String) = cleanTag(text).lowercase().filter(Char::isLetterOrDigit)
 
-/** A search answers with many entries and most carry no lyrics, so this takes the first that actually does. */
-internal fun lyricsIn(results: List<LyricsDto>): String? = results.firstNotNullOfOrNull { wordsIn(it) }
+/**
+ * A search answers with many entries and most carry no lyrics. The first synced ones win, since they let the player
+ * follow the song (T39); otherwise the first that has any.
+ */
+internal fun lyricsIn(results: List<LyricsDto>): String? =
+    results.firstNotNullOfOrNull { syncedIn(it) } ?: results.firstNotNullOfOrNull { wordsIn(it) }
 
-/** Plain lyrics if the entry has them, otherwise the synced ones with their timestamps taken off. */
-internal fun wordsIn(entry: LyricsDto?): String? {
-    if (entry == null || entry.instrumental) return null
-    val plain = entry.plainLyrics?.trim().orEmpty()
-    return plain.ifEmpty { stripLrcTimestamps(entry.syncedLyrics.orEmpty()) }.ifEmpty { null }
-}
+/** Synced lyrics if the entry has them, timestamps and all, otherwise the plain ones. */
+internal fun wordsIn(entry: LyricsDto?): String? =
+    syncedIn(entry) ?: entry?.takeUnless { it.instrumental }?.plainLyrics?.trim()?.ifEmpty { null }
+
+private fun syncedIn(entry: LyricsDto?): String? =
+    entry?.takeUnless { it.instrumental }?.syncedLyrics?.trim()?.ifEmpty { null }
 
 /**
  * Lyrics found online, kept on the phone so a song needs the network at most once and still shows them offline.
@@ -139,12 +141,16 @@ object LyricsCache {
     private suspend fun load(context: Context) {
         if (loaded) return
         loaded = true
-        val text = withContext(Dispatchers.IO) { runCatching { file(context).readText() }.getOrNull() } ?: return
+        val text = withContext(Dispatchers.IO) {
+            // The old file kept plain text only, so those songs are looked up again, this time with their timings.
+            File(context.filesDir, "lyrics.json").delete()
+            runCatching { file(context).readText() }.getOrNull()
+        } ?: return
         runCatching {
             val json = JSONObject(text)
             json.keys().forEach { key -> key.toIntOrNull()?.let { byId[it] = json.getString(key) } }
         }
     }
 
-    private fun file(context: Context) = File(context.filesDir, "lyrics.json")
+    private fun file(context: Context) = File(context.filesDir, "lyrics-synced.json")
 }

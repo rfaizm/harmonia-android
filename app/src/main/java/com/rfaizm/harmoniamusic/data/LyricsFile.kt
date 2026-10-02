@@ -34,6 +34,6 @@ private fun findAndRead(context: Context, folder: android.net.Uri, wanted: Strin
     } ?: return null
     val file = DocumentsContract.buildDocumentUriUsingTree(folder, id)
     val text = context.contentResolver.openInputStream(file)?.use { it.bufferedReader().readText() } ?: return null
-    // An .lrc is timestamped by definition; the player shows the words, and T18's helper takes the times off.
-    return stripLrcTimestamps(text).ifBlank { null }
+    // Kept with its timestamps, so the player can follow the song (T39).
+    return text.ifBlank { null }
 }

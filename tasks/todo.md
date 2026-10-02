@@ -47,7 +47,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] **Checkpoint M7:** CI green on a push (done); `v0.1.0` installs from its GitHub Release; after T38 it appears in Play internal testing
 
 ## M8: Synced lyrics (next, before M6)
-- [ ] T39 Synced lyrics follow the song: `parseLrc` and `currentLine`; every source keeps its timings (online prefers synced, cache reset); the lyrics replace the art in the full player with the current line highlighted
+- [x] T39 Synced lyrics follow the song: `parseLrc` and `currentLine`; every source keeps its timings (online prefers synced, cache reset); the lyrics replace the art in the full player with the current line highlighted
 - [ ] T40 Tap a line to play from it; scrolling by hand pauses the following for 3 s
 - [ ] **Checkpoint M8:** phone check on the release build (follows the song, tap to jump, controls still work, plain and no-lyrics states)
 

@@ -310,6 +310,7 @@ fun HarmoniaApp() {
                     FullPlayer(
                         song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
                         shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics, playerArtist = playerArtist,
+                        position = { controller?.currentPosition ?: 0L },
                         onClose = { fullPlayer = false },
                         onToggle = { Util.handlePlayPauseButtonAction(controller) },
                         onNext = { controller?.seekToNext() },
