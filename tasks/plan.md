@@ -506,6 +506,10 @@ Decisions:
       mini player's spring (340/30, §10).
   - **Accessibility:** each letter is a TalkBack button ("Jump to E", "Jump to other titles" for #).
   - **Checks:** a light and a dark `@Preview`, and `sectionAt` is unit-tested.
+  - **Fixed after the phone check:** the letter sat about 4 dp below its lit dot. Material 3's default text style
+    gives every `Text` a 24 sp line height, and the 16 dp dot cut that box short and drew it from the top. The
+    letters now have `lineHeight = 10.sp`. The offset was worked out from Nunito's metrics: +3.76 dp before (+4.71
+    dp pressed, matching the screenshot), −0.24 dp after.
 - **Checkpoint M9:** on the phone, release build:
   - jump to Z and back to A, letter by letter, with no stutter;
   - switch to Recent and back;

@@ -191,6 +191,10 @@ private fun IndexLetter(letter: String, lit: Boolean, pressed: Boolean, onActiva
         ) {
             Text(
                 letter, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold,
+                // The theme's body style brings a 24 sp line height: the 16 dp dot cut that box short and drew it
+                // from the top, which left the letter about 4 dp below the dot's centre. A line as tall as the
+                // letter keeps it centred (Nunito's own ink sits 0.02 em off, too little to see).
+                lineHeight = 10.sp,
                 color = if (lit || pressed) colors.primary else colors.mutedForeground,
             )
         }
