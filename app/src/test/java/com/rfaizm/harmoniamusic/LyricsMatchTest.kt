@@ -5,6 +5,7 @@ import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.guessFromFileName
 import com.rfaizm.harmoniamusic.data.lyricsQueries
 import com.rfaizm.harmoniamusic.data.matches
+import com.rfaizm.harmoniamusic.data.titleWithout
 import com.rfaizm.harmoniamusic.data.remote.dto.LyricsDto
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -55,12 +56,42 @@ class LyricsMatchTest {
 
         assertEquals(
             listOf(
-                LyricsQuery("Coldplay", "Coldplay Yellow"), // what the player read, with the title we have
-                LyricsQuery("Coldplay", "Yellow"),          // what the file name says
+                LyricsQuery("Coldplay", "Yellow"),          // what the player read, taken out of the title we have
+                LyricsQuery("Coldplay", "Coldplay Yellow"), // the title whole, in case it really starts that way
                 LyricsQuery(null, "Yellow"),                // last resort, only trusted if the length matches
             ),
             queries,
         )
+    }
+
+    // The artist inside the title
+
+    @Test
+    fun theArtistComesOffEitherEndOfTheTitle() {
+        // Downloaded songs are often titled "Artist - Title" or "Title - Artist", and the service only knows the title.
+        val titleFirst = Song(3, "Sign of the Times - Harry Styles", "Harry Styles", "Unknown album", 0, 341)
+        val artistFirst = Song(4, "Harry Styles - Sign of the Times", "Harry Styles", "Unknown album", 0, 341)
+
+        assertEquals(LyricsQuery("Harry Styles", "Sign of the Times"), lyricsQueries(titleFirst, playerArtist = null).first())
+        assertEquals(LyricsQuery("Harry Styles", "Sign of the Times"), lyricsQueries(artistFirst, playerArtist = null).first())
+    }
+
+    @Test
+    fun aTitleThatReallyStartsWithTheArtistsNameIsTriedWholeToo() {
+        val song = Song(5, "Queen of the Night", "Queen", "Unknown album", 0, 200)
+
+        assertEquals(
+            listOf(LyricsQuery("Queen", "of the Night"), LyricsQuery("Queen", "Queen of the Night")),
+            lyricsQueries(song, playerArtist = null).take(2),
+        )
+    }
+
+    @Test
+    fun onlyTheArtistAsWholeWordsComesOff() {
+        assertEquals("Museum", titleWithout("Muse", "Museum"))
+        assertEquals("Adele's Song", titleWithout("Adele", "Adele's Song"))
+        assertEquals("Weezer", titleWithout("Weezer", "Weezer")) // a self-titled song keeps its name
+        assertEquals("Hello", titleWithout("adele", "ADELE | Hello"))
     }
 
     @Test

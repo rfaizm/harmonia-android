@@ -49,6 +49,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## M8: Synced lyrics (next, before M6)
 - [x] T39 Synced lyrics follow the song: `parseLrc` and `currentLine`; every source keeps its timings (online prefers synced, cache reset); the lyrics replace the art in the full player with the current line highlighted
 - [x] T39 timing fix: pick the synced copy closest in length to the file, stop sending "Unknown album", read the clock every 50 ms, and add Earlier/Later buttons saved per song
+- [x] T39 title fix: take the artist's name off a title like "Sign of the Times - Harry Styles" before searching
 - [ ] T40 Tap a line to play from it (seek to the line's time plus the song's saved shift); scrolling by hand pauses the following for 3 s
 - [ ] **Checkpoint M8:** phone check on the release build (follows the song, tap to jump, controls still work, plain and no-lyrics states)
 

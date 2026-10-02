@@ -61,13 +61,36 @@ suspend fun fetchLyrics(song: Song, playerArtist: String?): LyricsResult = withC
 internal fun lyricsQueries(song: Song, playerArtist: String?): List<LyricsQuery> {
     val guess = guessFromFileName(song.fileName)
     return buildList {
-        if (song.displayArtist != UNKNOWN_ARTIST) add(LyricsQuery(song.displayArtist, song.displayTitle))
-        playerArtist?.let(::cleanTag)?.takeIf { it.isNotBlank() && it != UNKNOWN_ARTIST }
-            ?.let { add(LyricsQuery(it, song.displayTitle)) }
+        fun addFor(artist: String) {
+            add(LyricsQuery(artist, titleWithout(artist, song.displayTitle)))
+            add(LyricsQuery(artist, song.displayTitle)) // in case the title really starts with the artist's name
+        }
+        if (song.displayArtist != UNKNOWN_ARTIST) addFor(song.displayArtist)
+        playerArtist?.let(::cleanTag)?.takeIf { it.isNotBlank() && it != UNKNOWN_ARTIST }?.let(::addFor)
         guess?.let { (artist, title) -> add(LyricsQuery(artist, title)) }
-        add(LyricsQuery(null, guess?.second ?: song.displayTitle))
+        add(LyricsQuery(null, guess?.second ?: firstOrNull()?.title ?: song.displayTitle))
     }.distinctBy { key(it.artist.orEmpty()) + "|" + key(it.title) }
 }
+
+/**
+ * Downloaded songs are often titled "Artist - Title" or "Title - Artist" ("Sign of the Times Harry Styles" once
+ * cleaned), and the service only knows the bare title. Takes [artist] off either end, but only as whole words.
+ */
+internal fun titleWithout(artist: String, title: String): String {
+    val name = artist.trim()
+    val text = title.trim()
+    if (name.isEmpty() || text.length <= name.length) return text
+    val rest = when {
+        text.startsWith(name, ignoreCase = true) && text[name.length].isSeparator() ->
+            text.drop(name.length).trimStart { it.isSeparator() }
+        text.endsWith(name, ignoreCase = true) && text[text.length - name.length - 1].isSeparator() ->
+            text.dropLast(name.length).trimEnd { it.isSeparator() }
+        else -> text
+    }
+    return rest.ifEmpty { text }
+}
+
+private fun Char.isSeparator() = isWhitespace() || this in "-–—:|,·"
 
 /**
  * SPEC.md S1: "Coldplay - Yellow.mp3" names its artist and title, as most downloaded files do. The parts are cleaned

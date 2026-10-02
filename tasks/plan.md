@@ -393,6 +393,12 @@ Decisions:
       This is because no automatic pick can know the file's own version, for example a video rip with a longer
       intro.
   - T40's tap-to-seek must add the song's saved shift to the line's time.
+- **T39 title fix (found on the phone, 2026-10-02).** A song titled "Sign of the Times - Harry Styles" with the artist
+  tag "Harry Styles" searched for the title "Sign of the Times Harry Styles" and found nothing (0 results on LRCLIB).
+  - Fix: `titleWithout()` takes a known artist off either end of the title, as whole words only, before searching.
+    The whole title is still tried next, for titles that really start with the artist's name ("Queen of the
+    Night"). The title-only query also uses the cleaned title.
+  - Checked live: the cleaned title finds 17 synced copies.
 - **Checkpoint M8:** a phone check on the release build, with no lag while the list follows the song:
   - a song with synced online lyrics follows the music;
   - tapping a line jumps there;
