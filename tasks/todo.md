@@ -63,5 +63,5 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## Loose ends (details in `tasks/plan.md`)
 - [ ] T23 Adaptive launcher icon: note-only foreground inside the safe zone, dark slate background, real monochrome layer (before T22)
 - [ ] T24 Delete the template leftovers (~120 lines: unused colours, keep-rules file, backup-rule templates, instrumented test stub and its deps)
-- [ ] T25 Git hygiene: split `12cb14e` (shuffle fix + icon layers), rename `m2-playback` or merge it into `main` — handled inside T34
+- [x] T25 Git hygiene: the commit that mixed the shuffle fix with the icon layers is split in two (done in T34, before the first push); `main` catches up in T34
 - [ ] T26 "Rate Harmonia" opens the Play Store listing, with a browser fallback (after T22)

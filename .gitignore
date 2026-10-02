@@ -15,3 +15,9 @@
 local.properties
 .kotlin
 .claude/settings.local.json
+
+# Signing keys and service-account credentials never belong in the repository.
+*.jks
+*.keystore
+keystore.properties
+play-service-account*.json

@@ -255,8 +255,8 @@ planning: `actions/checkout@v7`, `actions/setup-java@v6` (Temurin 25, as `gradle
   - Before the first push, while history can still change safely: mark `gradlew` executable (stored as `100644`,
     so the first Linux build would fail with "Permission denied"); add `.gitattributes` keeping `gradlew` LF; extend
     `.gitignore` with keystores, `keystore.properties` and the Play service-account JSON; ask whether to switch the
-    commit email to GitHub's private noreply address (every commit shows the personal address today); optionally
-    split `12cb14e`.
+    commit email to GitHub's private noreply address (every commit shows the personal address today); split the commit that
+    mixed the shuffle fix with the icon layers (done).
   - Bring `main` up to date, then `git remote add origin` and `git push -u origin main` (`gh` isn't installed).
   - Acceptance: code and history on GitHub, `main` holds all the work, no key or password anywhere in it.
 - **T35 CI on every push and pull request (S).**
@@ -406,8 +406,8 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
   - Acceptance criteria: `testDebugUnitTest`, `lintDebug` and `assembleRelease` all still pass, the app still
     launches, and backup behaviour is unchanged (no rules file means the same defaults).
 - **T25 Git hygiene (S). Handled inside T34, before the first push.**
-  - Commit `12cb14e` carries the shuffle ANR fix *and* the launcher icon layers, because those files were staged
-    when it was made. Split it so each commit is one concern.
+  - Done in T34: the commit that carried the shuffle ANR fix *and* the launcher icon layers (staged when it was made)
+    is now two commits, each one concern.
   - The branch is still called `m2-playback` although it now holds M1 to M4. Rename it, or merge it into `main`.
   - Acceptance criteria: each commit touches one concern, and the branch builds after the rewrite.
   - Nothing is pushed, so the rewrite is safe; confirm with the user before rewriting history.
