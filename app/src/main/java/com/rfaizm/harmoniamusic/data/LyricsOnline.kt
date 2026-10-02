@@ -148,8 +148,8 @@ object LyricsCache {
         if (loaded) return
         loaded = true
         val text = withContext(Dispatchers.IO) {
-            // The old file kept plain text only, so those songs are looked up again, this time with their timings.
-            File(context.filesDir, "lyrics.json").delete()
+            // Older files kept plain text, or whichever synced copy came first, so those songs are looked up again.
+            listOf("lyrics.json", "lyrics-synced.json").forEach { File(context.filesDir, it).delete() }
             runCatching { file(context).readText() }.getOrNull()
         } ?: return
         runCatching {
@@ -158,5 +158,5 @@ object LyricsCache {
         }
     }
 
-    private fun file(context: Context) = File(context.filesDir, "lyrics-synced.json")
+    private fun file(context: Context) = File(context.filesDir, "lyrics-v3.json")
 }
