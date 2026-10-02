@@ -4,6 +4,8 @@
 
 An offline music player for Android that plays the songs already on your phone. No account, no ads, no streaming.
 
+Download the signed APK from [Releases](https://github.com/rfaizm/harmonia-android/releases).
+
 ## Features
 
 - Scans the phone's music and cleans up messy tags (for example "Song (Official Video) [y2mate]").
@@ -29,3 +31,4 @@ You need JDK 25 and the Android SDK.
 ```
 
 Every push to `main` and every pull request runs the unit tests, lint and a debug build on GitHub Actions.
+Pushing a tag such as `v1.2.3` builds a signed APK and app bundle and publishes them as a GitHub Release.
