@@ -62,3 +62,6 @@ private fun millisOf(stamp: MatchResult): Long {
 
 /** The line being sung at [positionMs]: the last one already reached, or -1 during the intro. */
 internal fun currentLine(lines: List<LyricLine>, positionMs: Long): Int = lines.indexOfLast { it.timeMs <= positionMs }
+
+/** Where this line is sung once the song's Earlier/Later shift is applied, which is where a tap on it plays from. */
+internal fun LyricLine.startsAt(shiftMs: Int): Long = (timeMs + shiftMs).coerceAtLeast(0)

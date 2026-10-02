@@ -4,6 +4,7 @@ import com.rfaizm.harmoniamusic.data.LyricLine
 import com.rfaizm.harmoniamusic.data.currentLine
 import com.rfaizm.harmoniamusic.data.parseLrc
 import com.rfaizm.harmoniamusic.data.parseUslt
+import com.rfaizm.harmoniamusic.data.startsAt
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -89,6 +90,23 @@ class LyricsTest {
     @Test
     fun lyricsWithoutTimesAreNotSynced() {
         assertEquals(emptyList<LyricLine>(), parseLrc("Look at the stars\nLook how they shine for you"))
+    }
+
+    @Test
+    fun aTappedLinePlaysFromItsTimeMovedByTheSongsShift() {
+        // T40: the shift from Earlier/Later moves where a line starts, so a tap has to land on the same moment.
+        assertEquals(10_500L, LyricLine(10_000, "Line").startsAt(shiftMs = 500))
+        assertEquals(9_500L, LyricLine(10_000, "Line").startsAt(shiftMs = -500))
+        assertEquals(0L, LyricLine(200, "First").startsAt(shiftMs = -500)) // never before the song begins
+    }
+
+    @Test
+    fun aTappedLineBecomesTheCurrentOne() {
+        val lines = listOf(LyricLine(200, "One"), LyricLine(5_000, "Two"))
+
+        lines.forEachIndexed { i, line ->
+            listOf(-500, 0, 500).forEach { shift -> assertEquals(i, currentLine(lines, line.startsAt(shift) - shift)) }
+        }
     }
 
     @Test

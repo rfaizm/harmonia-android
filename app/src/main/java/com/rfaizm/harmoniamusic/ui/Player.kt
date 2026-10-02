@@ -14,6 +14,7 @@ import androidx.compose.runtime.withFrameMillis
 import com.rfaizm.harmoniamusic.data.LyricLine
 import com.rfaizm.harmoniamusic.data.currentLine
 import com.rfaizm.harmoniamusic.data.parseLrc
+import com.rfaizm.harmoniamusic.data.startsAt
 import kotlinx.coroutines.delay
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -23,6 +24,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -188,7 +190,13 @@ fun FullPlayer(
 
         // 2. Album art, or the lyrics in its place (T39), so the controls below keep working while they're read
         Crossfade(showLyrics, Modifier.weight(1f).fillMaxWidth(), label = "artOrLyrics") { lyricsShown ->
-            if (lyricsShown) LyricsView(song, lyrics, playerArtist, position, Modifier.fillMaxSize().padding(vertical = 16.dp))
+            if (lyricsShown) LyricsView(
+                song, lyrics, playerArtist, position,
+                // T40: a tapped line plays, even from pause. Play goes first, because at the end of a song it starts
+                // over from 0:00; the seek after it then lands on the line.
+                onPlayFrom = { ms -> if (!isPlaying) onToggle(); seek(progressOf(ms, song.duration)) },
+                modifier = Modifier.fillMaxSize().padding(vertical = 16.dp),
+            )
             else PlayerArt(song, isPlaying)
         }
 
@@ -343,7 +351,14 @@ private fun ExtraChip(icon: ImageVector, text: String, active: Boolean = false, 
  * and with none there is an honest note and, when the setting is on, the online lookup.
  */
 @Composable
-private fun LyricsView(song: Song, lyrics: String?, playerArtist: String?, position: () -> Long, modifier: Modifier = Modifier) {
+private fun LyricsView(
+    song: Song,
+    lyrics: String?,
+    playerArtist: String?,
+    position: () -> Long,
+    onPlayFrom: (ms: Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     // Anything found online before, so the same song needs no network a second time.
@@ -361,7 +376,7 @@ private fun LyricsView(song: Song, lyrics: String?, playerArtist: String?, posit
 
     Box(modifier.padding(horizontal = 28.dp), contentAlignment = Alignment.CenterStart) {
         when {
-            lines.isNotEmpty() -> SyncedLyrics(lines, song.id, position)
+            lines.isNotEmpty() -> SyncedLyrics(lines, song.id, position, onPlayFrom)
             shown != null -> Column(Modifier.fillMaxSize()) {
                 Text(
                     "NOT SYNCED TO THE SONG", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
@@ -416,10 +431,11 @@ private fun LyricsView(song: Song, lyrics: String?, playerArtist: String?, posit
 
 /**
  * Lyrics that follow the song: the line being sung is lit and kept a third of the way down. Earlier and Later move
- * this song's timing in half seconds, and the app remembers it (see [Settings.lyricsShift]).
+ * this song's timing in half seconds, and the app remembers it (see [Settings.lyricsShift]). Tapping a line plays
+ * from it (T40).
  */
 @Composable
-private fun SyncedLyrics(lines: List<LyricLine>, songId: Int, position: () -> Long) {
+private fun SyncedLyrics(lines: List<LyricLine>, songId: Int, position: () -> Long, onPlayFrom: (ms: Long) -> Unit) {
     val readPosition by rememberUpdatedState(position)
     var positionMs by remember { mutableLongStateOf(readPosition()) }
     LaunchedEffect(Unit) {
@@ -438,7 +454,17 @@ private fun SyncedLyrics(lines: List<LyricLine>, songId: Int, position: () -> Lo
     val current by remember(lines) { derivedStateOf { currentLine(lines, positionMs - shift) } }
     // Opens on the line being sung rather than scrolling down to it from the top.
     val listState = remember(lines) { LazyListState(current.coerceAtLeast(0)) }
-    LaunchedEffect(current, listState) { listState.animateScrollToItem(current.coerceAtLeast(0)) }
+    // Scrolling by hand to read ahead isn't pulled back; three seconds after the finger lifts, the view glides back.
+    val dragged by listState.interactionSource.collectIsDraggedAsState()
+    var following by remember(lines) { mutableStateOf(true) }
+    LaunchedEffect(dragged) {
+        if (dragged) following = false
+        else if (!following) {
+            delay(3_000)
+            following = true
+        }
+    }
+    LaunchedEffect(current, following, listState) { if (following) listState.animateScrollToItem(current.coerceAtLeast(0)) }
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -458,7 +484,15 @@ private fun SyncedLyrics(lines: List<LyricLine>, songId: Int, position: () -> Lo
                     Text(
                         line.text.ifEmpty { "♪" }, // a pause in the singing
                         fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, color = Color.White,
-                        modifier = Modifier.padding(vertical = 8.dp).graphicsLayer { this.alpha = alpha },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable(onClickLabel = "Play from this line") {
+                                following = true // the tapped line is where the reader wants to be
+                                onPlayFrom(line.startsAt(shift))
+                            }
+                            .padding(vertical = 8.dp)
+                            .graphicsLayer { this.alpha = alpha },
                     )
                 }
             }
