@@ -3,6 +3,18 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+// The release workflow sets these: the upload key from GitHub secrets, and the tag being released.
+// Without them a local build keeps the debug key and version 1.0.
+val keystoreFile = providers.environmentVariable("KEYSTORE_FILE").orNull
+val versionTag = providers.environmentVariable("VERSION_TAG").orNull
+
+/** "v1.2.3" gives "1.2.3" and 10203. Minor and patch stay under 100 so every newer tag has a bigger code, as Play needs. */
+fun versionFromTag(tag: String): Pair<String, Int> {
+    val (major, minor, patch) = Regex("""v(\d+)\.(\d{1,2})\.(\d{1,2})""").matchEntire(tag)?.destructured
+        ?: error("VERSION_TAG must look like v1.2.3, got \"$tag\"")
+    return "$major.$minor.$patch" to major.toInt() * 10_000 + minor.toInt() * 100 + patch.toInt()
+}
+
 android {
     namespace = "com.rfaizm.harmoniamusic"
     compileSdk {
@@ -13,8 +25,9 @@ android {
         applicationId = "com.rfaizm.harmoniamusic"
         minSdk = 24
         targetSdk = 37
-        versionCode = 1
-        versionName = "1.0"
+        val (name, code) = versionTag?.let { versionFromTag(it) } ?: ("1.0" to 1)
+        versionCode = code
+        versionName = name
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -22,13 +35,24 @@ android {
         buildConfigField("String", "LYRICS_BASE_URL", "\"https://lrclib.net/api/\"")
     }
 
+    signingConfigs {
+        if (keystoreFile != null) {
+            // Once a keystore is given, a missing password fails the build instead of quietly using the debug key.
+            create("release") {
+                storeFile = file(keystoreFile)
+                storePassword = providers.environmentVariable("KEYSTORE_PASSWORD").get()
+                keyAlias = providers.environmentVariable("KEY_ALIAS").get()
+                keyPassword = providers.environmentVariable("KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
             optimization {
                 enable = true
             }
-            // ponytail: debug key so the release variant installs locally; add a real keystore before Play Store.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
     }
     compileOptions {
