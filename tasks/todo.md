@@ -46,6 +46,11 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] T38 Tag → Play internal testing (waits for the Play Console account)
 - [ ] **Checkpoint M7:** CI green on a push (done); `v0.1.0` installs from its GitHub Release; after T38 it appears in Play internal testing
 
+## M8: Synced lyrics (next, before M6)
+- [ ] T39 Synced lyrics follow the song: `parseLrc` and `currentLine`; every source keeps its timings (online prefers synced, cache reset); the lyrics replace the art in the full player with the current line highlighted
+- [ ] T40 Tap a line to play from it; scrolling by hand pauses the following for 3 s
+- [ ] **Checkpoint M8:** phone check on the release build (follows the song, tap to jump, controls still work, plain and no-lyrics states)
+
 ## M6: MVVM migration (before M5 — T19 and T20 rework the same UI)
 - [ ] T30 Tidy `data/`: split the models, the display helpers and the seed data; move `albumArtOf` into `ui/` (no behaviour change)
 - [ ] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once

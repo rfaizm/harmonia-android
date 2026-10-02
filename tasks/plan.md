@@ -57,6 +57,8 @@ M4 T13 sleep timer · T14 smart shuffle · T15 album art + lock-screen privacy �
         │
 M7 T34 GitHub · T35 CI · T36 signing · T37 tag release · T38 Play upload   ← before M6
         │
+M8 T39 synced lyrics follow the song ──► T40 tap a line to play from it   ← next, before M6
+        │
 M6 T30 tidy data · T31 Hilt + data sources · T32 repositories · T33 ViewModels   ← before M5
         │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
@@ -286,6 +288,108 @@ planning: `actions/checkout@v7`, `actions/setup-java@v6` (Temurin 25, as `gradle
 - Not covered: instrumented or UI tests (the app has none, and emulator tests on CI are slow). Gestures and playback
   are still checked on the phone at each checkpoint.
 
+### M8: Synced lyrics (runs next, before M6)
+
+The user wants lyrics the way YouTube Music shows them: the line being sung is highlighted, the view follows the
+song, and tapping a line jumps there. The timings already reach the phone, and the app throws them away:
+- LRCLIB returns `syncedLyrics` (`[01:02.50]line`) for many songs, but `wordsIn()` prefers `plainLyrics` and strips
+  the timestamps off the synced version.
+- A `.lrc` file is synced by definition, but `readLrc()` strips its timestamps too.
+- So `lyrics.json`, the cache, only ever holds plain text.
+
+What exists to build on:
+- `HarmoniaApp` polls `controller.currentPosition` every 500 ms while playing.
+- `FullPlayer` seeks through `onSeek(fraction)`, and `progressOf()` turns milliseconds into that fraction.
+- The album art is a `weight(1f)` box between the top bar and the song info.
+
+Decisions:
+- **The lyrics take the album art's place inside the full player**, instead of a bottom sheet over it. The Lyrics
+  chip switches between art and lyrics. The scrubber, play/pause and next/prev stay visible and working under the
+  lyrics, so no controls are copied, and the area grows with the screen. The current sheet's contents move into
+  that area: the "no lyrics", "not found" and "offline" messages and the "Find lyrics online" button. The view
+  stays on lyrics when the song changes and goes back to the art when the player closes. *(The user chose this on
+  2026-10-02 over a bigger bottom sheet with its own small controls.)*
+- **One parser for every source.** The tag, the `.lrc` file and the online result all hand over raw text.
+  `parseLrc()` returns timed lines when the text has timestamps; text without them shows as plain lines, as today.
+  A tag holding LRC text, which downloaded files often have, then syncs as well with no extra code.
+- **Synced beats plain online.** For a verified match (S3), synced lyrics win over plain ones. If `/api/get` only
+  has plain lyrics, the same query's search results are checked for a synced copy before settling for plain.
+- **The cache keeps the timings.** It moves to a new file, and the old `lyrics.json` is deleted because it only
+  holds plain text. A song looked up before needs one more tap on "Find lyrics online".
+- **A smooth highlight without polling more for the whole app.**
+  - While the lyrics are on screen and playing, the view reads the position itself about every 100 ms, through a
+    `() -> Long` that wraps `controller.currentPosition`. MediaController computes this locally, without a call to
+    the service.
+  - `derivedStateOf` turns the position into a line number, so the screen redraws only when the line changes.
+  - The app-wide 500 ms tick stays as it is.
+- **Tapping a line seeks to its time and plays**, so a paused song starts, because the line was tapped to be heard.
+- **Scrolling by hand pauses the following.** Three seconds after the finger lifts, the view glides back to the
+  current line.
+- Not in scope:
+  - Word-by-word karaoke. Word timings (`<00:12.50>`) are removed, and the whole line is highlighted.
+  - ID3 `SYLT` frames, which are rare and binary.
+  - M4A and FLAC lyrics tags, which are still open from T18.
+  - A manual timing offset.
+
+- **T39 Synced lyrics follow the song (M).**
+  - `data/Lyrics.kt` gets `LyricLine(timeMs, text)` and two pure functions:
+    - `parseLrc(text): List<LyricLine>` returns an empty list when the text has no timestamps. It must handle:
+      - all timestamp forms: `[mm:ss]`, `[mm:ss.xx]`, `[mm:ss.xxx]` and `[mm:ss:xx]`;
+      - several timestamps on one line (`[00:12.00][01:40.00]chorus`);
+      - header lines (`[ar:]`, `[ti:]`, `[length:]`, …), which are skipped;
+      - `[offset:±ms]`, which is applied;
+      - word timings (`<00:12.50>`), which are removed;
+      - blank lines, which are kept as instrumental gaps.
+
+      The result is sorted by time.
+    - `currentLine(lines, positionMs): Int` is the last line whose time has been reached, or -1 before the first.
+  - `stripLrcTimestamps` goes away, because the plain view uses the parsed lines' text.
+  - The sources keep their timings:
+    - `readLrc` returns the raw file.
+    - `wordsIn` and `lyricsIn` prefer `syncedLyrics`.
+    - `fetchLyrics` looks for a synced copy in the search when `/get` only has plain lyrics.
+    - The cache file is renamed, and the old one is deleted.
+  - `ui/Player.kt` gets a `LyricsView` in place of the art, with three states:
+    - **Synced:** a `LazyColumn` of lines. The current line is full white and bold, the others are dimmed, and the
+      list scrolls the current line to about a third of the way down, with an animation.
+    - **Plain:** scrollable text with a small "Not synced" note.
+    - **None:** today's messages and the "Find lyrics online" button.
+
+    The scroll resets when the song changes.
+  - `ui/HarmoniaApp.kt` passes `position = { controller?.currentPosition ?: 0 }`.
+  - Tests:
+    - `LyricsTest` covers `parseLrc` (each format above, timestamps out of order, the offset) and `currentLine`
+      (before the first line, exactly on a timestamp, after the last line).
+    - `LyricsOnlineTest` covers synced chosen over plain, plain kept when there is no synced version, and
+      instrumental still giving nothing.
+  - Acceptance:
+    - A song with synced online lyrics shows them line by line, and the highlight changes within about 0.3 s of
+      the singer.
+    - Dragging the scrubber moves the highlight and the view.
+    - Plain-only lyrics still show.
+    - The "find online" flow and its messages work as before.
+  - Files: `data/Lyrics.kt`, `data/LyricsFile.kt`, `data/LyricsOnline.kt`, `ui/Player.kt`, `ui/HarmoniaApp.kt`, and
+    the tests `LyricsTest` and `LyricsOnlineTest`.
+- **T40 Tap a line to play from it (S).**
+  - Each synced line can be tapped, with the accessibility label "Play from this line". A tap does
+    `onSeek(progressOf(line.timeMs, song.duration))`, then plays if the song was paused. Plain lyrics have no
+    times, so they stay untappable.
+  - A finger drag on the list pauses the following. Three seconds after release, the view glides back to the
+    current line.
+  - Acceptance:
+    - Tapping a line two minutes ahead jumps there, and the highlight lands on that line.
+    - Tapping while paused starts playing from that line.
+    - Scrolling away to read isn't pulled back while the finger is down, and the view returns 3 s after letting go.
+  - Files: `ui/Player.kt`. The seek maths reuses `progressOf`, which is already tested.
+- **Checkpoint M8:** a phone check on the release build, with no lag while the list follows the song:
+  - a song with synced online lyrics follows the music;
+  - tapping a line jumps there;
+  - the scrubber and next/prev still work with lyrics on screen;
+  - changing songs resets the view;
+  - a `.lrc` file is synced, if the user has one;
+  - plain lyrics show as before;
+  - the no-lyrics states work as before.
+
 ### M6: MVVM migration (runs before M5, since T19 and T20 rework the same UI)
 
 The `data/` review found the View calling the network directly (`ui/Player.kt` → `fetchLyrics`), a `@Composable`
@@ -427,6 +531,8 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
 | Media3 service and permission edge cases across API 24 to 37 | High | T6 goes first in M2. Rely on Media3 defaults and don't customise the notification. |
 | Scoped-storage delete behaves differently on each API level | Med | T16 is isolated with three explicit branches. |
 | Lyrics are blocked by storage rules | Med | Timeboxed spike, embedded lyrics first. |
+| Synced lyrics run early or late (a radio edit timed against the album version) | Med | S3's ±3 s length check already filters other versions. A manual offset can follow if it shows up on the phone. |
+| The lyrics view fights the user's finger, or stutters on a low-end phone | Med | T40 pauses the following while scrolling. The line number goes through `derivedStateOf`, so only a line change redraws. Judge on the release build. |
 
 ## Open questions (defaults in brackets; they don't block M0 to M3)
 
@@ -434,6 +540,8 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
 - The Settings toggles "Gapless" and "Crossfade" have nothing to control once Media3 is in (gapless is always on). Remove them? [remove]
 - On API 30+ the system already shows its own delete confirmation. Skip the app's red dialog there, to avoid confirming twice? [skip on 30+]
 - Should the UI be translated to Indonesian (T21)? [not now]
+- M8: should the old cache of plain online lyrics be dropped, so those songs can be fetched again with timings?
+  [drop it]
 
 ## How this plan is kept
 
