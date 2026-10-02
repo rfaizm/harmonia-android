@@ -55,6 +55,8 @@ M3 T10 JSON persistence    T11 settings prefs → service    T12 resume session 
         │
 M4 T13 sleep timer · T14 smart shuffle · T15 album art + lock-screen privacy · T16 delete file · T17 batch selection · T18 lyrics spike · T27 row swipe
         │
+M7 T34 GitHub · T35 CI · T36 signing · T37 tag release · T38 Play upload   ← before M6
+        │
 M6 T30 tidy data · T31 Hilt + data sources · T32 repositories · T33 ViewModels   ← before M5
         │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
@@ -237,6 +239,53 @@ Verification for every task: `./gradlew :app:testDebugUnitTest :app:assembleDebu
 
 **Checkpoint M4:** the user tests each feature on the phone.
 
+### M7: CI/CD on free services (runs before M6, so the refactor is checked on every push)
+
+The goal is a Play Store release that also works as a portfolio piece. Today every check runs by hand on one laptop:
+the code is not on GitHub, `main` is 36 commits behind, release is signed with the debug key and `versionCode` is 1.
+
+Decisions taken with the user: **public GitHub repo** (unlimited free Actions minutes, visible to recruiters);
+automatic release goes **up to Play's internal testing**, with the public release a manual button press; there is
+**no Play Console account yet** ($25, once), so T38 waits for it. Tool versions were checked against GitHub while
+planning: `actions/checkout@v7`, `actions/setup-java@v6` (Temurin 25, as `gradle-daemon-jvm.properties` pins JDK 25),
+`gradle/actions/setup-gradle@v6`, `actions/upload-artifact@v7`, `softprops/action-gh-release@v3`,
+`r0adkll/upload-google-play@v1.1.5`.
+
+- **T34 Put the project on GitHub (S; the user creates the repo). Absorbs T25.**
+  - Before the first push, while history can still change safely: mark `gradlew` executable (stored as `100644`,
+    so the first Linux build would fail with "Permission denied"); add `.gitattributes` keeping `gradlew` LF; extend
+    `.gitignore` with keystores, `keystore.properties` and the Play service-account JSON; ask whether to switch the
+    commit email to GitHub's private noreply address (every commit shows the personal address today); optionally
+    split `12cb14e`.
+  - Bring `main` up to date, then `git remote add origin` and `git push -u origin main` (`gh` isn't installed).
+  - Acceptance: code and history on GitHub, `main` holds all the work, no key or password anywhere in it.
+- **T35 CI on every push and pull request (S).**
+  - `.github/workflows/ci.yml`: Java 25, Gradle cache, `./gradlew testDebugUnitTest lintDebug assembleDebug`; test and
+    lint reports kept as artifacts when a run fails; older runs on the same branch cancelled. A `README.md` with the
+    status badge.
+  - Acceptance: a push shows a green check, and a deliberately broken test turns a pull request red.
+- **T36 Real signing and version numbers (S; the user creates the key).**
+  - An upload keystore made with one `keytool` command, backed up twice, never committed. A `release` signing config
+    read from environment variables, falling back to the debug key when they are absent so local builds still work.
+    `versionCode` from CI, `versionName` from the git tag. Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+    `KEY_ALIAS`, `KEY_PASSWORD`.
+  - Acceptance: with the secrets, the release build is signed with the upload key; without them it still builds.
+- **T37 Tag → signed release on GitHub (S).**
+  - `.github/workflows/release.yml` on a `v*` tag: decode the keystore, run the tests, `bundleRelease` and
+    `assembleRelease`, attach the `.aab` and `.apk` to a GitHub Release with generated notes.
+  - Acceptance: pushing `v1.0.0` produces a release whose APK installs on the phone and is signed with the upload key.
+- **T38 Upload to Play internal testing (S; waits for the Play account).**
+  - The user creates the Play Console account and the app, uploads the first bundle by hand (Play needs it to register
+    the package and enrol Play App Signing), creates a Google Cloud service account with a JSON key, grants it
+    release rights, and stores it as `PLAY_SERVICE_ACCOUNT_JSON`. `release.yml` gains an `upload-google-play` step
+    to the `internal` track; closed testing (12 testers for 14 days on new personal accounts) and production stay
+    manual.
+  - Acceptance: a tag puts the build in Play's internal testing, installable from the tester link.
+- **Checkpoint M7:** a push passes CI; tag `v1.0.0` and install its APK from the GitHub Release; after T38 the same
+  tag appears in Play internal testing.
+- Not covered: instrumented or UI tests (the app has none, and emulator tests on CI are slow). Gestures and playback
+  are still checked on the phone at each checkpoint.
+
 ### M6: MVVM migration (runs before M5, since T19 and T20 rework the same UI)
 
 The `data/` review found the View calling the network directly (`ui/Player.kt` → `fetchLyrics`), a `@Composable`
@@ -356,7 +405,7 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
     the six now-unused `libs.versions.toml` entries, and the no-op `Modifier.alpha(1f)` in a preview.
   - Acceptance criteria: `testDebugUnitTest`, `lintDebug` and `assembleRelease` all still pass, the app still
     launches, and backup behaviour is unchanged (no rules file means the same defaults).
-- **T25 Git hygiene (S).**
+- **T25 Git hygiene (S). Handled inside T34, before the first push.**
   - Commit `12cb14e` carries the shuffle ANR fix *and* the launcher icon layers, because those files were staged
     when it was made. Split it so each commit is one concern.
   - The branch is still called `m2-playback` although it now holds M1 to M4. Rename it, or merge it into `main`.

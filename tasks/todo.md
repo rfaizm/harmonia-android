@@ -38,6 +38,14 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T29 `.lrc` lyrics files beside songs (`lrcNameFor` test, reuses `stripLrcTimestamps`): Settings › Lyrics folder takes a one-time folder grant, and a `.lrc` matching the song's file name is read before anything online. `Song` now keeps its MediaStore file name. **Only the granted folder itself is searched, not subfolders**
 - [ ] **Checkpoint M4:** user tests each feature on a phone
 
+## M7: CI/CD on free services (before M6, so the refactor is checked on every push)
+- [ ] T34 Put the project on GitHub: `gradlew` executable, `.gitattributes`, secrets in `.gitignore`, commit email decision, `main` up to date, public repo, first push (absorbs T25)
+- [ ] T35 CI on every push and pull request: tests, lint and a debug build on Java 25, reports kept on failure, README badge
+- [ ] T36 Real signing and version numbers: upload keystore made by the user, signing and `versionCode` from CI secrets, debug fallback locally
+- [ ] T37 Tag → signed `.aab` and `.apk` attached to a GitHub Release
+- [ ] T38 Tag → Play internal testing (waits for the Play Console account)
+- [ ] **Checkpoint M7:** CI green on a push; `v1.0.0` installs from its GitHub Release; after T38 it appears in Play internal testing
+
 ## M6: MVVM migration (before M5 — T19 and T20 rework the same UI)
 - [ ] T30 Tidy `data/`: split the models, the display helpers and the seed data; move `albumArtOf` into `ui/` (no behaviour change)
 - [ ] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once
@@ -55,5 +63,5 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## Loose ends (details in `tasks/plan.md`)
 - [ ] T23 Adaptive launcher icon: note-only foreground inside the safe zone, dark slate background, real monochrome layer (before T22)
 - [ ] T24 Delete the template leftovers (~120 lines: unused colours, keep-rules file, backup-rule templates, instrumented test stub and its deps)
-- [ ] T25 Git hygiene: split `12cb14e` (shuffle fix + icon layers), rename `m2-playback` or merge it into `main`
+- [ ] T25 Git hygiene: split `12cb14e` (shuffle fix + icon layers), rename `m2-playback` or merge it into `main` — handled inside T34
 - [ ] T26 "Rate Harmonia" opens the Play Store listing, with a browser fallback (after T22)
