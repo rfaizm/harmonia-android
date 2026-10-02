@@ -267,7 +267,7 @@ planning: `actions/checkout@v7`, `actions/setup-java@v6` (Temurin 25, as `gradle
 - **T36 Real signing and version numbers (S; the user creates the key).**
   - An upload keystore made with one `keytool` command, backed up twice, never committed. A `release` signing config
     read from environment variables, falling back to the debug key when they are absent so local builds still work.
-    `versionCode` from CI, `versionName` from the git tag. Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
+    `versionName` and `versionCode` both from the git tag via `VERSION_TAG` (`v1.2.3` → `1.2.3` / `10203`). Secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`,
     `KEY_ALIAS`, `KEY_PASSWORD`.
   - Acceptance: with the secrets, the release build is signed with the upload key; without them it still builds.
 - **T37 Tag → signed release on GitHub (S).**

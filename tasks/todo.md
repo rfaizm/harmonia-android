@@ -41,7 +41,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## M7: CI/CD on free services (before M6, so the refactor is checked on every push)
 - [x] T34 Put the project on GitHub: `gradlew` executable, `.gitattributes`, secrets in `.gitignore`, the mixed commit split, every commit moved to the private noreply email, AI co-author lines removed, `main` up to date, live at github.com/rfaizm/harmonia-android
 - [x] T35 CI on every push and pull request: tests, lint and a debug build on Java 25, reports kept on failure, README badge
-- [ ] T36 Real signing and version numbers: upload keystore made by the user, signing and `versionCode` from CI secrets, debug fallback locally
+- [x] T36 Real signing and version numbers: upload keystore made by the user and its 4 secrets added, signing from the `KEYSTORE_FILE`/`KEYSTORE_PASSWORD`/`KEY_ALIAS`/`KEY_PASSWORD` env vars, version from `VERSION_TAG` (v1.2.3 → 1.2.3 / 10203), debug fallback locally
 - [ ] T37 Tag → signed `.aab` and `.apk` attached to a GitHub Release
 - [ ] T38 Tag → Play internal testing (waits for the Play Console account)
 - [ ] **Checkpoint M7:** CI green on a push; `v1.0.0` installs from its GitHub Release; after T38 it appears in Play internal testing
