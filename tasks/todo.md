@@ -52,10 +52,10 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T39 title fix: take the artist's name off a title like "Sign of the Times - Harry Styles" before searching
 - [x] T39 file-name order fix: "Title - Artist" names are tried both ways round, a file-name guess needs the artist to match, and half a file name is never searched alone (it showed Clocks for The Scientist)
 - [x] T40 Tap a line to play from it (seek to the line's time plus the song's saved shift); scrolling by hand pauses the following for 3 s
-- [ ] **Checkpoint M8:** phone check on the release build (follows the song, tap to jump, controls still work, plain and no-lyrics states)
+- [x] **Checkpoint M8:** phone check on the release build passed 2026-10-02 (follows the song, tap to jump, controls still work, plain and no-lyrics states, the title and file-name fixes)
 
 ## M9: Alphabet index scroller (after M8, before M6)
-- [ ] T41 A–Z index bar beside the Songs list jumps to a letter; first fix the grouping (`letterOf` with accents folded, "#" last, each letter once — two "#" headings crash the tab today)
+- [x] T41 A–Z index bar beside the Songs list jumps to a letter; first fix the grouping (`letterOf` with accents folded, "#" last, each letter once — two "#" headings crash the tab today)
 - [ ] T42 Letter bubble beside the finger, current-letter highlight while scrolling, TalkBack labels
 - [ ] **Checkpoint M9:** phone check on the release build (jump A↔Z, other sorts hide the bar, drag-select and swipes still work)
 

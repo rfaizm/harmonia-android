@@ -10,6 +10,15 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.drag
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -71,6 +80,7 @@ import com.rfaizm.harmoniamusic.ui.theme.destructive
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.muted
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
+import java.text.Normalizer
 
 private enum class SortBy(val label: String) { AZ("A–Z"), Recent("Recent"), MostPlayed("Most played") }
 
@@ -123,23 +133,23 @@ fun SongsScreen(
         val filtered = songs.filter {
             q.isEmpty() || it.displayTitle.lowercase().contains(q) || it.displayArtist.lowercase().contains(q)
         }
+        // A–Z carries each song's letter group, so the headings come from the same rule as the order.
         val sorted = when (sortBy) {
-            SortBy.AZ -> filtered.sortedBy { it.displayTitle.lowercase() }
-            SortBy.Recent -> filtered.sortedByDescending { it.id }
-            SortBy.MostPlayed -> filtered.sortedByDescending { it.playCount }
+            SortBy.AZ -> azOrder(filtered)
+            SortBy.Recent -> filtered.sortedByDescending { it.id }.map { null to it }
+            SortBy.MostPlayed -> filtered.sortedByDescending { it.playCount }.map { null to it }
         }
         buildList {
             var last: String? = null
-            sorted.forEachIndexed { i, s ->
-                if (sortBy == SortBy.AZ) {
-                    val c = s.displayTitle.firstOrNull()?.uppercaseChar()
-                    val letter = if (c != null && c in 'A'..'Z') c.toString() else "#"
-                    if (letter != last) add(Entry.Header(letter)).also { last = letter }
-                }
+            sorted.forEachIndexed { i, (letter, s) ->
+                if (letter != null && letter != last) add(Entry.Header(letter)).also { last = letter }
                 add(Entry.Item(s, i))
             }
         }
     } }
+    // Where each letter's heading sits, for the index bar (T41).
+    val headings = remember(entries) { entries.withIndex().mapNotNull { (i, e) -> (e as? Entry.Header)?.let { it.letter to i } } }
+    val scope = rememberCoroutineScope()
 
     Box(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize()) {
@@ -163,67 +173,78 @@ fun SongsScreen(
                     }
                 }
             }
-            LazyColumn(
-                state = listState,
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = if (selectionMode) 96.dp else 12.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    // Only runs after a long press, so ordinary scrolling and flinging are untouched.
-                    .pointerInput(entries) {
-                        detectDragGesturesAfterLongPress(
-                            onDragStart = { start ->
-                                val row = listState.rowAt(start.y)
-                                // The press itself still selects that one song, exactly as it used to.
-                                (entries.getOrNull(row ?: -1) as? Entry.Item)?.let {
-                                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    toggle(it.song.id)
+            Row(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = listState,
+                    contentPadding = PaddingValues(start = 8.dp, end = 8.dp, bottom = if (selectionMode) 96.dp else 12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        // Only runs after a long press, so ordinary scrolling and flinging are untouched.
+                        .pointerInput(entries) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = { start ->
+                                    val row = listState.rowAt(start.y)
+                                    // The press itself still selects that one song, exactly as it used to.
+                                    (entries.getOrNull(row ?: -1) as? Entry.Item)?.let {
+                                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                        toggle(it.song.id)
+                                    }
+                                    dragBase = selected // after the toggle, so sliding back returns to it
+                                    dragFrom = row
+                                },
+                                onDragEnd = { dragFrom = null; scrollSpeed = 0f },
+                                onDragCancel = { dragFrom = null; scrollSpeed = 0f },
+                            ) { change, _ ->
+                                val from = dragFrom ?: return@detectDragGesturesAfterLongPress
+                                scrollSpeed = edgeScrollSpeed(change.position.y, size.height)
+                                val to = listState.rowAt(change.position.y) ?: return@detectDragGesturesAfterLongPress
+                                // Rebuilt from the selection the drag started with, so sliding back de-selects again.
+                                val covered = (minOf(from, to)..maxOf(from, to)).mapNotNull { i ->
+                                    (entries.getOrNull(i) as? Entry.Item)?.song?.id
                                 }
-                                dragBase = selected // after the toggle, so sliding back returns to it
-                                dragFrom = row
-                            },
-                            onDragEnd = { dragFrom = null; scrollSpeed = 0f },
-                            onDragCancel = { dragFrom = null; scrollSpeed = 0f },
-                        ) { change, _ ->
-                            val from = dragFrom ?: return@detectDragGesturesAfterLongPress
-                            scrollSpeed = edgeScrollSpeed(change.position.y, size.height)
-                            val to = listState.rowAt(change.position.y) ?: return@detectDragGesturesAfterLongPress
-                            // Rebuilt from the selection the drag started with, so sliding back de-selects again.
-                            val covered = (minOf(from, to)..maxOf(from, to)).mapNotNull { i ->
-                                (entries.getOrNull(i) as? Entry.Item)?.song?.id
+                                selected = dragBase + covered
                             }
-                            selected = dragBase + covered
+                        }
+                ) {
+                    if (entries.isEmpty()) item {
+                        EmptyState(Icons.Rounded.SearchOff, "No matches", "Nothing in your library matches “$query”.")
+                    }
+                    items(entries, key = { if (it is Entry.Item) it.song.id else "h" + (it as Entry.Header).letter }) { e ->
+                        when (e) {
+                            is Entry.Header -> LetterDivider(e.letter)
+                            is Entry.Item -> SwipeRow(
+                                open = openRow == e.song.id,
+                                enabled = !selectionMode,
+                                label = "Delete",
+                                icon = Icons.Rounded.DeleteForever,
+                                tint = colors.destructive,
+                                onOpenChange = { openRow = if (it) e.song.id else null },
+                                onAction = { confirmDelete = e.song },
+                            ) { SongRow(
+                                song = e.song,
+                                index = e.index,
+                                active = e.song.id == activeId,
+                                isPlaying = isPlaying,
+                                playlists = playlists,
+                                onClick = { if (selectionMode) toggle(e.song.id) else onPlay(e.song, entries.mapNotNull { (it as? Entry.Item)?.song }) },
+                                onLike = { onLike(e.song) },
+                                onAddToPlaylist = { onAddToPlaylist(it.name, listOf(e.song.id)) },
+                                selectionMode = selectionMode,
+                                selected = e.song.id in selected,
+                                onDelete = { confirmDelete = e.song },
+                                modifier = Modifier.animateItem(),
+                            ) }
                         }
                     }
-            ) {
-                if (entries.isEmpty()) item {
-                    EmptyState(Icons.Rounded.SearchOff, "No matches", "Nothing in your library matches “$query”.")
                 }
-                items(entries, key = { if (it is Entry.Item) it.song.id else "h" + (it as Entry.Header).letter }) { e ->
-                    when (e) {
-                        is Entry.Header -> LetterDivider(e.letter)
-                        is Entry.Item -> SwipeRow(
-                            open = openRow == e.song.id,
-                            enabled = !selectionMode,
-                            label = "Delete",
-                            icon = Icons.Rounded.DeleteForever,
-                            tint = colors.destructive,
-                            onOpenChange = { openRow = if (it) e.song.id else null },
-                            onAction = { confirmDelete = e.song },
-                        ) { SongRow(
-                            song = e.song,
-                            index = e.index,
-                            active = e.song.id == activeId,
-                            isPlaying = isPlaying,
-                            playlists = playlists,
-                            onClick = { if (selectionMode) toggle(e.song.id) else onPlay(e.song, entries.mapNotNull { (it as? Entry.Item)?.song }) },
-                            onLike = { onLike(e.song) },
-                            onAddToPlaylist = { onAddToPlaylist(it.name, listOf(e.song.id)) },
-                            selectionMode = selectionMode,
-                            selected = e.song.id in selected,
-                            onDelete = { confirmDelete = e.song },
-                            modifier = Modifier.animateItem(),
-                        ) }
-                    }
+                if (sortBy == SortBy.AZ && headings.size >= 2) {
+                    AlphabetIndex(
+                        letters = headings.map { it.first },
+                        onPick = { i -> scope.launch { listState.scrollToItem(headings[i].second) } },
+                        // Clear of the "Add N songs" button while selecting.
+                        modifier = Modifier.align(Alignment.CenterVertically).padding(end = 4.dp, bottom = if (selectionMode) 80.dp else 0.dp),
+                    )
                 }
             }
         }
@@ -272,6 +293,48 @@ internal fun edgeScrollSpeed(y: Float, height: Int): Float {
         y < zone -> -(zone - y) / zone * 24f
         y > height - zone -> (y - (height - zone)) / zone * 24f
         else -> 0f
+    }
+}
+
+/**
+ * T41: the letters the list has, down its right side, beside the rows rather than over their buttons. Touching or
+ * sliding along it jumps the list straight to that letter's heading, with a light tick each time the letter changes.
+ */
+@Composable
+private fun AlphabetIndex(letters: List<String>, onPick: (index: Int) -> Unit, modifier: Modifier = Modifier) {
+    val haptics = LocalHapticFeedback.current
+    val pick by rememberUpdatedState(onPick)
+    Column(
+        modifier
+            .width(24.dp)
+            .heightIn(max = 20.dp * letters.size) // a few letters stay close together instead of spreading out
+            .fillMaxHeight()
+            .pointerInput(letters) {
+                awaitEachGesture {
+                    var last = -1
+                    fun touch(y: Float) {
+                        val i = letterAt(y, size.height, letters.size)
+                        if (i == last) return
+                        last = i
+                        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        pick(i)
+                    }
+                    val down = awaitFirstDown()
+                    down.consume()
+                    touch(down.position.y)
+                    drag(down.id) { change ->
+                        change.consume()
+                        touch(change.position.y)
+                    }
+                }
+            },
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        letters.forEach { letter ->
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                Text(letter, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = colors.mutedForeground)
+            }
+        }
     }
 }
 
@@ -359,3 +422,23 @@ private fun AddToPlaylistSheet(count: Int, playlists: List<Playlist>, onDismiss:
         }
     }
 }
+
+/** The A–Z group a title is filed under: its first letter with any accent taken off ("Élan" is E), or "#". */
+internal fun letterOf(title: String): String {
+    // Only the first character is normalised, so a long list stays cheap to sort.
+    val first = Normalizer.normalize(title.take(1), Normalizer.Form.NFD).firstOrNull()?.uppercaseChar()
+    return if (first != null && first in 'A'..'Z') first.toString() else "#"
+}
+
+/**
+ * The A–Z order, by group and then by title, with "#" last as in the phone's contacts. Sorting by title alone put
+ * digits before "a" and accented or non-Latin titles after "z": two "#" groups whose headings shared a list key,
+ * which crashes the list (T41).
+ */
+internal fun azOrder(songs: List<Song>): List<Pair<String, Song>> = songs
+    .map { letterOf(it.displayTitle) to it }
+    .sortedWith(compareBy({ it.first == "#" }, { it.first }, { it.second.displayTitle.lowercase() }))
+
+/** Which of [count] evenly spread letters a finger at [y] is on; past either end it keeps the end letter. */
+internal fun letterAt(y: Float, height: Int, count: Int): Int =
+    if (height <= 0 || count <= 0) 0 else (y / height * count).toInt().coerceIn(0, count - 1)
