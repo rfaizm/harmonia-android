@@ -45,7 +45,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
-import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.FormatQuote
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.MusicNote
@@ -57,8 +56,6 @@ import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
@@ -91,7 +88,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
-import com.rfaizm.harmoniamusic.SLEEP_END_OF_TRACK
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.LyricsCache
 import com.rfaizm.harmoniamusic.data.LyricsResult
@@ -146,7 +142,7 @@ fun FullPlayer(
     repeatMode: Int, // Player.REPEAT_MODE_*
     volume: Float,   // device media volume, 0..1
     muted: Boolean,
-    sleep: SleepOption?,
+    sleep: SleepTimer?,
     lyrics: String?,
     playerArtist: String?,
     position: () -> Long, // the player's clock in ms, read only while synced lyrics are on screen
@@ -278,7 +274,7 @@ fun FullPlayer(
         // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             ExtraChip(Icons.Rounded.FormatQuote, "Lyrics", active = showLyrics) { showLyrics = !showLyrics }
-            SleepTimerChip(sleep, onSleep)
+            SleepTimerChip(sleep, songMsLeft = ((1f - progress) * song.duration * 1000).toLong(), onSelect = onSleep)
         }
     }
 }
@@ -335,7 +331,7 @@ private fun ModeButton(icon: ImageVector, label: String, active: Boolean, onClic
 }
 
 @Composable
-private fun ExtraChip(icon: ImageVector, text: String, active: Boolean = false, onClick: () -> Unit) {
+internal fun ExtraChip(icon: ImageVector, text: String, active: Boolean = false, onClick: () -> Unit) {
     Row(
         Modifier.clip(CircleShape).background(Color.White.copy(alpha = if (active) 0.25f else 0.10f)).clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -514,36 +510,3 @@ private fun TimingButton(text: String, onClick: () -> Unit) {
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
 }
-
-/** PRD phase 7. [SLEEP_END_OF_TRACK] finishes the current song instead of counting minutes. */
-enum class SleepOption(val label: String, val minutes: Int) {
-    Min15("15 min", 15),
-    Min30("30 min", 30),
-    Min45("45 min", 45),
-    Min60("60 min", 60),
-    EndOfTrack("End of track", SLEEP_END_OF_TRACK),
-}
-
-/** The option the service reports it is running, or null for "Off" (0 means none, including "just fired"). */
-internal fun sleepOptionOf(minutes: Int) = SleepOption.entries.firstOrNull { it.minutes == minutes }
-
-@Composable
-private fun SleepTimerChip(selected: SleepOption?, onSelect: (SleepOption?) -> Unit) {
-    var open by remember { mutableStateOf(false) }
-    Box {
-        ExtraChip(Icons.Rounded.Bedtime, selected?.let { "Sleep · ${it.label}" } ?: "Sleep timer") { open = true }
-        DropdownMenu(open, { open = false }, shape = RoundedCornerShape(16.dp), containerColor = colors.card) {
-            SleepOption.entries.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(option.label, fontSize = 14.sp, color = colors.onSurface) },
-                    onClick = { onSelect(option); open = false }
-                )
-            }
-            DropdownMenuItem(
-                text = { Text("Off", fontSize = 14.sp, color = colors.onSurfaceVariant) },
-                onClick = { onSelect(null); open = false }
-            )
-        }
-    }
-}
-

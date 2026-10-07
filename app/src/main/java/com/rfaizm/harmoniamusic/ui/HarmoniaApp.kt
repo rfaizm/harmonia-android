@@ -83,6 +83,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.rfaizm.harmoniamusic.PlaybackService
 import com.rfaizm.harmoniamusic.LYRICS
+import com.rfaizm.harmoniamusic.SLEEP_AT
 import com.rfaizm.harmoniamusic.SLEEP_COMMAND
 import com.rfaizm.harmoniamusic.SLEEP_MINUTES
 import com.rfaizm.harmoniamusic.data.Library
@@ -134,7 +135,7 @@ fun HarmoniaApp() {
     var volume by remember { mutableFloatStateOf(0f) }
     var muted by remember { mutableStateOf(false) }
     // Mirrors the service's timer, so the chip goes back to "Off" by itself once the timer fires.
-    var sleep by remember { mutableStateOf<SleepOption?>(null) }
+    var sleep by remember { mutableStateOf<SleepTimer?>(null) }
     // Read from the song's tags by the service; track metadata never reaches a controller on its own.
     var lyrics by remember { mutableStateOf<String?>(null) }
     // The artist the player read from the file, which MediaStore sometimes misses (SPEC.md S2).
@@ -151,7 +152,7 @@ fun HarmoniaApp() {
         val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
             .setListener(object : MediaController.Listener {
                 override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
-                    sleep = sleepOptionOf(extras.getInt(SLEEP_MINUTES))
+                    sleep = sleepTimerOf(extras.getInt(SLEEP_MINUTES), extras.getLong(SLEEP_AT))
                     lyrics = extras.getString(LYRICS)
                 }
             })
@@ -173,7 +174,8 @@ fun HarmoniaApp() {
                 override fun onEvents(player: Player, events: Player.Events) = sync()
             })
             sync()
-            sleep = sleepOptionOf(c.sessionExtras.getInt(SLEEP_MINUTES)) // a timer may already be running
+            // A timer may already be running.
+            sleep = sleepTimerOf(c.sessionExtras.getInt(SLEEP_MINUTES), c.sessionExtras.getLong(SLEEP_AT))
             lyrics = c.sessionExtras.getString(LYRICS)
             controller = c
         }, ContextCompat.getMainExecutor(context))

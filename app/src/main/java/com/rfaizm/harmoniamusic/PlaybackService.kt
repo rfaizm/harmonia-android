@@ -65,7 +65,9 @@ class PlaybackService : MediaSessionService() {
     private var errorsInARow = 0
     private var pausedByUnplug = false
     private var restoring = false
-    private var sleepAt = 0L // uptime when the sleep timer pauses playback, 0 when off
+    // elapsedRealtime when the sleep timer pauses playback, 0 when off. Unlike uptime it keeps counting while the
+    // phone sleeps, so a timer set while paused with the screen off still ends on time (M10).
+    private var sleepAt = 0L
     private var sleepMinutes = 0 // what the chip should show
     private var lyrics: String? = null
     private var shuffledQueue = 0 // signature of the queue the current shuffle order was built for
@@ -253,16 +255,19 @@ class PlaybackService : MediaSessionService() {
     private fun setSleepTimer(minutes: Int) {
         handler.removeCallbacks(sleepTick)
         player.pauseAtEndOfMediaItems = minutes == SLEEP_END_OF_TRACK
-        sleepAt = if (minutes > 0) SystemClock.uptimeMillis() + minutes * 60_000L else 0L
+        sleepAt = if (minutes > 0) SystemClock.elapsedRealtime() + minutes * 60_000L else 0L
         player.volume = targetVolume()
         if (sleepAt > 0L) handler.post(sleepTick)
         sleepMinutes = minutes
         publishExtras()
     }
 
-    /** The chip can't know when a timer fires and can't read tags, so the service publishes both together. */
+    /**
+     * The chip can't know when a timer fires and can't read tags, so the service publishes both together. The
+     * deadline goes with the timer, so the UI counts down by itself instead of asking every second (M10).
+     */
     private fun publishExtras() {
-        session?.setSessionExtras(bundleOf(SLEEP_MINUTES to sleepMinutes, LYRICS to lyrics))
+        session?.setSessionExtras(bundleOf(SLEEP_MINUTES to sleepMinutes, SLEEP_AT to sleepAt, LYRICS to lyrics))
     }
 
     /** The first USLT frame across the song's tracks, if it carries anything readable. */
@@ -278,7 +283,7 @@ class PlaybackService : MediaSessionService() {
     private val sleepTick = object : Runnable {
         override fun run() {
             if (sleepAt == 0L) return
-            if (SystemClock.uptimeMillis() >= sleepAt) {
+            if (SystemClock.elapsedRealtime() >= sleepAt) {
                 player.pause()
                 setSleepTimer(0) // clears the timer, restores the volume and tells the chip
                 return
@@ -289,7 +294,7 @@ class PlaybackService : MediaSessionService() {
     }
 
     /** Full volume, unless the sleep timer is inside its last minute. */
-    private fun targetVolume() = if (sleepAt == 0L) 1f else fadeVolume(sleepAt - SystemClock.uptimeMillis())
+    private fun targetVolume() = if (sleepAt == 0L) 1f else fadeVolume(sleepAt - SystemClock.elapsedRealtime())
 
     /**
      * What controllers, the notification and the lock screen see: the player, minus the cover art while
@@ -414,6 +419,8 @@ internal fun smartShuffle(artists: List<String>, first: Int, random: Random): Li
 /** Sleep timer command the full player sends through its controller, with [SLEEP_MINUTES] in the args. */
 internal const val SLEEP_COMMAND = "com.rfaizm.harmoniamusic.SLEEP"
 internal const val SLEEP_MINUTES = "minutes"
+/** In the session extras: the `elapsedRealtime` moment the running timer pauses playback, 0 when there is none. */
+internal const val SLEEP_AT = "sleepAt"
 internal const val LYRICS = "lyrics"
 internal const val SLEEP_END_OF_TRACK = -1
 
