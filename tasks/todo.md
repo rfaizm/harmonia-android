@@ -59,6 +59,11 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T42 Letter bubble beside the finger, current-letter highlight while scrolling, TalkBack labels (built with the T41 redesign in `ui/AlphabetIndex.kt`, matched to GUIDELINE §5.2, §5.4, §5.8, §10)
 - [ ] **Checkpoint M9:** phone check on the release build (jump A↔Z, other sorts hide the bar, drag-select and swipes still work)
 
+## M10: Sleep timer countdown (after M9, before M6)
+- [ ] T43 Live countdown: the service publishes the deadline (`SLEEP_AT`, now on `elapsedRealtime`); the chip reads "Sleep · 12:34"; tapping a running timer opens a dialog with the time left and the clock time it pauses (`countdownText` test)
+- [ ] T44 −5 / +5 min pills in the dialog; the service moves the deadline (`adjustedSleep`: at least 1 min, at most 3 h, tested)
+- [ ] **Checkpoint M10:** phone check on the release build (counts down, ±5, pauses on time with the screen off, End of track, light and dark)
+
 ## M6: MVVM migration (before M5 — T19 and T20 rework the same UI)
 - [ ] T30 Tidy `data/`: split the models, the display helpers and the seed data; move `albumArtOf` into `ui/` (no behaviour change)
 - [ ] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once

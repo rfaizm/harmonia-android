@@ -61,6 +61,8 @@ M8 T39 synced lyrics follow the song ──► T40 tap a line to play from it   
         │
 M9 T41 A–Z index bar jumps to a letter ──► T42 letter bubble + current-letter highlight   ← after M8
         │
+M10 T43 sleep timer countdown + dialog ──► T44 −5 / +5 min buttons   ← after M9, before M6
+        │
 M6 T30 tidy data · T31 Hilt + data sources · T32 repositories · T33 ViewModels   ← before M5
         │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
@@ -522,6 +524,89 @@ Decisions:
   - drag-select and row swipes still work;
   - search results keep the bar while they span two letters.
 
+### M10: Sleep timer countdown (after M9, before M6)
+
+The user wants to see how long is left before the sleep timer pauses the music, in a dialog, and to add or remove
+time from it.
+
+What exists:
+- The service owns the timer (T13). `sleepAt` is an `uptimeMillis` deadline, checked every 250 ms, and the volume
+  fades over the last minute.
+- The UI is only told which option was picked (`SLEEP_MINUTES`) through the session extras. That is why the chip
+  reads "Sleep · 30 min" for the whole 30 minutes and nothing can count down.
+- Picking an option restarts the timer from now in whole minutes, so there is no way to adjust a running one.
+- The app's dialogs (`DeleteFileDialog`, the online-lyrics consent) share one look: `card` container, 24 dp
+  corners, a 48 dp tinted circle with an icon, an extra-bold 18 sp title, muted body text, a filled confirm button
+  and a muted text button.
+
+Design (GUIDELINE: "type does the heavy lifting"; no decorative ring):
+```
+          ( 🌙 )            48 dp circle, primary/12, Bedtime icon in primary
+        Sleep timer         18 sp extra-bold
+          12:34             big extra-bold digits (tabular, so they don't jiggle), primary
+   Pauses at 23:47 · fades  muted caption; "Fading out…" in the last minute
+   out over the last minute
+   ( −5 min )  ( +5 min )   muted pills like the sort pills, 48 dp tall
+   Turn off          Done   muted text button · filled primary button
+```
+- **The chip counts down too**: "Sleep · 12:34", ticking each second while the full player is open.
+- **The chip's tap depends on the state.** With no timer it opens today's option menu. With a timer running it
+  opens the dialog.
+- **End of track:** the dialog shows the song's time left and "Pauses when this song ends", with no ± buttons.
+- **The dialog closes itself** when the timer fires or is turned off elsewhere.
+
+Decisions:
+- **The service publishes the deadline itself** (`SLEEP_AT` in the session extras), so the UI counts down locally
+  without asking the service every second, and the chip and dialog can't drift from when the music really stops.
+- **The deadline moves to `elapsedRealtime`**, which keeps counting while the phone sleeps. An `uptimeMillis`
+  deadline stalls in deep sleep, so a timer set while paused with the screen off would end late.
+- **The timer keeps counting while the music is paused**, as it does today. It is a clock: "stop in 30 minutes".
+- **±5 minutes per tap.** A minus tap never takes it below 1 minute, so it can't stop the music by surprise, and the
+  timer is capped at 3 hours. A plus tap during the fade brings the volume back on the next tick (`targetVolume`
+  already follows the deadline).
+- Not in scope: a countdown on the mini player or the notification, and adjusting "End of track".
+
+- **T43 Sleep timer countdown and dialog (M).**
+  - Service:
+    - `sleepAt` and `sleepTick` move to `elapsedRealtime`.
+    - `publishExtras()` adds `SLEEP_AT` (0 when off or end of track).
+  - `HarmoniaApp` reads `SLEEP_AT` and passes it to the full player.
+  - New `ui/SleepTimer.kt`:
+    - `SleepOption` and `sleepOptionOf` move here from `Player.kt`, which is already about 550 lines.
+    - The chip gets a live label.
+    - `SleepTimerDialog` is built as designed above. The end time uses `android.text.format.DateFormat`, so it
+      follows the phone's 12/24-hour setting.
+  - Pure `countdownText(ms)`: "12:34", "1:05:09", and it rounds up to whole seconds, so it shows "0:01" until the
+    moment it fires.
+  - Tests: `countdownText`.
+  - Acceptance:
+    - Setting 15 min shows "Sleep · 15:00" counting down.
+    - The dialog shows the same time and the clock time it will pause.
+    - At zero the music fades and pauses, the chip goes back to "Sleep timer" and the dialog closes.
+    - Closing and reopening the player mid-timer shows the right time.
+    - End of track shows the song's time left.
+  - Files: `PlaybackService.kt`, `ui/HarmoniaApp.kt`, `ui/Player.kt`, `ui/SleepTimer.kt`, and a test in
+    `PlayerTest`.
+- **T44 Add or remove 5 minutes (S).**
+  - `SLEEP_COMMAND` takes a `SLEEP_ADJUST_MS` argument. The service moves the deadline through pure
+    `adjustedSleep(remainingMs, deltaMs)` (at least 1 min, at most 3 h) and publishes it.
+  - The dialog's "−5 min" and "+5 min" pills:
+    - "−5 min" is disabled at 1 minute left.
+    - TalkBack reads "Remove 5 minutes" and "Add 5 minutes".
+    - There is a light haptic on each tap.
+  - Tests: `adjustedSleep` (a normal add and remove, the 1-minute floor, the 3-hour cap) in `PlaybackServiceTest`.
+  - Acceptance:
+    - 12:34 plus 5 shows 17:34 straight away in the dialog and the chip.
+    - Minus 5 at 3:00 gives 1:00, and at 1:00 the minus button is disabled.
+    - Plus 5 during the fade brings the volume back.
+  - Files: `PlaybackService.kt`, `ui/SleepTimer.kt`, `ui/HarmoniaApp.kt`, `PlaybackServiceTest`.
+- **Checkpoint M10:** on the phone, release build:
+  - a 15-minute timer counts down in the chip and the dialog;
+  - ±5 works;
+  - with the screen off for a few minutes, it still pauses on time;
+  - "End of track" works;
+  - light and dark mode both look right.
+
 ### M6: MVVM migration (runs before M5, since T19 and T20 rework the same UI)
 
 The `data/` review found the View calling the network directly (`ui/Player.kt` → `fetchLyrics`), a `@Composable`
@@ -675,6 +760,8 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
 - Should the UI be translated to Indonesian (T21)? [not now]
 - M8: should the old cache of plain online lyrics be dropped, so those songs can be fetched again with timings?
   [drop it]
+- M10: is 5 minutes the right step for the sleep timer's − / + buttons? [5 min] Should the countdown also show on
+  the mini player? [not now]
 
 ## How this plan is kept
 
