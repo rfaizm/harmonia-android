@@ -83,6 +83,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.rfaizm.harmoniamusic.PlaybackService
 import com.rfaizm.harmoniamusic.LYRICS
+import com.rfaizm.harmoniamusic.SLEEP_ADJUST_MS
 import com.rfaizm.harmoniamusic.SLEEP_AT
 import com.rfaizm.harmoniamusic.SLEEP_COMMAND
 import com.rfaizm.harmoniamusic.SLEEP_MINUTES
@@ -332,6 +333,9 @@ fun HarmoniaApp() {
                                 SessionCommand(SLEEP_COMMAND, Bundle.EMPTY),
                                 bundleOf(SLEEP_MINUTES to (option?.minutes ?: 0)),
                             )
+                        },
+                        onSleepAdjust = { deltaMs ->
+                            controller?.sendCustomCommand(SessionCommand(SLEEP_COMMAND, Bundle.EMPTY), bundleOf(SLEEP_ADJUST_MS to deltaMs))
                         },
                         onLike = { like(it) },
                     )

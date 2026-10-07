@@ -208,7 +208,8 @@ class PlaybackService : MediaSessionService() {
             if (customCommand.customAction != SLEEP_COMMAND) {
                 return super.onCustomCommand(session, controller, customCommand, args)
             }
-            setSleepTimer(args.getInt(SLEEP_MINUTES))
+            if (args.containsKey(SLEEP_ADJUST_MS)) adjustSleepTimer(args.getLong(SLEEP_ADJUST_MS))
+            else setSleepTimer(args.getInt(SLEEP_MINUTES))
             return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
         }
 
@@ -259,6 +260,15 @@ class PlaybackService : MediaSessionService() {
         player.volume = targetVolume()
         if (sleepAt > 0L) handler.post(sleepTick)
         sleepMinutes = minutes
+        publishExtras()
+    }
+
+    /** M10: the dialog's − / + buttons move a running timer's deadline. "End of track" has none to move. */
+    private fun adjustSleepTimer(deltaMs: Long) {
+        if (sleepAt == 0L) return
+        val now = SystemClock.elapsedRealtime()
+        sleepAt = now + adjustedSleep(sleepAt - now, deltaMs)
+        player.volume = targetVolume() // adding time during the fade brings the volume straight back
         publishExtras()
     }
 
@@ -421,6 +431,18 @@ internal const val SLEEP_COMMAND = "com.rfaizm.harmoniamusic.SLEEP"
 internal const val SLEEP_MINUTES = "minutes"
 /** In the session extras: the `elapsedRealtime` moment the running timer pauses playback, 0 when there is none. */
 internal const val SLEEP_AT = "sleepAt"
+/** In [SLEEP_COMMAND]'s args instead of [SLEEP_MINUTES]: move the running timer by this many ms (M10). */
+internal const val SLEEP_ADJUST_MS = "adjustMs"
+internal const val SLEEP_STEP_MS = 5 * 60_000L
+internal const val MIN_SLEEP_MS = 60_000L
+internal const val MAX_SLEEP_MS = 3 * 60 * 60_000L
+
+/**
+ * M10: the time left after the dialog's − / + buttons. Never under a minute, so "−" can't stop the music by
+ * surprise, and never longer when already inside that last minute; at most three hours.
+ */
+internal fun adjustedSleep(remainingMs: Long, deltaMs: Long): Long =
+    (remainingMs + deltaMs).coerceIn(minOf(remainingMs, MIN_SLEEP_MS), MAX_SLEEP_MS)
 internal const val LYRICS = "lyrics"
 internal const val SLEEP_END_OF_TRACK = -1
 

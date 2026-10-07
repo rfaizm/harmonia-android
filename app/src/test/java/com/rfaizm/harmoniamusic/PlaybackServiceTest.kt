@@ -97,6 +97,32 @@ class PlaybackServiceTest {
     }
 
     @Test
+    fun theSleepButtonsMoveTheTimerByFiveMinutes() {
+        assertEquals(1_054_000L, adjustedSleep(remainingMs = 754_000, deltaMs = 300_000))
+        assertEquals(454_000L, adjustedSleep(remainingMs = 754_000, deltaMs = -300_000))
+    }
+
+    @Test
+    fun removingTimeLeavesAtLeastAMinuteSoTheMusicDoesNotStopBySurprise() {
+        assertEquals(60_000L, adjustedSleep(remainingMs = 180_000, deltaMs = -300_000))
+    }
+
+    @Test
+    fun removingTimeInsideTheLastMinuteNeverLengthensIt() {
+        assertEquals(30_000L, adjustedSleep(remainingMs = 30_000, deltaMs = -300_000))
+    }
+
+    @Test
+    fun addingTimeDuringTheFadeOutWorks() {
+        assertEquals(330_000L, adjustedSleep(remainingMs = 30_000, deltaMs = 300_000))
+    }
+
+    @Test
+    fun theSleepTimerStopsAtThreeHours() {
+        assertEquals(10_800_000L, adjustedSleep(remainingMs = 10_700_000, deltaMs = 300_000))
+    }
+
+    @Test
     fun smartShufflePlaysEverySongExactlyOnce() {
         val artists = SEED_SONGS.map { it.displayArtist }
 

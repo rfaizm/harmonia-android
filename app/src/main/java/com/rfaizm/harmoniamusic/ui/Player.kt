@@ -156,6 +156,7 @@ fun FullPlayer(
     onVolume: (Float) -> Unit,
     onMute: () -> Unit,
     onSleep: (SleepOption?) -> Unit,
+    onSleepAdjust: (deltaMs: Long) -> Unit,
     onLike: () -> Unit,
 ) {
     val (g0, g1) = song.gradient
@@ -274,7 +275,7 @@ fun FullPlayer(
         // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             ExtraChip(Icons.Rounded.FormatQuote, "Lyrics", active = showLyrics) { showLyrics = !showLyrics }
-            SleepTimerChip(sleep, songMsLeft = ((1f - progress) * song.duration * 1000).toLong(), onSelect = onSleep)
+            SleepTimerChip(sleep, songMsLeft = ((1f - progress) * song.duration * 1000).toLong(), onSelect = onSleep, onAdjust = onSleepAdjust)
         }
     }
 }
