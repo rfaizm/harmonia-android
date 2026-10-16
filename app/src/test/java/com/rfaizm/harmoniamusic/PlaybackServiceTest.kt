@@ -2,8 +2,8 @@ package com.rfaizm.harmoniamusic
 
 import androidx.media3.common.C
 import androidx.media3.common.MediaMetadata
-import com.rfaizm.harmoniamusic.data.SEED_SONGS
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.ui.SEED_SONGS
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals

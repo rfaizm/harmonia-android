@@ -105,11 +105,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.Playlist
-import com.rfaizm.harmoniamusic.data.albumArtOf
-import com.rfaizm.harmoniamusic.data.SEED_PLAYLISTS
-import com.rfaizm.harmoniamusic.data.SEED_SONGS
 import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.LikedRed
 import com.rfaizm.harmoniamusic.ui.theme.border

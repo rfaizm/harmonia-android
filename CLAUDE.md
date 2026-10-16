@@ -38,7 +38,11 @@ This machine has no emulator or connected device, so UI can't be checked from he
   - Nunito is bundled in `res/font/nunito_{400..900}.ttf`. These files cover Latin characters only; other scripts fall back to the system font.
   - framer-motion springs → Compose `spring(dampingRatio = damping / (2·√stiffness), stiffness)`.
   - Tailwind sizes are written inline as `dp`/`sp`.
-- **Data** (`data/SampleData.kt`): `Song`/`Playlist` models, `GRADIENTS` (album art is a gradient chosen by `id % 12`), `cleanTag()` (the GUIDELINE §11 regex plus y2mate stripping), playlist helpers (`addSongs`/`removeSong`), and the seed lists, which are now used only by `@Preview`s. `Song.displayTitle` and `displayArtist` cache `cleanTag()` once per instance. Use those in UI code, not `cleanTag()` directly.
+- **Data** (`data/Models.kt`): `Song`/`Playlist` models, `cleanTag()` (the GUIDELINE §11 regex plus y2mate stripping) and the playlist helpers (`addSongs`/`removeSong`). `Song.displayTitle` and `displayArtist` cache `cleanTag()` once per instance. Use those in UI code, not `cleanTag()` directly.
+- **How data looks** lives in `ui/`, not `data/` (T30, guarded by `DataLayerTest`):
+  - `ui/Display.kt` holds `GRADIENTS` (album art is a gradient chosen by `id % 12`), the `Song.gradient`/`Playlist.gradient` extensions, `formatDuration`/`formatDate` and `albumArtOf`.
+  - `ui/PreviewData.kt` holds the seed lists, which only `@Preview`s and tests use.
+  - `data/` may still use Compose *runtime* state holders until the repositories arrive (T32).
 - **Songs list derivation** uses `remember(songs) { derivedStateOf { … } }`. A plain `remember(songs, …)` keyed on the `SnapshotStateList` never invalidates (identity equality), so liked and play-count changes would show stale values.
 - **`Modifier.enterAnimation()`** runs once per item (`rememberSaveable`). It staggers rows that first appear in the same frame (grouped by `withFrameMillis`), so a list opening or a sort change cascades, while a row scrolled in on its own fades in with no delay. Don't gate it on the list index: rows change index when sorting or searching, and gating on it reset their state, which caused the Songs-tab glitches.
 

@@ -93,12 +93,10 @@ import com.rfaizm.harmoniamusic.data.LyricsCache
 import com.rfaizm.harmoniamusic.data.LyricsResult
 import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
-import com.rfaizm.harmoniamusic.data.albumArtOf
 import com.rfaizm.harmoniamusic.data.fetchLyrics
 import com.rfaizm.harmoniamusic.data.lyricsQueries
 import com.rfaizm.harmoniamusic.data.readLrc
 import kotlinx.coroutines.launch
-import com.rfaizm.harmoniamusic.data.formatDuration
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
 import com.rfaizm.harmoniamusic.ui.theme.card
 

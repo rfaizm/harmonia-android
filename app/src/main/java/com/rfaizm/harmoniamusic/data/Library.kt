@@ -21,7 +21,7 @@ import java.io.File
 
 /**
  * Process-level library, so rotation doesn't rescan and the playback service (T6) can reach it.
- * Seed data in SampleData.kt is for @Previews only.
+ * Seed data in ui/PreviewData.kt is for @Previews only.
  */
 object Library {
     val songs = mutableStateListOf<Song>()
