@@ -93,6 +93,7 @@ import com.rfaizm.harmoniamusic.data.LyricsRepository
 import com.rfaizm.harmoniamusic.data.LyricsResult
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rfaizm.harmoniamusic.data.lyricsQueries
 import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
@@ -356,6 +357,7 @@ private fun LyricsView(
     onPlayFrom: (ms: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val flags by settings.flags.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     // Anything found online before, so the same song needs no network a second time.
     var found by remember(song.id) { mutableStateOf<String?>(null) }
@@ -399,7 +401,7 @@ private fun LyricsView(
                     },
                     fontSize = 15.sp, color = Color.White.copy(alpha = 0.75f), lineHeight = 22.sp,
                 )
-                if (settings[Key.OnlineLyrics]) {
+                if (flags.getValue(Key.OnlineLyrics)) {
                     TextButton({
                         looking = true
                         scope.launch {

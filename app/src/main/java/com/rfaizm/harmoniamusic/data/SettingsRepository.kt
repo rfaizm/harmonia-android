@@ -1,18 +1,18 @@
 package com.rfaizm.harmoniamusic.data
 
 import android.net.Uri
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.rfaizm.harmoniamusic.data.local.LrcFolderSource
 import com.rfaizm.harmoniamusic.data.local.SettingsStore
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The Settings tab's switches, the `.lrc` folder grant and each song's lyrics timing (M6, T32). Values are mirrored
- * into Compose state so screens recompose; [onChange] tells the playback service when to apply them while playing.
+ * The Settings tab's switches, the `.lrc` folder grant and each song's lyrics timing (M6, T32). Screens collect
+ * [flags] and [lyricsFolder] (T33); [onChange] tells the playback service when to apply a switch while playing.
  */
 @Singleton
 class SettingsRepository @Inject constructor(private val store: SettingsStore, private val lrcFolder: LrcFolderSource) {
@@ -27,24 +27,28 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore, p
         OnlineLyrics(false),  // the only setting that lets the app touch the network
     }
 
-    private val values = mutableStateMapOf<Key, Boolean>().apply { Key.entries.forEach { put(it, store.flag(it.name, it.default)) } }
-    private var folder by mutableStateOf(store.lyricsFolder)
+    private val _flags = MutableStateFlow(Key.entries.associateWith { store.flag(it.name, it.default) })
+    private val _lyricsFolder = MutableStateFlow(store.lyricsFolder)
 
-    operator fun get(key: Key) = values[key] ?: key.default
-
-    operator fun set(key: Key, value: Boolean) {
-        values[key] = value
-        store.setFlag(key.name, value)
-    }
+    /** Every switch, always holding all of [Key]. */
+    val flags: StateFlow<Map<Key, Boolean>> = _flags.asStateFlow()
 
     /** The folder the user granted for `.lrc` files (T29), or null while none is granted. */
-    val lyricsFolder: String? get() = folder
+    val lyricsFolder: StateFlow<String?> = _lyricsFolder.asStateFlow()
+
+    /** The switch as it is now, for code that reads it once rather than following it. */
+    operator fun get(key: Key) = _flags.value[key] ?: key.default
+
+    operator fun set(key: Key, value: Boolean) {
+        _flags.update { it + (key to value) }
+        store.setFlag(key.name, value)
+    }
 
     /** Keeps read access to the picked folder across restarts, then remembers it. */
     fun grantLyricsFolder(uri: Uri) {
         lrcFolder.keepAccess(uri)
-        folder = uri.toString()
-        store.lyricsFolder = folder
+        _lyricsFolder.value = uri.toString()
+        store.lyricsFolder = uri.toString()
     }
 
     /**

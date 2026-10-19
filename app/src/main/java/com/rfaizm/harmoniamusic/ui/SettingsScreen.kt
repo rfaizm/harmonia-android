@@ -42,12 +42,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
 fun SettingsScreen(settings: SettingsRepository, onRescan: () -> Unit) {
+    val flags by settings.flags.collectAsStateWithLifecycle()
+    val lyricsFolder by settings.lyricsFolder.collectAsStateWithLifecycle()
     var confirmOnlineLyrics by remember { mutableStateOf(false) }
     val context = LocalContext.current
     // PRD phase 9 "Lirik Lokal": scoped storage hides .lrc files, so the user points at their music folder once.
@@ -68,14 +71,14 @@ fun SettingsScreen(settings: SettingsRepository, onRescan: () -> Unit) {
 
         // Crossfade and gapless switches are gone: Media3 is always gapless, and crossfade was dropped (tasks/plan.md).
         SettingsSection("Playback") {
-            ToggleRow(settings, Icons.Rounded.Shuffle, "Smart shuffle", "Spread out songs by the same artist", Key.SmartShuffle)
+            ToggleRow(settings, flags, Icons.Rounded.Shuffle, "Smart shuffle", "Spread out songs by the same artist", Key.SmartShuffle)
             Divider()
             SettingsRow(Icons.Rounded.Bedtime, "Sleep timer", "Off · fades out over the last minute", onClick = {}) { Chevron() }
             Divider()
             SettingsRow(
                 Icons.Rounded.Lyrics,
                 "Lyrics folder",
-                settings.lyricsFolder?.let { "Reading .lrc files from ${folderLabel(it)}" } ?: "Not set · for .lrc files saved next to your songs",
+                lyricsFolder?.let { "Reading .lrc files from ${folderLabel(it)}" } ?: "Not set · for .lrc files saved next to your songs",
                 onClick = { pickLyricsFolder.launch(null) },
             ) { Chevron() }
             Divider()
@@ -84,24 +87,24 @@ fun SettingsScreen(settings: SettingsRepository, onRescan: () -> Unit) {
                 Icons.Rounded.Language,
                 "Look up lyrics online",
                 "Off · otherwise only lyrics saved inside a file are shown",
-                onClick = { if (settings[Key.OnlineLyrics]) settings[Key.OnlineLyrics] = false else confirmOnlineLyrics = true },
+                onClick = { if (flags.getValue(Key.OnlineLyrics)) settings[Key.OnlineLyrics] = false else confirmOnlineLyrics = true },
             ) {
-                HarmoniaSwitch(settings[Key.OnlineLyrics]) { on ->
+                HarmoniaSwitch(flags.getValue(Key.OnlineLyrics)) { on ->
                     if (on) confirmOnlineLyrics = true else settings[Key.OnlineLyrics] = false
                 }
             }
         }
 
         SettingsSection("Audio focus") {
-            ToggleRow(settings, Icons.Rounded.Notifications, "Lower volume for notifications", "Duck music instead of pausing", Key.Ducking)
+            ToggleRow(settings, flags, Icons.Rounded.Notifications, "Lower volume for notifications", "Duck music instead of pausing", Key.Ducking)
             Divider()
-            ToggleRow(settings, Icons.Rounded.Headphones, "Pause when headphones unplug", "Resume on speaker at 30% volume", Key.PauseOnUnplug)
+            ToggleRow(settings, flags, Icons.Rounded.Headphones, "Pause when headphones unplug", "Resume on speaker at 30% volume", Key.PauseOnUnplug)
         }
 
         SettingsSection("Display & privacy") {
-            ToggleRow(settings, Icons.Rounded.Speed, "Light performance mode", "Turn off blur and heavy effects", Key.LiteMode)
+            ToggleRow(settings, flags, Icons.Rounded.Speed, "Light performance mode", "Turn off blur and heavy effects", Key.LiteMode)
             Divider()
-            ToggleRow(settings, Icons.Rounded.BlurOn, "Lock screen privacy", "Blur album art on the lock screen", Key.LockPrivacy)
+            ToggleRow(settings, flags, Icons.Rounded.BlurOn, "Lock screen privacy", "Blur album art on the lock screen", Key.LockPrivacy)
         }
 
         SettingsSection("About") {
@@ -133,8 +136,8 @@ fun SettingsScreen(settings: SettingsRepository, onRescan: () -> Unit) {
 }
 
 @Composable
-private fun ToggleRow(settings: SettingsRepository, icon: ImageVector, label: String, sub: String, key: Key) =
-    SettingsRow(icon, label, sub, onClick = { settings[key] = !settings[key] }) { HarmoniaSwitch(settings[key]) { settings[key] = it } }
+private fun ToggleRow(settings: SettingsRepository, flags: Map<Key, Boolean>, icon: ImageVector, label: String, sub: String, key: Key) =
+    SettingsRow(icon, label, sub, onClick = { settings[key] = !flags.getValue(key) }) { HarmoniaSwitch(flags.getValue(key)) { settings[key] = it } }
 
 /** The tail of a document-tree uri is the readable part, e.g. "primary:Music". */
 private fun folderLabel(uri: String) = Uri.decode(uri.substringAfterLast("%3A").substringAfterLast(':')).ifBlank { "your folder" }

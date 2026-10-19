@@ -2,10 +2,6 @@ package com.rfaizm.harmoniamusic.data
 
 import android.content.IntentSender
 import android.graphics.Bitmap
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.rfaizm.harmoniamusic.data.local.ArtSource
 import com.rfaizm.harmoniamusic.data.local.LibraryStore
 import com.rfaizm.harmoniamusic.data.local.MediaStoreSource
@@ -14,17 +10,25 @@ import com.rfaizm.harmoniamusic.data.local.SessionStore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * The library (M6, T32, formerly `object Library`): songs, playlists, likes and play counts, the scan, album art,
  * deleting a file, and the session a media button resumes. A singleton for the whole process, so rotation doesn't
- * rescan and the playback service sees the same songs as the screens.
+ * rescan and the playback service sees the same songs as the screens. The state is published as [StateFlow]s and
+ * changed only through the methods below, each of which saves (T33).
  */
 @Singleton
 class MusicRepository @Inject constructor(
@@ -33,12 +37,15 @@ class MusicRepository @Inject constructor(
     private val art: ArtSource,
     private val sessions: SessionStore,
 ) {
-    val songs = mutableStateListOf<Song>()
-    val playlists = mutableStateListOf<Playlist>()
+    private val _songs = MutableStateFlow<List<Song>>(emptyList())
+    private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
+    private val _loaded = MutableStateFlow(false)
+
+    val songs: StateFlow<List<Song>> = _songs.asStateFlow()
+    val playlists: StateFlow<List<Playlist>> = _playlists.asStateFlow()
 
     /** False until the first scan finishes, so the UI can tell "still loading" from "no music". */
-    var loaded by mutableStateOf(false)
-        private set
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
 
     // Likes and play counts read from disk, as id-only songs; applied to the first scan by keepUserState.
     private var saved = emptyList<Song>()
@@ -52,17 +59,15 @@ class MusicRepository @Inject constructor(
     /** Restores and scans once, whoever asks first; a second caller waits for that scan instead of repeating it. */
     suspend fun ensureLoaded() = loadLock.withLock {
         restore()
-        if (!loaded) scanNow()
+        if (!_loaded.value) scanNow()
     }
 
     private suspend fun scanNow() {
         // Without the audio permission the query fails; leave [loaded] false so a later grant still scans.
         val fresh = withContext(Dispatchers.IO) { mediaStore.songs() } ?: return
         // Nothing scanned yet means this is the first scan of the process, so the saved state is the newest.
-        val merged = keepUserState(fresh, songs.toList().ifEmpty { saved })
-        songs.clear()
-        songs.addAll(merged)
-        loaded = true
+        _songs.value = keepUserState(fresh, _songs.value.ifEmpty { saved })
+        _loaded.value = true
     }
 
     /** Reads what MediaStore can't tell us, once, before the first scan. */
@@ -72,19 +77,40 @@ class MusicRepository @Inject constructor(
         val text = store.read() ?: return
         val (savedSongs, savedPlaylists) = parseState(text)
         saved = savedSongs
-        playlists.clear()
-        playlists.addAll(savedPlaylists)
+        _playlists.value = savedPlaylists
     }
 
-    /** Call after every like or playlist change. Snapshots on the caller's thread, writes on IO. */
-    fun save() {
-        val json = stateJson(songs.toList(), playlists.toList())
+    /** After every like, play count or playlist change. Snapshots on the caller's thread, writes on IO. */
+    private fun save() {
+        val json = stateJson(_songs.value, _playlists.value)
         writes.launch { store.write(json) }
     }
 
     /** Counted by the service, so tracks that advance in the background count too. */
     fun countPlay(songId: Int) {
-        songs.countPlay(songId)
+        _songs.update { it.toMutableList().apply { countPlay(songId) } }
+        save()
+    }
+
+    fun toggleLike(songId: Int) {
+        _songs.update { list -> list.map { if (it.id == songId) it.copy(liked = !it.liked) else it } }
+        save()
+    }
+
+    /** PRD phase 3: into the playlist named [name], created if missing, merged if it exists. */
+    fun addToPlaylist(name: String, ids: Collection<Int>) {
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+        _playlists.update { it.toMutableList().apply { addSongs(name, ids, today) } }
+        save()
+    }
+
+    fun removeFromPlaylist(playlistId: Int, songId: Int) {
+        _playlists.update { it.toMutableList().apply { removeSong(playlistId, songId) } }
+        save()
+    }
+
+    fun deletePlaylist(playlistId: Int) {
+        _playlists.update { list -> list.filterNot { it.id == playlistId } }
         save()
     }
 
@@ -108,8 +134,8 @@ class MusicRepository @Inject constructor(
 
     /** The song's file is gone, so drop it from the library and every playlist. */
     fun remove(songId: Int) {
-        songs.removeAll { it.id == songId }
-        playlists.removeSongEverywhere(songId)
+        _songs.update { list -> list.filterNot { it.id == songId } }
+        _playlists.update { it.toMutableList().apply { removeSongEverywhere(songId) } }
         save()
     }
 
@@ -121,7 +147,7 @@ class MusicRepository @Inject constructor(
     suspend fun lastSession(): SavedQueue? {
         val session = sessions.load() ?: return null
         ensureLoaded()
-        val (queue, index) = resumeQueue(session.ids, session.index, songs.toList())
+        val (queue, index) = resumeQueue(session.ids, session.index, _songs.value)
         return if (queue.isEmpty()) null else SavedQueue(queue, index, session.positionMs)
     }
 }

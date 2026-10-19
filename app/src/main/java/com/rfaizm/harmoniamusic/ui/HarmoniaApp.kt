@@ -92,9 +92,8 @@ import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
 import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.data.addSongs
-import com.rfaizm.harmoniamusic.data.removeSong
 import com.rfaizm.harmoniamusic.toMediaItem
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -123,9 +122,11 @@ enum class Tab(val label: String, val icon: ImageVector) {
  */
 @Composable
 fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepository: LyricsRepository) {
-    val darkMode = settings[Key.DarkMode]
-    val songs = music.songs
-    val playlists = music.playlists
+    val flags by settings.flags.collectAsStateWithLifecycle()
+    val darkMode = flags.getValue(Key.DarkMode)
+    val songs by music.songs.collectAsStateWithLifecycle()
+    val playlists by music.playlists.collectAsStateWithLifecycle()
+    val loaded by music.loaded.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
     // Saved so rotation doesn't flash the mini player away while the controller reconnects.
     var activeId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -204,9 +205,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
         c.play()
     }
     fun like(s: Song) {
-        val i = songs.indexOfFirst { it.id == s.id }
-        songs[i] = songs[i].copy(liked = !songs[i].liked)
-        music.save()
+        music.toggleLike(s.id)
     }
     // T16: the file is gone, so take the song out of the queue (Media3 moves on by itself) and the library.
     val deleteSong = rememberSongDeleter(music) { song ->
@@ -218,8 +217,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
         music.remove(song.id)
     }
     fun addTo(name: String, ids: Collection<Int>) {
-        playlists.addSongs(name, ids, SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
-        music.save()
+        music.addToPlaylist(name, ids)
     }
 
     // Status bar icons follow the app theme; the full player is always dark.
@@ -254,7 +252,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
 
     // First scan once permission is there; the repository outlives the activity, so rotation doesn't rescan.
     // Saved likes, play counts and playlists are read first, so the scan can merge them in.
-    LaunchedEffect(granted) { if (granted && !music.loaded) music.ensureLoaded() }
+    LaunchedEffect(granted) { if (granted && !loaded) music.ensureLoaded() }
     val scope = rememberCoroutineScope()
     var rescanning by remember { mutableStateOf(false) }
     fun rescan() {
@@ -278,7 +276,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                     when {
                         t == Tab.Settings -> SettingsScreen(settings, onRescan = ::rescan)
                         !granted -> PermissionEmptyState(blocked, ::requestPermission)
-                        !music.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = colors.primary)
                         }
                         songs.isEmpty() -> NoMusicEmptyState(rescanning, ::rescan)
@@ -286,8 +284,8 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                         t == Tab.Playlists -> PlaylistsScreen(
                             songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo,
                             onCreate = { addTo(it, emptyList()) },
-                            onRemove = { playlistId, songId -> playlists.removeSong(playlistId, songId); music.save() },
-                            onDelete = { playlists.remove(it); music.save() },
+                            onRemove = { playlistId, songId -> music.removeFromPlaylist(playlistId, songId) },
+                            onDelete = { music.deletePlaylist(it.id) },
                             onDeleteSong = deleteSong,
                         )
                         else -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo, deleteSong)

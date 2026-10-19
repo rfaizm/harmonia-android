@@ -6,9 +6,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * M6 (T30): `data/` holds data, and drawing it is the UI's job. Colours, images and `@Composable` functions belong to
- * `ui/`. The repositories still keep their state in Compose's runtime state holders until StateFlow replaces them
- * (T33).
+ * M6: `data/` holds data, and drawing it is the UI's job. Colours, images and `@Composable` functions belong to `ui/`
+ * (T30), and since T33 the repositories publish their state as `StateFlow`, so `data/` needs no Compose at all.
  */
 class DataLayerTest {
     @Test
@@ -19,7 +18,7 @@ class DataLayerTest {
 
         val uiImports = data.walk().filter { it.extension == "kt" }.flatMap { file ->
             file.readLines()
-                .filter { it.startsWith("import androidx.compose.ui") || it == "import androidx.compose.runtime.Composable" }
+                .filter { it.startsWith("import androidx.compose") }
                 .map { "${file.name}: $it" }
         }.toList()
 
