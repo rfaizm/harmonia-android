@@ -1,15 +1,11 @@
 package com.rfaizm.harmoniamusic.ui
 
 import android.Manifest
-import android.content.ComponentName
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
-import android.media.AudioManager
-import android.media.AudioManager.STREAM_MUSIC
 import android.net.Uri
 import android.os.Build
-import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -54,9 +50,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -69,41 +62,23 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.core.os.bundleOf
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LifecycleStartEffect
-import androidx.media3.common.Player
-import androidx.media3.common.util.Util
-import androidx.media3.session.MediaController
-import androidx.media3.session.SessionCommand
-import androidx.media3.session.SessionToken
-import com.rfaizm.harmoniamusic.PlaybackService
-import com.rfaizm.harmoniamusic.LYRICS
-import com.rfaizm.harmoniamusic.SLEEP_ADJUST_MS
-import com.rfaizm.harmoniamusic.SLEEP_AT
-import com.rfaizm.harmoniamusic.SLEEP_COMMAND
-import com.rfaizm.harmoniamusic.SLEEP_MINUTES
 import com.rfaizm.harmoniamusic.data.LyricsRepository
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
 import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.toMediaItem
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-import kotlin.math.roundToInt
 
 private val AUDIO_PERMISSION =
     if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -116,9 +91,9 @@ enum class Tab(val label: String, val icon: ImageVector) {
 }
 
 /**
- * Root state holder (GUIDELINE §16). Songs and playlists live in [Library]; everything else is UI state here.
- * Playback lives in [PlaybackService]; [activeId] and [isPlaying] mirror it through a MediaController.
- * Likes, play counts and playlists are saved by [Library], the switches by [Settings], the queue by the service.
+ * Root of the UI (GUIDELINE §16). It keeps only what is about the screen itself: the tab, the full-player flag and
+ * the permission flow. The library and the switches come from the repositories, and playback, mirrored from the
+ * service, from [PlayerViewModel].
  */
 @Composable
 fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepository: LyricsRepository) {
@@ -128,92 +103,24 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
     val playlists by music.playlists.collectAsStateWithLifecycle()
     val loaded by music.loaded.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
-    // Saved so rotation doesn't flash the mini player away while the controller reconnects.
-    var activeId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var isPlaying by rememberSaveable { mutableStateOf(false) }
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
-    var shuffle by rememberSaveable { mutableStateOf(false) }
-    var repeatMode by rememberSaveable { mutableIntStateOf(Player.REPEAT_MODE_OFF) }
-    var positionMs by remember { mutableLongStateOf(0L) }
-    var volume by remember { mutableFloatStateOf(0f) }
-    var muted by remember { mutableStateOf(false) }
-    // Mirrors the service's timer, so the chip goes back to "Off" by itself once the timer fires.
-    var sleep by remember { mutableStateOf<SleepTimer?>(null) }
-    // Read from the song's tags by the service; track metadata never reaches a controller on its own.
-    var lyrics by remember { mutableStateOf<String?>(null) }
-    // The artist the player read from the file, which MediaStore sometimes misses (SPEC.md S2).
-    var playerArtist by remember { mutableStateOf<String?>(null) }
-    val active = songs.firstOrNull { it.id == activeId }
-
-    // Connected while the app is visible; the service keeps playing after it's released.
     val context = LocalContext.current
-    var controller by remember { mutableStateOf<MediaController?>(null) }
-    // Media3 controllers drop device-volume commands during local playback, so volume is set through
-    // AudioManager; the new level comes back through sync(), same as a hardware key press.
-    val audio = remember { context.getSystemService(AudioManager::class.java) }
-    LifecycleStartEffect(Unit) {
-        val future = MediaController.Builder(context, SessionToken(context, ComponentName(context, PlaybackService::class.java)))
-            .setListener(object : MediaController.Listener {
-                override fun onExtrasChanged(controller: MediaController, extras: Bundle) {
-                    sleep = sleepTimerOf(extras.getInt(SLEEP_MINUTES), extras.getLong(SLEEP_AT))
-                    lyrics = extras.getString(LYRICS)
-                }
-            })
-            .buildAsync()
-        future.addListener({
-            // Cancelled or already released if the app was stopped before the connection finished.
-            val c = runCatching { future.get() }.getOrNull()?.takeIf { it.isConnected } ?: return@addListener
-            fun sync() {
-                activeId = c.currentMediaItem?.mediaId?.toIntOrNull()
-                isPlaying = !Util.shouldShowPlayButton(c)
-                positionMs = c.currentPosition
-                shuffle = c.shuffleModeEnabled
-                repeatMode = c.repeatMode
-                volume = c.deviceVolume / c.deviceInfo.maxVolume.coerceAtLeast(1).toFloat()
-                muted = c.isDeviceMuted
-                playerArtist = c.mediaMetadata.artist?.toString()
-            }
-            c.addListener(object : Player.Listener {
-                override fun onEvents(player: Player, events: Player.Events) = sync()
-            })
-            sync()
-            // A timer may already be running.
-            sleep = sleepTimerOf(c.sessionExtras.getInt(SLEEP_MINUTES), c.sessionExtras.getLong(SLEEP_AT))
-            lyrics = c.sessionExtras.getString(LYRICS)
-            controller = c
-        }, ContextCompat.getMainExecutor(context))
-        onStopOrDispose {
-            controller = null
-            MediaController.releaseFuture(future)
-        }
-    }
 
-    // Seeks, track changes and pauses arrive through sync(); only the steady tick has to be polled.
-    LaunchedEffect(controller, isPlaying) {
-        val c = controller ?: return@LaunchedEffect
-        while (isPlaying) {
-            positionMs = c.currentPosition
-            delay(500)
-        }
+    // Connected while the app is visible; the service keeps playing after the ViewModel lets go.
+    val player: PlayerViewModel = hiltViewModel()
+    val playback by player.state.collectAsStateWithLifecycle()
+    LifecycleStartEffect(player) {
+        player.connect()
+        onStopOrDispose { player.disconnect() }
     }
+    val active = songs.firstOrNull { it.id == playback.activeId }
 
-    // Next/prev walk the list the song was tapped from: the sorted Songs tab, a playlist, or Liked.
-    fun playFrom(s: Song, list: List<Song>) {
-        val c = controller ?: return
-        c.setMediaItems(list.map { it.toMediaItem() }, list.indexOfFirst { it.id == s.id }, 0)
-        c.prepare()
-        c.play()
-    }
     fun like(s: Song) {
         music.toggleLike(s.id)
     }
     // T16: the file is gone, so take the song out of the queue (Media3 moves on by itself) and the library.
     val deleteSong = rememberSongDeleter(music) { song ->
-        controller?.let { c ->
-            (c.mediaItemCount - 1 downTo 0)
-                .filter { c.getMediaItemAt(it).mediaId == song.id.toString() }
-                .forEach(c::removeMediaItem)
-        }
+        player.dropFromQueue(song.id)
         music.remove(song.id)
     }
     fun addTo(name: String, ids: Collection<Int>) {
@@ -280,15 +187,15 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                             CircularProgressIndicator(color = colors.primary)
                         }
                         songs.isEmpty() -> NoMusicEmptyState(rescanning, ::rescan)
-                        t == Tab.Songs -> SongsScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo, deleteSong)
+                        t == Tab.Songs -> SongsScreen(songs, playlists, playback.activeId, playback.isPlaying, player::playFrom, ::like, ::addTo, deleteSong)
                         t == Tab.Playlists -> PlaylistsScreen(
-                            songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo,
+                            songs, playlists, playback.activeId, playback.isPlaying, player::playFrom, ::like, ::addTo,
                             onCreate = { addTo(it, emptyList()) },
                             onRemove = { playlistId, songId -> music.removeFromPlaylist(playlistId, songId) },
                             onDelete = { music.deletePlaylist(it.id) },
                             onDeleteSong = deleteSong,
                         )
-                        else -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo, deleteSong)
+                        else -> ExploreScreen(songs, playlists, playback.activeId, playback.isPlaying, player::playFrom, ::like, ::addTo, deleteSong)
                     }
                 }
                 AnimatedVisibility(
@@ -297,7 +204,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                     exit = slideOutVertically { it } + fadeOut(),
                 ) {
                     active?.let {
-                        MiniPlayer(it, isPlaying, progressOf(positionMs, it.duration), onToggle = { Util.handlePlayPauseButtonAction(controller) }, onNext = { controller?.seekToNext() }, onOpen = { fullPlayer = true })
+                        MiniPlayer(it, playback.isPlaying, progressOf(playback.positionMs, it.duration), onToggle = player::togglePlay, onNext = player::next, onOpen = { fullPlayer = true })
                     }
                 }
                 BottomNav(tab) { tab = it }
@@ -310,32 +217,22 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
             ) {
                 active?.let {
                     FullPlayer(
-                        song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
-                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics, playerArtist = playerArtist, settings = settings, lyricsRepository = lyricsRepository,
-                        position = { controller?.currentPosition ?: 0L },
+                        song = it, isPlaying = playback.isPlaying, progress = progressOf(playback.positionMs, it.duration),
+                        shuffle = playback.shuffle, repeatMode = playback.repeatMode, volume = playback.volume, muted = playback.muted,
+                        sleep = playback.sleep, lyrics = playback.lyrics, playerArtist = playback.playerArtist,
+                        settings = settings, lyricsRepository = lyricsRepository,
+                        position = player::position,
                         onClose = { fullPlayer = false },
-                        onToggle = { Util.handlePlayPauseButtonAction(controller) },
-                        onNext = { controller?.seekToNext() },
-                        onPrev = { controller?.seekToPrevious() },
-                        onSeek = { f -> controller?.seekTo((f * it.duration * 1000).toLong()) },
-                        // Explicit `c.`: inside run {} the local repeatMode/shuffle vars would shadow the controller's.
-                        onShuffle = { controller?.let { c -> c.shuffleModeEnabled = !c.shuffleModeEnabled } },
-                        onRepeat = { controller?.let { c -> c.repeatMode = nextRepeatMode(c.repeatMode) } },
-                        onVolume = { f ->
-                            if (audio.isStreamMute(STREAM_MUSIC)) audio.adjustStreamVolume(STREAM_MUSIC, AudioManager.ADJUST_UNMUTE, 0)
-                            audio.setStreamVolume(STREAM_MUSIC, (f * audio.getStreamMaxVolume(STREAM_MUSIC)).roundToInt(), 0)
-                        },
-                        onMute = { audio.adjustStreamVolume(STREAM_MUSIC, AudioManager.ADJUST_TOGGLE_MUTE, 0) },
-                        onSleep = { option ->
-                            // No local echo: the label changes when the service confirms, and only it knows when a timer ends.
-                            controller?.sendCustomCommand(
-                                SessionCommand(SLEEP_COMMAND, Bundle.EMPTY),
-                                bundleOf(SLEEP_MINUTES to (option?.minutes ?: 0)),
-                            )
-                        },
-                        onSleepAdjust = { deltaMs ->
-                            controller?.sendCustomCommand(SessionCommand(SLEEP_COMMAND, Bundle.EMPTY), bundleOf(SLEEP_ADJUST_MS to deltaMs))
-                        },
+                        onToggle = player::togglePlay,
+                        onNext = player::next,
+                        onPrev = player::previous,
+                        onSeek = { f -> player.seekTo(f, it.duration) },
+                        onShuffle = player::toggleShuffle,
+                        onRepeat = player::cycleRepeat,
+                        onVolume = player::setVolume,
+                        onMute = player::toggleMute,
+                        onSleep = player::setSleep,
+                        onSleepAdjust = player::adjustSleep,
                         onLike = { like(it) },
                     )
                 }

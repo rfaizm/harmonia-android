@@ -35,4 +35,18 @@ class ArchitectureTest {
 
         assertEquals(emptyList<String>(), outsideData)
     }
+
+    @Test
+    fun screensLeaveThePlayerToItsViewModel() {
+        // M6 (T33): the MediaController connection, the playback commands and the volume belong to PlayerViewModel,
+        // so they outlive rotation and the composables only draw state and report taps.
+        val playerApis = listOf("import androidx.media3.session.", "import android.media.AudioManager")
+
+        val screens = File(app, "ui").walk()
+            .filter { it.extension == "kt" && !it.name.endsWith("ViewModel.kt") }
+            .flatMap { file -> file.readLines().filter { line -> playerApis.any { line.startsWith(it) } }.map { "${file.name}: $it" } }
+            .toList()
+
+        assertEquals(emptyList<String>(), screens)
+    }
 }

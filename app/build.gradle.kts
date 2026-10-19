@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
     implementation(libs.hilt.android)
+    implementation(libs.androidx.hilt.viewmodel.compose)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.json)
