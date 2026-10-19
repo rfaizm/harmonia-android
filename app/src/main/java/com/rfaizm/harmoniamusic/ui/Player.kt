@@ -91,8 +91,8 @@ import androidx.media3.common.Player
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.dataSources
 import com.rfaizm.harmoniamusic.data.LyricsResult
-import com.rfaizm.harmoniamusic.data.Settings
-import com.rfaizm.harmoniamusic.data.Settings.Key
+import com.rfaizm.harmoniamusic.data.SettingsRepository
+import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
 import com.rfaizm.harmoniamusic.data.fetchLyrics
 import com.rfaizm.harmoniamusic.data.lyricsQueries
 import kotlinx.coroutines.launch
@@ -142,6 +142,7 @@ fun FullPlayer(
     sleep: SleepTimer?,
     lyrics: String?,
     playerArtist: String?,
+    settings: SettingsRepository,
     position: () -> Long, // the player's clock in ms, read only while synced lyrics are on screen
     onClose: () -> Unit,
     onToggle: () -> Unit,
@@ -185,7 +186,7 @@ fun FullPlayer(
         // 2. Album art, or the lyrics in its place (T39), so the controls below keep working while they're read
         Crossfade(showLyrics, Modifier.weight(1f).fillMaxWidth(), label = "artOrLyrics") { lyricsShown ->
             if (lyricsShown) LyricsView(
-                song, lyrics, playerArtist, position,
+                song, lyrics, playerArtist, settings, position,
                 // T40: a tapped line plays, even from pause. Play goes first, because at the end of a song it starts
                 // over from 0:00; the seek after it then lands on the line.
                 onPlayFrom = { ms -> if (!isPlaying) onToggle(); seek(progressOf(ms, song.duration)) },
@@ -349,6 +350,7 @@ private fun LyricsView(
     song: Song,
     lyrics: String?,
     playerArtist: String?,
+    settings: SettingsRepository,
     position: () -> Long,
     onPlayFrom: (ms: Long) -> Unit,
     modifier: Modifier = Modifier,
@@ -371,7 +373,7 @@ private fun LyricsView(
 
     Box(modifier.padding(horizontal = 28.dp), contentAlignment = Alignment.CenterStart) {
         when {
-            lines.isNotEmpty() -> SyncedLyrics(lines, song.id, position, onPlayFrom)
+            lines.isNotEmpty() -> SyncedLyrics(lines, song.id, settings, position, onPlayFrom)
             shown != null -> Column(Modifier.fillMaxSize()) {
                 Text(
                     "NOT SYNCED TO THE SONG", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
@@ -398,7 +400,7 @@ private fun LyricsView(
                     },
                     fontSize = 15.sp, color = Color.White.copy(alpha = 0.75f), lineHeight = 22.sp,
                 )
-                if (Settings[Key.OnlineLyrics]) {
+                if (settings[Key.OnlineLyrics]) {
                     TextButton({
                         looking = true
                         scope.launch {
@@ -426,11 +428,17 @@ private fun LyricsView(
 
 /**
  * Lyrics that follow the song: the line being sung is lit and kept a third of the way down. Earlier and Later move
- * this song's timing in half seconds, and the app remembers it (see [Settings.lyricsShift]). Tapping a line plays
+ * this song's timing in half seconds, and the app remembers it (see [SettingsRepository.lyricsShift]). Tapping a line plays
  * from it (T40).
  */
 @Composable
-private fun SyncedLyrics(lines: List<LyricLine>, songId: Int, position: () -> Long, onPlayFrom: (ms: Long) -> Unit) {
+private fun SyncedLyrics(
+    lines: List<LyricLine>,
+    songId: Int,
+    settings: SettingsRepository,
+    position: () -> Long,
+    onPlayFrom: (ms: Long) -> Unit,
+) {
     val readPosition by rememberUpdatedState(position)
     var positionMs by remember { mutableLongStateOf(readPosition()) }
     LaunchedEffect(Unit) {
@@ -440,10 +448,10 @@ private fun SyncedLyrics(lines: List<LyricLine>, songId: Int, position: () -> Lo
             withFrameMillis { } // no frames come while the app is in the background, so this loop rests too
         }
     }
-    var shift by remember(songId) { mutableIntStateOf(Settings.lyricsShift(songId)) }
+    var shift by remember(songId) { mutableIntStateOf(settings.lyricsShift(songId)) }
     fun moveBy(ms: Int) {
         shift += ms
-        Settings.setLyricsShift(songId, shift)
+        settings.setLyricsShift(songId, shift)
     }
     // The clock ticks twenty times a second, but only a change of line gets past this and redraws anything.
     val current by remember(lines) { derivedStateOf { currentLine(lines, positionMs - shift) } }

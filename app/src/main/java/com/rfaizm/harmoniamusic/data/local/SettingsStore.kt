@@ -1,8 +1,8 @@
 package com.rfaizm.harmoniamusic.data.local
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
-import com.rfaizm.harmoniamusic.data.Settings
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -11,7 +11,7 @@ import javax.inject.Singleton
 @Singleton
 class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     // The playback service watches this file to apply changes while playing.
-    private val prefs = context.getSharedPreferences(Settings.FILE, Context.MODE_PRIVATE)
+    private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     // Its own file, because the service re-applies its settings on every change to the main one (M8).
     private val timing = context.getSharedPreferences("lyrics_timing", Context.MODE_PRIVATE)
 
@@ -27,6 +27,13 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     fun lyricsShift(songId: Int): Int = timing.getInt(songId.toString(), 0)
 
     fun setLyricsShift(songId: Int, ms: Int) = timing.edit { if (ms == 0) remove(songId.toString()) else putInt(songId.toString(), ms) }
+
+    /** SharedPreferences only holds its listeners weakly, so the returned function keeps this one alive. */
+    fun onChange(listener: () -> Unit): () -> Unit {
+        val watcher = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> listener() }
+        prefs.registerOnSharedPreferenceChangeListener(watcher)
+        return { prefs.unregisterOnSharedPreferenceChangeListener(watcher) }
+    }
 
     private companion object {
         const val FOLDER_KEY = "lyricsFolder"

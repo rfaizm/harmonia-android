@@ -1,6 +1,7 @@
 package com.rfaizm.harmoniamusic.data.local
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import android.provider.DocumentsContract
 import androidx.core.net.toUri
@@ -21,6 +22,11 @@ class LrcFolderSource @Inject constructor(
     @ApplicationContext private val context: Context,
     private val settings: SettingsStore,
 ) {
+    /** A folder picked once stays readable after a restart only if the grant is kept (T29). */
+    fun keepAccess(folder: Uri) {
+        runCatching { context.contentResolver.takePersistableUriPermission(folder, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+    }
+
     /** The song's `.lrc`, timestamps and all, so the player can follow the song (T39); null when there is none. */
     suspend fun read(song: Song): String? {
         val folder = settings.lyricsFolder ?: return null

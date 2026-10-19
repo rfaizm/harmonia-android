@@ -88,8 +88,8 @@ import com.rfaizm.harmoniamusic.SLEEP_AT
 import com.rfaizm.harmoniamusic.SLEEP_COMMAND
 import com.rfaizm.harmoniamusic.SLEEP_MINUTES
 import com.rfaizm.harmoniamusic.data.Library
-import com.rfaizm.harmoniamusic.data.Settings
-import com.rfaizm.harmoniamusic.data.Settings.Key
+import com.rfaizm.harmoniamusic.data.SettingsRepository
+import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.addSongs
 import com.rfaizm.harmoniamusic.data.removeSong
@@ -121,8 +121,8 @@ enum class Tab(val label: String, val icon: ImageVector) {
  * Likes, play counts and playlists are saved by [Library], the switches by [Settings], the queue by the service.
  */
 @Composable
-fun HarmoniaApp() {
-    val darkMode = Settings[Key.DarkMode]
+fun HarmoniaApp(settings: SettingsRepository) {
+    val darkMode = settings[Key.DarkMode]
     val songs = Library.songs
     val playlists = Library.playlists
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
@@ -267,7 +267,7 @@ fun HarmoniaApp() {
     HarmoniaTheme(darkTheme = darkMode) {
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize()) {
-                TopBar(songs.size, darkMode) { Settings[Key.DarkMode] = !darkMode }
+                TopBar(songs.size, darkMode) { settings[Key.DarkMode] = !darkMode }
                 AnimatedContent(
                     tab,
                     transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(160)) },
@@ -275,7 +275,7 @@ fun HarmoniaApp() {
                     label = "tab"
                 ) { t ->
                     when {
-                        t == Tab.Settings -> SettingsScreen(onRescan = ::rescan)
+                        t == Tab.Settings -> SettingsScreen(settings, onRescan = ::rescan)
                         !granted -> PermissionEmptyState(blocked, ::requestPermission)
                         !Library.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = colors.primary)
@@ -312,7 +312,7 @@ fun HarmoniaApp() {
                 active?.let {
                     FullPlayer(
                         song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
-                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics, playerArtist = playerArtist,
+                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics, playerArtist = playerArtist, settings = settings,
                         position = { controller?.currentPosition ?: 0L },
                         onClose = { fullPlayer = false },
                         onToggle = { Util.handlePlayPauseButtonAction(controller) },
@@ -396,7 +396,3 @@ private fun BottomNav(current: Tab, onSelect: (Tab) -> Unit) {
         }
     }
 }
-
-@Preview(widthDp = 390, heightDp = 844)
-@Composable
-private fun HarmoniaAppPreview() = HarmoniaApp()

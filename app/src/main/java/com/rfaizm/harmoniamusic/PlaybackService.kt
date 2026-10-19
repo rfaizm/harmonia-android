@@ -3,7 +3,6 @@ package com.rfaizm.harmoniamusic
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Intent
-import android.content.SharedPreferences
 import android.media.AudioDeviceCallback
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
@@ -37,8 +36,10 @@ import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import com.rfaizm.harmoniamusic.data.Library
-import com.rfaizm.harmoniamusic.data.Settings
-import com.rfaizm.harmoniamusic.data.Settings.Key
+import com.rfaizm.harmoniamusic.data.SettingsRepository
+import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
 import com.rfaizm.harmoniamusic.data.countPlay
@@ -59,7 +60,9 @@ import kotlin.math.roundToInt
  * Owns the player so music keeps going with the app closed. Media3 draws the notification and lock-screen
  * controls and routes Bluetooth buttons; the UI talks to it through a MediaController.
  */
+@AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
+    @Inject lateinit var settings: SettingsRepository
     private var session: MediaSession? = null
     private lateinit var player: ExoPlayer
     private var errorsInARow = 0
@@ -75,10 +78,9 @@ class PlaybackService : MediaSessionService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
     private val audio by lazy { getSystemService(AudioManager::class.java) } // no context before onCreate
-    private val settings by lazy { getSharedPreferences(Settings.FILE, MODE_PRIVATE) }
     // Its own file, so writing the position doesn't wake the settings listener below.
     private val sessionStore by lazy { getSharedPreferences("session", MODE_PRIVATE) }
-    private val settingsWatcher = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> applySettings() }
+    private var stopWatchingSettings: (() -> Unit)? = null
 
     // Earphones back in (wired, USB-C, Bluetooth, anything): the sound no longer goes to the bare speaker,
     // so drop the 30% cap. Matching on device types missed USB-C sets and headsets that reconnect late.
@@ -93,18 +95,17 @@ class PlaybackService : MediaSessionService() {
         super.onCreate()
         // Voice recorders often write ADTS .aac or .amr, which have no seek index; without this they can't be seeked.
         val extractors = DefaultExtractorsFactory().setConstantBitrateSeekingEnabled(true)
-        Settings.init(this)
         player = ExoPlayer.Builder(this)
             .setMediaSourceFactory(DefaultMediaSourceFactory(this, extractors))
             // PRD phase 4: pause for calls and other music apps; notifications duck or pause per Settings.
-            .setAudioAttributes(audioAttributesFor(Settings[Key.Ducking]), true)
-            .setHandleAudioBecomingNoisy(Settings[Key.PauseOnUnplug])
+            .setAudioAttributes(audioAttributesFor(settings[Key.Ducking]), true)
+            .setHandleAudioBecomingNoisy(settings[Key.PauseOnUnplug])
             .setMaxSeekToPreviousPositionMs(5_000) // PRD phase 7: previous after 5 s restarts the song
             // Lets the controller read the phone's media volume, so hardware keys move the slider.
             .setDeviceVolumeControlEnabled(true)
             .build()
         audio.registerAudioDeviceCallback(outputWatcher, handler)
-        settings.registerOnSharedPreferenceChangeListener(settingsWatcher)
+        stopWatchingSettings = settings.onChange(::applySettings)
         player.addListener(object : Player.Listener {
             // Counted here, not in the UI, so tracks that advance in the background count too.
             override fun onMediaItemTransition(item: MediaItem?, reason: Int) {
@@ -313,14 +314,14 @@ class PlaybackService : MediaSessionService() {
     @OptIn(UnstableApi::class) // ForwardingPlayer
     private fun published(player: Player): Player = object : ForwardingPlayer(player) {
         override fun getMediaMetadata(): MediaMetadata =
-            if (Settings[Key.LockPrivacy]) withoutArtwork(super.getMediaMetadata()) else super.getMediaMetadata()
+            if (settings[Key.LockPrivacy]) withoutArtwork(super.getMediaMetadata()) else super.getMediaMetadata()
     }
 
     /** Settings can change mid-playback, so both audio switches are re-applied to the live player. */
     @OptIn(UnstableApi::class) // setAudioAttributes
     private fun applySettings() {
-        player.setAudioAttributes(audioAttributesFor(Settings[Key.Ducking]), true)
-        player.setHandleAudioBecomingNoisy(Settings[Key.PauseOnUnplug])
+        player.setAudioAttributes(audioAttributesFor(settings[Key.Ducking]), true)
+        player.setHandleAudioBecomingNoisy(settings[Key.PauseOnUnplug])
         session?.player = published(player) // re-publishes the metadata, so privacy applies to the song playing now
         if (player.shuffleModeEnabled) applyShuffleOrder(newOrder = true)
     }
@@ -338,7 +339,7 @@ class PlaybackService : MediaSessionService() {
     private fun applyShuffleOrder(newOrder: Boolean) {
         val count = player.mediaItemCount
         if (count == 0) return
-        val smart = Settings[Key.SmartShuffle]
+        val smart = settings[Key.SmartShuffle]
         val queue = queueSignature((0 until count).map { player.getMediaItemAt(it).mediaId }, smart)
         if (!newOrder && queue == shuffledQueue) return
         shuffledQueue = queue
@@ -371,7 +372,7 @@ class PlaybackService : MediaSessionService() {
     override fun onDestroy() {
         saveSession()
         scope.cancel()
-        settings.unregisterOnSharedPreferenceChangeListener(settingsWatcher)
+        stopWatchingSettings?.invoke()
         audio.unregisterAudioDeviceCallback(outputWatcher)
         handler.removeCallbacksAndMessages(null)
         session?.release()

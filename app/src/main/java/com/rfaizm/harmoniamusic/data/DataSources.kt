@@ -14,7 +14,7 @@ import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 
 /**
- * M6 (T31): how code Hilt doesn't build yet (the `Library` and `Settings` objects, composables, the service) reaches
+ * M6 (T31): how code Hilt doesn't build yet (the `Library` object, composables) reaches
  * the data sources, which Hilt does build, once each. The repositories take them by injection in T32, and this goes.
  */
 @EntryPoint
