@@ -636,6 +636,24 @@ slices, each one shippable, buildable and phone-checked on its own. Behaviour mu
     every call (7 of them in `Library.kt` today).
   - Acceptance criteria: sources are classes with injected dependencies, `Library` and `Settings` delegate to them
     for now, and the app still scans, saves, plays and fetches lyrics exactly as before.
+  - **Built (2026-10-19).**
+    - **The build was proven first:** Hilt 2.60.1 with KSP 2.3.12 (KSP's versions no longer follow Kotlin's)
+      generates its components under AGP 9.3.3's built-in Kotlin, so no fallback was needed.
+    - **The application class is `HarmoniaApplication`.** `HarmoniaApp` is already the root composable.
+    - **Sources in `data/local/`:**
+      - `MediaStoreSource` and `LibraryStore` (`library.json`, with its own write lock);
+      - `SettingsStore` (both preference files);
+      - `ArtSource` (the old `AlbumArt` object, history kept);
+      - `LyricsStore` (the old `LyricsCache`);
+      - `LrcFolderSource`, which takes `SettingsStore` by injection.
+    - **Remote:** `ApiConfig` became the Hilt module that builds Retrofit, so `ApiService` is the remote source.
+      `fetchLyrics` takes the service as a parameter.
+    - **Bridge:** code Hilt doesn't build yet reaches the sources through the `DataSources` entry point
+      (`context.dataSources()`), which goes in T32.
+    - **Guard:** `DataLayerTest` checks that only `data/local/` and `data/remote/` import files, preferences,
+      MediaStore, decoders or HTTP.
+    - **Deferred:** `@AndroidEntryPoint` on `MainActivity` and `PlaybackService` waits until something is injected
+      into them (the service in T32, `hiltViewModel()` in T33).
 - **T32 Repositories (M).**
   - `MusicRepository` (songs, playlists, likes, play counts, scan, delete), `LyricsRepository` (tags, then cache,
     then network — so the View stops calling `fetchLyrics` itself), `SettingsRepository`.

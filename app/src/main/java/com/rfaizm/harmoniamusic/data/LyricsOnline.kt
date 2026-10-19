@@ -1,14 +1,9 @@
 package com.rfaizm.harmoniamusic.data
 
-import android.content.Context
-import com.rfaizm.harmoniamusic.data.remote.ApiConfig
+import com.rfaizm.harmoniamusic.data.remote.ApiService
 import com.rfaizm.harmoniamusic.data.remote.dto.LyricsDto
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
-import java.io.File
 import java.io.IOException
 import kotlin.math.abs
 
@@ -30,12 +25,11 @@ sealed interface LyricsResult {
 data class LyricsQuery(val artist: String?, val title: String, val fromFileName: Boolean = false)
 
 /**
- * Looks lyrics up through [ApiConfig]'s service. Only ever called when the user taps the button with the setting
+ * Looks lyrics up through [service], which `ApiConfig` builds. Only ever called when the user taps the button with the setting
  * switched on, and sends nothing but this one song's tags (PRD phase 9 asks for local lyrics; this is the extra).
  * [playerArtist] is what the player read from the file itself, which MediaStore sometimes misses (SPEC.md S2).
  */
-suspend fun fetchLyrics(song: Song, playerArtist: String?): LyricsResult = withContext(Dispatchers.IO) {
-    val service = ApiConfig.lyricsService
+suspend fun fetchLyrics(service: ApiService, song: Song, playerArtist: String?): LyricsResult = withContext(Dispatchers.IO) {
     try {
         for (query in lyricsQueries(song, playerArtist)) {
             // The exact endpoint needs an artist; when there is one it is the most precise answer.
@@ -159,42 +153,3 @@ internal fun wordsIn(entry: LyricsDto?): String? =
 
 private fun syncedIn(entry: LyricsDto?): String? =
     entry?.takeUnless { it.instrumental }?.syncedLyrics?.trim()?.ifEmpty { null }
-
-/**
- * Lyrics found online, kept on the phone so a song needs the network at most once and still shows them offline.
- * ponytail: one flat JSON file like library.json; move it into that file if a third store ever appears.
- */
-object LyricsCache {
-    private val byId = mutableMapOf<Int, String>()
-    private val lock = Mutex()
-    private var loaded = false
-
-    suspend fun get(context: Context, songId: Int): String? = lock.withLock {
-        load(context)
-        byId[songId]
-    }
-
-    suspend fun put(context: Context, songId: Int, lyrics: String) = lock.withLock {
-        load(context)
-        byId[songId] = lyrics
-        val json = JSONObject(byId.mapKeys { it.key.toString() }).toString()
-        withContext(Dispatchers.IO) { runCatching { file(context).writeText(json) } }
-        Unit
-    }
-
-    private suspend fun load(context: Context) {
-        if (loaded) return
-        loaded = true
-        val text = withContext(Dispatchers.IO) {
-            // Older files kept plain text, or whichever synced copy came first, so those songs are looked up again.
-            listOf("lyrics.json", "lyrics-synced.json").forEach { File(context.filesDir, it).delete() }
-            runCatching { file(context).readText() }.getOrNull()
-        } ?: return
-        runCatching {
-            val json = JSONObject(text)
-            json.keys().forEach { key -> key.toIntOrNull()?.let { byId[it] = json.getString(key) } }
-        }
-    }
-
-    private fun file(context: Context) = File(context.filesDir, "lyrics-v3.json")
-}

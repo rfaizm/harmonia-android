@@ -29,6 +29,13 @@ This machine has no emulator or connected device, so UI can't be checked from he
 ## Architecture
 
 - **Songs and playlists live in `object Library`** (`data/Library.kt`) as `mutableStateListOf`. `Library.scan()` queries MediaStore on `Dispatchers.IO` and keeps likes and play counts across rescans. Because it lives for the whole process, rotation doesn't rescan, and the playback service (M2) can reach it.
+- **Hilt and the data sources (M6, T31):**
+  - `HarmoniaApplication` is the `@HiltAndroidApp`. Hilt 2.60.1 runs on KSP 2.3.12 under AGP 9's built-in Kotlin.
+  - All I/O sits in `@Singleton` sources:
+    - `data/local/`: `MediaStoreSource`, `LibraryStore`, `SettingsStore`, `ArtSource`, `LyricsStore` and `LrcFolderSource`.
+    - `data/remote/`: `ApiService`, which `ApiConfig` builds as a Hilt module.
+  - `DataLayerTest` fails if any other file in `data/` imports files, preferences, MediaStore, decoders or HTTP.
+  - Until the repositories land (T32), the `Library`/`Settings` objects, composables and the service reach the sources through the `DataSources` entry point: `context.dataSources()`.
 - **UI state lives in the root `HarmoniaApp` composable** (`ui/HarmoniaApp.kt`), following GUIDELINE §16: the tab, the active song and play state (mirrored from the `MediaController`), shuffle/repeat, the full-player flag, dark mode and the permission state. Screens get data and callbacks as parameters; there is no ViewModel or state library.
 - **Screens:** `SongsScreen`, `PlaylistsScreen` (the list and the detail view are switched by local state, not by navigation), `ExploreScreen` (Artists/Albums tab), `SettingsScreen` and `Player.kt` (mini player plus the full-screen player overlay). Shared building blocks are in `ui/Components.kt`.
 - **Theme mapping** (`ui/theme/Theme.kt`): the guideline's CSS tokens are mapped onto the M3 `ColorScheme` (card→surface, muted→surfaceVariant, muted-foreground→onSurfaceVariant, border→outline, accent→tertiary, destructive→error). Extension aliases (`colors.card`, `colors.muted`, `colors.mutedForeground`, `colors.border`, `colors.destructive`) keep the guideline's names in code. `colors` is a `@Composable` getter for `MaterialTheme.colorScheme`, defined in `Components.kt`.

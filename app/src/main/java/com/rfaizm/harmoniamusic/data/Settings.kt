@@ -1,15 +1,14 @@
 package com.rfaizm.harmoniamusic.data
 
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.edit
+import com.rfaizm.harmoniamusic.data.local.SettingsStore
 
 /**
- * The Settings tab's switches, kept in SharedPreferences. Values are mirrored into Compose state so
+ * The Settings tab's switches, kept by [SettingsStore]. Values are mirrored into Compose state so
  * screens recompose, and the playback service watches the same file to pick up changes while playing.
  */
 object Settings {
@@ -26,21 +25,17 @@ object Settings {
 
     internal const val FILE = "settings"
 
-    private const val FOLDER_KEY = "lyricsFolder"
-
-    private var prefs: SharedPreferences? = null
-    private var timing: SharedPreferences? = null
+    private var store: SettingsStore? = null
     private val values = mutableStateMapOf<Key, Boolean>()
     private var folder by mutableStateOf<String?>(null)
 
     /** Called by both the activity and the service, whichever starts first; the second call does nothing. */
     fun init(context: Context) {
-        if (prefs != null) return
-        val stored = context.applicationContext.getSharedPreferences(FILE, Context.MODE_PRIVATE)
-        prefs = stored
-        Key.entries.forEach { values[it] = stored.getBoolean(it.name, it.default) }
-        folder = stored.getString(FOLDER_KEY, null)
-        timing = context.applicationContext.getSharedPreferences("lyrics_timing", Context.MODE_PRIVATE)
+        if (store != null) return
+        val stored = context.dataSources().settingsStore()
+        store = stored
+        Key.entries.forEach { values[it] = stored.flag(it.name, it.default) }
+        folder = stored.lyricsFolder
     }
 
     /**
@@ -48,10 +43,10 @@ object Settings {
      * disagree by seconds and a video rip can have a longer intro, so no automatic pick fits every file. Kept in its
      * own file, because the playback service re-applies its settings on every change to the main one.
      */
-    fun lyricsShift(songId: Int): Int = timing?.getInt(songId.toString(), 0) ?: 0
+    fun lyricsShift(songId: Int): Int = store?.lyricsShift(songId) ?: 0
 
     fun setLyricsShift(songId: Int, ms: Int) {
-        timing?.edit { if (ms == 0) remove(songId.toString()) else putInt(songId.toString(), ms) }
+        store?.setLyricsShift(songId, ms)
     }
 
     /** The folder the user granted for `.lrc` files (T29), or null while none is granted. */
@@ -59,13 +54,13 @@ object Settings {
         get() = folder
         set(value) {
             folder = value
-            prefs?.edit { if (value == null) remove(FOLDER_KEY) else putString(FOLDER_KEY, value) }
+            store?.lyricsFolder = value
         }
 
     operator fun get(key: Key) = values[key] ?: key.default
 
     operator fun set(key: Key, value: Boolean) {
         values[key] = value
-        prefs?.edit { putBoolean(key.name, value) }
+        store?.setFlag(key.name, value)
     }
 }

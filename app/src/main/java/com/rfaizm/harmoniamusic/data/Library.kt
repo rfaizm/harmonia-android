@@ -1,9 +1,6 @@
 package com.rfaizm.harmoniamusic.data
 
-import android.content.ContentResolver
 import android.content.Context
-import android.provider.MediaStore
-import android.provider.MediaStore.Audio.Media
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -17,7 +14,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 
 /**
  * Process-level library, so rotation doesn't rescan and the playback service (T6) can reach it.
@@ -35,7 +31,6 @@ object Library {
     private var saved = emptyList<Song>()
     private var restored = false
     private val writes = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val writeLock = Mutex()
     private val loadLock = Mutex() // the UI and the service both ask for the library at launch
 
     /** Needs the audio permission; call on the main thread. */
@@ -49,7 +44,7 @@ object Library {
 
     private suspend fun scanNow(context: Context) {
         // Without the audio permission the query throws; leave [loaded] false so a later grant still scans.
-        val fresh = withContext(Dispatchers.IO) { runCatching { query(context.contentResolver) }.getOrNull() } ?: return
+        val fresh = withContext(Dispatchers.IO) { context.dataSources().mediaStore().songs() } ?: return
         // Nothing scanned yet means this is the first scan of the process, so the saved state is the newest.
         val merged = keepUserState(fresh, songs.toList().ifEmpty { saved })
         songs.clear()
@@ -61,7 +56,7 @@ object Library {
     suspend fun restore(context: Context) {
         if (restored) return
         restored = true
-        val text = withContext(Dispatchers.IO) { runCatching { stateFile(context).readText() }.getOrNull() } ?: return
+        val text = context.dataSources().libraryStore().read() ?: return
         val (savedSongs, savedPlaylists) = parseState(text)
         saved = savedSongs
         playlists.clear()
@@ -78,10 +73,9 @@ object Library {
     /** Call after every like, play count or playlist change. Snapshots on the caller's thread, writes on IO. */
     fun save(context: Context) {
         val json = stateJson(songs.toList(), playlists.toList())
-        writes.launch { writeLock.withLock { runCatching { stateFile(context).writeText(json) } } }
+        val store = context.dataSources().libraryStore()
+        writes.launch { store.write(json) }
     }
-
-    private fun stateFile(context: Context) = File(context.filesDir, "library.json")
 }
 
 /** Only what a rescan can't rebuild: likes, play counts and playlists. */
@@ -118,20 +112,6 @@ internal fun parseState(json: String): Pair<List<Song>, List<Playlist>> = runCat
 private fun JSONArray.objects() = (0 until length()).map { getJSONObject(it) }
 private fun JSONArray.ints() = (0 until length()).map { getInt(it) }
 
-// PRD phase 1: MediaStore already has the tags, so no file is opened here.
-private fun query(resolver: ContentResolver): List<Song> {
-    val columns = arrayOf(Media._ID, Media.TITLE, Media.ARTIST, Media.ALBUM, Media.YEAR, Media.DURATION, Media.DISPLAY_NAME)
-    // Settings › Filters: "Hide clips shorter than 30 seconds".
-    val selection = "${Media.IS_MUSIC} != 0 AND ${Media.DURATION} >= 30000"
-    return resolver.query(Media.EXTERNAL_CONTENT_URI, columns, selection, null, null)?.use { c ->
-        buildList(c.count) {
-            while (c.moveToNext()) {
-                add(toSong(c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getInt(4), c.getLong(5), c.getString(6)))
-            }
-        }
-    }.orEmpty()
-}
-
 /** What a song with no artist tag is called, and what the online lookup must not search for. */
 internal const val UNKNOWN_ARTIST = "Unknown artist"
 
@@ -149,7 +129,10 @@ internal fun toSong(id: Long, title: String?, artist: String?, album: String?, y
     fileName = fileName.orEmpty(),
 )
 
-private fun String?.known() = takeUnless { it.isNullOrBlank() || it == MediaStore.UNKNOWN_STRING }
+// MediaStore.UNKNOWN_STRING, spelled out so this logic needs nothing from MediaStore itself.
+private const val MEDIASTORE_UNKNOWN = "<unknown>"
+
+private fun String?.known() = takeUnless { it.isNullOrBlank() || it == MEDIASTORE_UNKNOWN }
 
 /** A rescan builds fresh Songs; carry likes and play counts over by id. */
 internal fun keepUserState(fresh: List<Song>, old: List<Song>): List<Song> {

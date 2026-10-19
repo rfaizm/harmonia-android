@@ -24,4 +24,21 @@ class DataLayerTest {
 
         assertEquals(emptyList<String>(), uiImports)
     }
+
+    @Test
+    fun onlyTheDataSourcesTouchStorageMediaStoreOrTheNetwork() {
+        // M6 (T31): files, preferences, MediaStore, the folder grant, decoders and HTTP live in data/local/ and
+        // data/remote/, each class taking the app's context once. The rest of data/ is logic over what they return.
+        val data = File("src/main/java/com/rfaizm/harmoniamusic/data")
+        val io = listOf(
+            "android.provider.", "android.content.ContentResolver", "android.content.SharedPreferences", "java.io.File",
+            "android.media.MediaMetadataRetriever", "android.graphics.BitmapFactory", "retrofit2.", "okhttp3.",
+        )
+
+        val outsideSources = data.listFiles().orEmpty().filter { it.extension == "kt" }.flatMap { file ->
+            file.readLines().filter { line -> io.any { line.startsWith("import $it") } }.map { "${file.name}: $it" }
+        }
+
+        assertEquals(emptyList<String>(), outsideSources)
+    }
 }

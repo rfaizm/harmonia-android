@@ -10,7 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import com.rfaizm.harmoniamusic.data.AlbumArt
+import com.rfaizm.harmoniamusic.data.dataSources
 import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
 import kotlinx.coroutines.Dispatchers
@@ -53,10 +53,10 @@ fun formatDate(iso: String): String {
 @Composable
 fun albumArtOf(songId: Int?): ImageBitmap? {
     if (songId == null) return null
-    val context = LocalContext.current
-    var art by remember(songId) { mutableStateOf(AlbumArt[songId]?.asImageBitmap()) }
+    val source = LocalContext.current.dataSources().art()
+    var art by remember(songId) { mutableStateOf(source[songId]?.asImageBitmap()) }
     LaunchedEffect(songId) {
-        if (art == null) art = withContext(Dispatchers.IO) { AlbumArt.load(context, songId) }?.asImageBitmap()
+        if (art == null) art = withContext(Dispatchers.IO) { source.load(songId) }?.asImageBitmap()
     }
     return art
 }

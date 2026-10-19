@@ -89,13 +89,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.data.LyricsCache
+import com.rfaizm.harmoniamusic.data.dataSources
 import com.rfaizm.harmoniamusic.data.LyricsResult
 import com.rfaizm.harmoniamusic.data.Settings
 import com.rfaizm.harmoniamusic.data.Settings.Key
 import com.rfaizm.harmoniamusic.data.fetchLyrics
 import com.rfaizm.harmoniamusic.data.lyricsQueries
-import com.rfaizm.harmoniamusic.data.readLrc
 import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -354,7 +353,8 @@ private fun LyricsView(
     onPlayFrom: (ms: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
+    // T31: the sources until T32's LyricsRepository takes this off the View.
+    val sources = LocalContext.current.dataSources()
     val scope = rememberCoroutineScope()
     // Anything found online before, so the same song needs no network a second time.
     var found by remember(song.id) { mutableStateOf<String?>(null) }
@@ -366,7 +366,7 @@ private fun LyricsView(
     val asked = remember(song, playerArtist) { lyricsQueries(song, playerArtist).first() }
     // Offline first: a .lrc beside the song, then anything found online before. Neither touches the network.
     LaunchedEffect(song.id) {
-        if (lyrics == null) found = readLrc(context, song) ?: LyricsCache.get(context, song.id)
+        if (lyrics == null) found = sources.lrcFolder().read(song) ?: sources.lyricsStore().get(song.id)
     }
 
     Box(modifier.padding(horizontal = 28.dp), contentAlignment = Alignment.CenterStart) {
@@ -403,12 +403,12 @@ private fun LyricsView(
                         looking = true
                         scope.launch {
                             // The only moment this app uses the network, and only because it was tapped.
-                            val result = fetchLyrics(song, playerArtist)
+                            val result = fetchLyrics(sources.lyricsService(), song, playerArtist)
                             looking = false
                             miss = result
                             if (result is LyricsResult.Found) {
                                 found = result.text
-                                LyricsCache.put(context, song.id, result.text)
+                                sources.lyricsStore().put(song.id, result.text)
                             }
                         }
                     }) { Text(if (miss == null) "Find lyrics online" else "Try again", fontWeight = FontWeight.Bold, color = Color.White) }

@@ -1,6 +1,6 @@
 package com.rfaizm.harmoniamusic
 
-import com.rfaizm.harmoniamusic.data.sampleSizeFor
+import com.rfaizm.harmoniamusic.data.local.sampleSizeFor
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

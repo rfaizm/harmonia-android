@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 // The release workflow sets these: the upload key from GitHub secrets, and the tag being released.
@@ -79,6 +81,8 @@ dependencies {
     implementation(libs.androidx.media3.session)
     implementation(libs.retrofit)
     implementation(libs.retrofit.gson)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.json)
     androidTestImplementation(platform(libs.androidx.compose.bom))
