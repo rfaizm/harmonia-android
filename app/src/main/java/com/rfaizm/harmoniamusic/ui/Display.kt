@@ -6,11 +6,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.platform.LocalContext
-import com.rfaizm.harmoniamusic.data.dataSources
+import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
 import kotlinx.coroutines.Dispatchers
@@ -49,14 +49,20 @@ fun formatDate(iso: String): String {
     return "${MONTHS[m.toInt() - 1]} ${d.toInt()}, $y"
 }
 
+/**
+ * The library, for composables deep in the tree that show album art. HarmoniaApp provides it; previews don't,
+ * so they show the gradient.
+ */
+val LocalMusic = staticCompositionLocalOf<MusicRepository?> { null }
+
 /** The song's art once it has been read from the file, or null while loading and when there is none. */
 @Composable
 fun albumArtOf(songId: Int?): ImageBitmap? {
     if (songId == null) return null
-    val source = LocalContext.current.dataSources().art()
-    var art by remember(songId) { mutableStateOf(source[songId]?.asImageBitmap()) }
+    val music = LocalMusic.current ?: return null
+    var art by remember(songId) { mutableStateOf(music.cachedArt(songId)?.asImageBitmap()) }
     LaunchedEffect(songId) {
-        if (art == null) art = withContext(Dispatchers.IO) { source.load(songId) }?.asImageBitmap()
+        if (art == null) art = withContext(Dispatchers.IO) { music.loadArt(songId) }?.asImageBitmap()
     }
     return art
 }

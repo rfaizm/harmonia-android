@@ -87,7 +87,7 @@ import com.rfaizm.harmoniamusic.SLEEP_ADJUST_MS
 import com.rfaizm.harmoniamusic.SLEEP_AT
 import com.rfaizm.harmoniamusic.SLEEP_COMMAND
 import com.rfaizm.harmoniamusic.SLEEP_MINUTES
-import com.rfaizm.harmoniamusic.data.Library
+import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
 import com.rfaizm.harmoniamusic.data.Song
@@ -121,10 +121,10 @@ enum class Tab(val label: String, val icon: ImageVector) {
  * Likes, play counts and playlists are saved by [Library], the switches by [Settings], the queue by the service.
  */
 @Composable
-fun HarmoniaApp(settings: SettingsRepository) {
+fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository) {
     val darkMode = settings[Key.DarkMode]
-    val songs = Library.songs
-    val playlists = Library.playlists
+    val songs = music.songs
+    val playlists = music.playlists
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
     // Saved so rotation doesn't flash the mini player away while the controller reconnects.
     var activeId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -205,20 +205,20 @@ fun HarmoniaApp(settings: SettingsRepository) {
     fun like(s: Song) {
         val i = songs.indexOfFirst { it.id == s.id }
         songs[i] = songs[i].copy(liked = !songs[i].liked)
-        Library.save(context)
+        music.save()
     }
     // T16: the file is gone, so take the song out of the queue (Media3 moves on by itself) and the library.
-    val deleteSong = rememberSongDeleter { song ->
+    val deleteSong = rememberSongDeleter(music) { song ->
         controller?.let { c ->
             (c.mediaItemCount - 1 downTo 0)
                 .filter { c.getMediaItemAt(it).mediaId == song.id.toString() }
                 .forEach(c::removeMediaItem)
         }
-        Library.remove(context, song.id)
+        music.remove(song.id)
     }
     fun addTo(name: String, ids: Collection<Int>) {
         playlists.addSongs(name, ids, SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date()))
-        Library.save(context)
+        music.save()
     }
 
     // Status bar icons follow the app theme; the full player is always dark.
@@ -251,16 +251,16 @@ fun HarmoniaApp(settings: SettingsRepository) {
         else permissionLauncher.launch(AUDIO_PERMISSION)
     }
 
-    // First scan once permission is there; Library outlives the activity, so rotation doesn't rescan.
+    // First scan once permission is there; the repository outlives the activity, so rotation doesn't rescan.
     // Saved likes, play counts and playlists are read first, so the scan can merge them in.
-    LaunchedEffect(granted) { if (granted && !Library.loaded) Library.ensureLoaded(context) }
+    LaunchedEffect(granted) { if (granted && !music.loaded) music.ensureLoaded() }
     val scope = rememberCoroutineScope()
     var rescanning by remember { mutableStateOf(false) }
     fun rescan() {
         if (!granted || rescanning) return
         scope.launch {
             rescanning = true
-            try { Library.scan(context) } finally { rescanning = false }
+            try { music.scan() } finally { rescanning = false }
         }
     }
 
@@ -277,7 +277,7 @@ fun HarmoniaApp(settings: SettingsRepository) {
                     when {
                         t == Tab.Settings -> SettingsScreen(settings, onRescan = ::rescan)
                         !granted -> PermissionEmptyState(blocked, ::requestPermission)
-                        !Library.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        !music.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = colors.primary)
                         }
                         songs.isEmpty() -> NoMusicEmptyState(rescanning, ::rescan)
@@ -285,8 +285,8 @@ fun HarmoniaApp(settings: SettingsRepository) {
                         t == Tab.Playlists -> PlaylistsScreen(
                             songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo,
                             onCreate = { addTo(it, emptyList()) },
-                            onRemove = { playlistId, songId -> playlists.removeSong(playlistId, songId); Library.save(context) },
-                            onDelete = { playlists.remove(it); Library.save(context) },
+                            onRemove = { playlistId, songId -> playlists.removeSong(playlistId, songId); music.save() },
+                            onDelete = { playlists.remove(it); music.save() },
                             onDeleteSong = deleteSong,
                         )
                         else -> ExploreScreen(songs, playlists, activeId, isPlaying, ::playFrom, ::like, ::addTo, deleteSong)

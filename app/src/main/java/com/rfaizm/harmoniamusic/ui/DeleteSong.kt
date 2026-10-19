@@ -2,15 +2,11 @@ package com.rfaizm.harmoniamusic.ui
 
 import android.Manifest
 import android.app.Activity
-import android.app.RecoverableSecurityException
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
-import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import android.provider.MediaStore
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -27,6 +23,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.Song
 
 private const val WRITE_STORAGE = Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -55,7 +52,7 @@ internal fun deletePathFor(sdkInt: Int) = when {
  * library and the queue. Nothing here can throw: a refusal or a missing file ends in a message, not a crash.
  */
 @Composable
-fun rememberSongDeleter(onDeleted: (Song) -> Unit): (Song) -> Unit {
+fun rememberSongDeleter(music: MusicRepository, onDeleted: (Song) -> Unit): (Song) -> Unit {
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     // The song waiting on a system dialog or a permission prompt.
@@ -73,7 +70,7 @@ fun rememberSongDeleter(onDeleted: (Song) -> Unit): (Song) -> Unit {
         when {
             result.resultCode != Activity.RESULT_OK -> toast("Not deleted")
             // On Android 11+ the system already deleted it; on 10 the consent just unlocks a second attempt.
-            Build.VERSION.SDK_INT >= 30 || deleteNow(context, song) -> onDeleted(song)
+            Build.VERSION.SDK_INT >= 30 || music.delete(song.id) -> onDeleted(song)
             else -> failed(song)
         }
     }
@@ -82,7 +79,7 @@ fun rememberSongDeleter(onDeleted: (Song) -> Unit): (Song) -> Unit {
         val song = pending ?: return@rememberLauncherForActivityResult
         if (granted) {
             pending = null
-            if (deleteNow(context, song)) onDeleted(song) else failed(song)
+            if (music.delete(song.id)) onDeleted(song) else failed(song)
         } else {
             // Denied for good: only the settings screen can turn it back on, so say that instead of re-prompting.
             blocked = activity?.shouldShowRequestPermissionRationale(WRITE_STORAGE) == false
@@ -110,10 +107,10 @@ fun rememberSongDeleter(onDeleted: (Song) -> Unit): (Song) -> Unit {
         pending = song
         when (deletePathFor(Build.VERSION.SDK_INT)) {
             DeletePath.SystemDialog -> {
-                val request = deleteRequest(context, song)
+                val request = music.deleteRequest(song.id)
                 if (request == null) { pending = null; failed(song) } else consent.launch(IntentSenderRequest.Builder(request).build())
             }
-            DeletePath.RecoverableConsent -> runCatching { deleteOrConsent(context, song) }
+            DeletePath.RecoverableConsent -> runCatching { music.deleteOrConsent(song.id) }
                 .onSuccess { needed ->
                     if (needed == null) { pending = null; onDeleted(song) } else consent.launch(IntentSenderRequest.Builder(needed).build())
                 }
@@ -121,7 +118,7 @@ fun rememberSongDeleter(onDeleted: (Song) -> Unit): (Song) -> Unit {
             DeletePath.StoragePermission -> when {
                 ContextCompat.checkSelfPermission(context, WRITE_STORAGE) == PackageManager.PERMISSION_GRANTED -> {
                     pending = null
-                    if (deleteNow(context, song)) onDeleted(song) else failed(song)
+                    if (music.delete(song.id)) onDeleted(song) else failed(song)
                 }
                 // Explain before asking a second time, then let the system prompt do the asking.
                 activity?.shouldShowRequestPermissionRationale(WRITE_STORAGE) == true -> explainStorage = true
@@ -132,29 +129,6 @@ fun rememberSongDeleter(onDeleted: (Song) -> Unit): (Song) -> Unit {
     return ::delete
 }
 
-private fun uriOf(song: Song): Uri =
-    ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, song.id.toLong())
-
-/** True once the song is gone; a row that was already deleted elsewhere counts as gone. */
-private fun deleteNow(context: Context, song: Song): Boolean =
-    runCatching { context.contentResolver.delete(uriOf(song), null, null) }.isSuccess
-
-/** Android 11+: the intent that makes the system show its own delete confirmation, or null if it can't be built. */
-private fun deleteRequest(context: Context, song: Song): IntentSender? {
-    if (Build.VERSION.SDK_INT < 30) return null
-    return runCatching { MediaStore.createDeleteRequest(context.contentResolver, listOf(uriOf(song))).intentSender }.getOrNull()
-}
-
-/** Android 10: null when the song is already gone, otherwise the consent the user has to grant first. */
-private fun deleteOrConsent(context: Context, song: Song): IntentSender? {
-    if (Build.VERSION.SDK_INT < 29) return null
-    return try {
-        context.contentResolver.delete(uriOf(song), null, null)
-        null
-    } catch (e: RecoverableSecurityException) {
-        e.userAction.actionIntent.intentSender
-    } // any other SecurityException is a real failure and is reported by the caller
-}
 
 private fun openAppSettings(context: Context) = context.startActivity(
     Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))

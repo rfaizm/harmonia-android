@@ -11,7 +11,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.Bundle
 import android.os.SystemClock
-import android.provider.MediaStore
 import android.widget.Toast
 import androidx.annotation.OptIn
 import androidx.core.content.edit
@@ -35,14 +34,14 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
-import com.rfaizm.harmoniamusic.data.Library
+import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
-import com.rfaizm.harmoniamusic.data.countPlay
+import com.rfaizm.harmoniamusic.data.local.songUri
 import com.rfaizm.harmoniamusic.data.parseUslt
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -63,6 +62,7 @@ import kotlin.math.roundToInt
 @AndroidEntryPoint
 class PlaybackService : MediaSessionService() {
     @Inject lateinit var settings: SettingsRepository
+    @Inject lateinit var music: MusicRepository
     private var session: MediaSession? = null
     private lateinit var player: ExoPlayer
     private var errorsInARow = 0
@@ -78,8 +78,6 @@ class PlaybackService : MediaSessionService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val handler = Handler(Looper.getMainLooper())
     private val audio by lazy { getSystemService(AudioManager::class.java) } // no context before onCreate
-    // Its own file, so writing the position doesn't wake the settings listener below.
-    private val sessionStore by lazy { getSharedPreferences("session", MODE_PRIVATE) }
     private var stopWatchingSettings: (() -> Unit)? = null
 
     // Earphones back in (wired, USB-C, Bluetooth, anything): the sound no longer goes to the bare speaker,
@@ -113,8 +111,7 @@ class PlaybackService : MediaSessionService() {
                 lyrics = null // the next song's tags haven't been read yet
                 publishExtras()
                 item?.mediaId?.toIntOrNull()?.let {
-                    Library.songs.countPlay(it)
-                    Library.save(this@PlaybackService)
+                    music.countPlay(it)
                 }
                 saveSession()
             }
@@ -232,22 +229,14 @@ class PlaybackService : MediaSessionService() {
 
     private fun saveSession() {
         val ids = (0 until player.mediaItemCount).mapNotNull { player.getMediaItemAt(it).mediaId.toIntOrNull() }
-        sessionStore.edit {
-            putString("ids", ids.joinToString(","))
-            putInt("index", player.currentMediaItemIndex)
-            putLong("position", player.currentPosition)
-        }
+        music.saveSession(ids, player.currentMediaItemIndex, player.currentPosition)
     }
 
     /** Waits for the library, since a media button can start this service before anything has scanned. */
     @OptIn(UnstableApi::class) // MediaItemsWithStartPosition
     private suspend fun lastSession(): MediaSession.MediaItemsWithStartPosition? {
-        val ids = sessionStore.getString("ids", "").orEmpty().split(",").mapNotNull(String::toIntOrNull)
-        if (ids.isEmpty()) return null
-        Library.ensureLoaded(this)
-        val (songs, index) = resumeQueue(ids, sessionStore.getInt("index", 0), Library.songs.toList())
-        if (songs.isEmpty()) return null
-        return MediaSession.MediaItemsWithStartPosition(songs.map { it.toMediaItem() }, index, sessionStore.getLong("position", 0))
+        val saved = music.lastSession() ?: return null
+        return MediaSession.MediaItemsWithStartPosition(saved.songs.map { it.toMediaItem() }, saved.index, saved.positionMs)
     }
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo) = session
@@ -453,13 +442,6 @@ internal fun fadeVolume(msLeft: Long): Float {
     return t * t
 }
 
-/** Saved ids minus whatever a rescan removed, with the index still pointing at the song that was playing. */
-internal fun resumeQueue(ids: List<Int>, index: Int, songs: List<Song>): Pair<List<Song>, Int> {
-    val byId = songs.associateBy { it.id }
-    val queue = ids.mapNotNull { byId[it] }
-    val playing = ids.getOrNull(index)
-    return queue to queue.indexOfFirst { it.id == playing }.coerceAtLeast(0)
-}
 
 /**
  * Settings › "Lower volume for notifications". Media3 ducks for every content type except speech, where it
@@ -475,7 +457,7 @@ internal fun speakerSafeVolume(current: Int, max: Int) = min(current, (max * 0.3
 
 fun Song.toMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaId(id.toString())
-    .setUri(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id.toLong()))
+    .setUri(songUri(id))
     // Cleaned tags, so the notification and lock screen match the app. An unknown artist is left unset rather than
     // written as the placeholder, so an artist the player reads from the file itself can show through (SPEC.md S2).
     .setMediaMetadata(
