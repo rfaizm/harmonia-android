@@ -87,6 +87,7 @@ import com.rfaizm.harmoniamusic.SLEEP_ADJUST_MS
 import com.rfaizm.harmoniamusic.SLEEP_AT
 import com.rfaizm.harmoniamusic.SLEEP_COMMAND
 import com.rfaizm.harmoniamusic.SLEEP_MINUTES
+import com.rfaizm.harmoniamusic.data.LyricsRepository
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
@@ -121,7 +122,7 @@ enum class Tab(val label: String, val icon: ImageVector) {
  * Likes, play counts and playlists are saved by [Library], the switches by [Settings], the queue by the service.
  */
 @Composable
-fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository) {
+fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepository: LyricsRepository) {
     val darkMode = settings[Key.DarkMode]
     val songs = music.songs
     val playlists = music.playlists
@@ -312,7 +313,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository) {
                 active?.let {
                     FullPlayer(
                         song = it, isPlaying = isPlaying, progress = progressOf(positionMs, it.duration),
-                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics, playerArtist = playerArtist, settings = settings,
+                        shuffle = shuffle, repeatMode = repeatMode, volume = volume, muted = muted, sleep = sleep, lyrics = lyrics, playerArtist = playerArtist, settings = settings, lyricsRepository = lyricsRepository,
                         position = { controller?.currentPosition ?: 0L },
                         onClose = { fullPlayer = false },
                         onToggle = { Util.handlePlayPauseButtonAction(controller) },

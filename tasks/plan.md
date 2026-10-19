@@ -662,6 +662,24 @@ slices, each one shippable, buildable and phone-checked on its own. Behaviour mu
   - `object Library` and `object Settings` are deleted; the UI and the service talk only to repositories.
   - Acceptance criteria: nothing outside `data/` mentions MediaStore, SharedPreferences, files or HTTP; a fake
     repository can be constructed in a test; the service still plays with the app closed.
+  - **Built (2026-10-19), in three commits:**
+    1. **Settings.** `SettingsRepository` replaced the `Settings` object, and its `onChange` replaced the service's
+       own preferences listener. `MainActivity` and `PlaybackService` became `@AndroidEntryPoint`.
+    2. **Music.** `MusicRepository` replaced the `Library` object. It also took over:
+       - the resume session (`SessionStore`, which was the service's own `"session"` preferences);
+       - album art, which reaches deep composables through `LocalMusic`, so previews fall back to gradients;
+       - the delete calls, which moved from `ui/DeleteSong.kt` into `MediaStoreSource`. The UI still chooses the
+         right path for the Android version.
+    3. **Lyrics.** `LyricsRepository` (`.lrc`, then the saved copy, then the network when asked). T31's `DataSources`
+       bridge is deleted.
+  - **Guard:** `ArchitectureTest` fails if any file outside `data/` opens files, reads preferences, queries
+    MediaStore or the content resolver, calls HTTP or uses the old bridge. It started with 10 violations.
+  - **The "fake" criterion:** met at the source seam. `FetchLyricsTest` runs the whole online lookup against a fake
+    `ApiService`. Faking whole repositories (interfaces or test doubles) waits for T33, where the ViewModel tests
+    need them.
+  - **Moved to T33:** the id → song map for playlists. The slow lookups are in `PlaylistsScreen`, and
+    `PlaylistsViewModel` resolves playlists into songs there.
+  - **Removed:** the whole-app `@Preview`, which can't build repositories. The component previews stay.
 - **T33 ViewModels and StateFlow (M–L).**
   - `SongsViewModel`, `PlaylistsViewModel`, `ExploreViewModel`, `SettingsViewModel`, `PlayerViewModel`, each
     `@HiltViewModel`, reached with `hiltViewModel()`, exposing `StateFlow` read by `collectAsStateWithLifecycle`.

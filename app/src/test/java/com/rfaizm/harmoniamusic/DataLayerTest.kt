@@ -7,7 +7,8 @@ import java.io.File
 
 /**
  * M6 (T30): `data/` holds data, and drawing it is the UI's job. Colours, images and `@Composable` functions belong to
- * `ui/`. Compose's runtime state holders may stay in `data/` until the repositories replace them (T32).
+ * `ui/`. The repositories still keep their state in Compose's runtime state holders until StateFlow replaces them
+ * (T33).
  */
 class DataLayerTest {
     @Test

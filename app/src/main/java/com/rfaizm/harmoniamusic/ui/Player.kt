@@ -89,11 +89,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.data.dataSources
+import com.rfaizm.harmoniamusic.data.LyricsRepository
 import com.rfaizm.harmoniamusic.data.LyricsResult
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
-import com.rfaizm.harmoniamusic.data.fetchLyrics
 import com.rfaizm.harmoniamusic.data.lyricsQueries
 import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
@@ -143,6 +142,7 @@ fun FullPlayer(
     lyrics: String?,
     playerArtist: String?,
     settings: SettingsRepository,
+    lyricsRepository: LyricsRepository,
     position: () -> Long, // the player's clock in ms, read only while synced lyrics are on screen
     onClose: () -> Unit,
     onToggle: () -> Unit,
@@ -186,7 +186,7 @@ fun FullPlayer(
         // 2. Album art, or the lyrics in its place (T39), so the controls below keep working while they're read
         Crossfade(showLyrics, Modifier.weight(1f).fillMaxWidth(), label = "artOrLyrics") { lyricsShown ->
             if (lyricsShown) LyricsView(
-                song, lyrics, playerArtist, settings, position,
+                song, lyrics, playerArtist, settings, lyricsRepository, position,
                 // T40: a tapped line plays, even from pause. Play goes first, because at the end of a song it starts
                 // over from 0:00; the seek after it then lands on the line.
                 onPlayFrom = { ms -> if (!isPlaying) onToggle(); seek(progressOf(ms, song.duration)) },
@@ -351,12 +351,11 @@ private fun LyricsView(
     lyrics: String?,
     playerArtist: String?,
     settings: SettingsRepository,
+    lyricsRepository: LyricsRepository,
     position: () -> Long,
     onPlayFrom: (ms: Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // T31: the sources until T32's LyricsRepository takes this off the View.
-    val sources = LocalContext.current.dataSources()
     val scope = rememberCoroutineScope()
     // Anything found online before, so the same song needs no network a second time.
     var found by remember(song.id) { mutableStateOf<String?>(null) }
@@ -368,7 +367,7 @@ private fun LyricsView(
     val asked = remember(song, playerArtist) { lyricsQueries(song, playerArtist).first() }
     // Offline first: a .lrc beside the song, then anything found online before. Neither touches the network.
     LaunchedEffect(song.id) {
-        if (lyrics == null) found = sources.lrcFolder().read(song) ?: sources.lyricsStore().get(song.id)
+        if (lyrics == null) found = lyricsRepository.saved(song)
     }
 
     Box(modifier.padding(horizontal = 28.dp), contentAlignment = Alignment.CenterStart) {
@@ -405,13 +404,10 @@ private fun LyricsView(
                         looking = true
                         scope.launch {
                             // The only moment this app uses the network, and only because it was tapped.
-                            val result = fetchLyrics(sources.lyricsService(), song, playerArtist)
+                            val result = lyricsRepository.findOnline(song, playerArtist)
                             looking = false
                             miss = result
-                            if (result is LyricsResult.Found) {
-                                found = result.text
-                                sources.lyricsStore().put(song.id, result.text)
-                            }
+                            if (result is LyricsResult.Found) found = result.text
                         }
                     }) { Text(if (miss == null) "Find lyrics online" else "Try again", fontWeight = FontWeight.Bold, color = Color.White) }
                 } else {

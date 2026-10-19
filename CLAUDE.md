@@ -28,14 +28,18 @@ This machine has no emulator or connected device, so UI can't be checked from he
 
 ## Architecture
 
-- **Songs and playlists live in `object Library`** (`data/Library.kt`) as `mutableStateListOf`. `Library.scan()` queries MediaStore on `Dispatchers.IO` and keeps likes and play counts across rescans. Because it lives for the whole process, rotation doesn't rescan, and the playback service (M2) can reach it.
-- **Hilt and the data sources (M6, T31):**
+- **Repositories (M6, T32):** the app talks to three `@Singleton` repositories in `data/`, never to storage directly.
+  - `MusicRepository` holds the songs and playlists as `mutableStateListOf`, plus likes, play counts, the scan, album art, file deletion and the session a media button resumes. It lives for the whole process, so rotation doesn't rescan and the playback service sees the same songs as the screens.
+  - `SettingsRepository` holds the switches, the `.lrc` folder grant and each song's lyrics timing. Its `onChange` tells the service when to re-apply settings.
+  - `LyricsRepository` holds the `.lrc` file and the saved online lyrics, and the online lookup that only runs when the user taps.
+- **Hilt wiring:**
   - `HarmoniaApplication` is the `@HiltAndroidApp`. Hilt 2.60.1 runs on KSP 2.3.12 under AGP 9's built-in Kotlin.
-  - All I/O sits in `@Singleton` sources:
-    - `data/local/`: `MediaStoreSource`, `LibraryStore`, `SettingsStore`, `ArtSource`, `LyricsStore` and `LrcFolderSource`.
-    - `data/remote/`: `ApiService`, which `ApiConfig` builds as a Hilt module.
-  - `DataLayerTest` fails if any other file in `data/` imports files, preferences, MediaStore, decoders or HTTP.
-  - Until the repositories land (T32), the `Library`/`Settings` objects, composables and the service reach the sources through the `DataSources` entry point: `context.dataSources()`.
+  - `MainActivity` and `PlaybackService` are `@AndroidEntryPoint` and get the repositories injected.
+  - `MainActivity` passes them into `HarmoniaApp`, and provides `LocalMusic` so album art deep in the tree can reach the library. Previews have no `LocalMusic` and show gradients.
+- **The repositories' I/O is done by `@Singleton` sources:**
+  - `data/local/`: `MediaStoreSource` (also the song URI and the delete calls), `LibraryStore`, `SessionStore`, `SettingsStore`, `ArtSource`, `LyricsStore` and `LrcFolderSource`.
+  - `data/remote/`: `ApiService`, built by the `ApiConfig` Hilt module. `fetchLyrics` takes the service, so tests pass a fake (`FetchLyricsTest`).
+- **Guard tests:** `DataLayerTest` keeps UI code and I/O out of the rest of `data/`, and `ArchitectureTest` keeps all I/O out of everything outside `data/`.
 - **UI state lives in the root `HarmoniaApp` composable** (`ui/HarmoniaApp.kt`), following GUIDELINE §16: the tab, the active song and play state (mirrored from the `MediaController`), shuffle/repeat, the full-player flag, dark mode and the permission state. Screens get data and callbacks as parameters; there is no ViewModel or state library.
 - **Screens:** `SongsScreen`, `PlaylistsScreen` (the list and the detail view are switched by local state, not by navigation), `ExploreScreen` (Artists/Albums tab), `SettingsScreen` and `Player.kt` (mini player plus the full-screen player overlay). Shared building blocks are in `ui/Components.kt`.
 - **Theme mapping** (`ui/theme/Theme.kt`): the guideline's CSS tokens are mapped onto the M3 `ColorScheme` (card→surface, muted→surfaceVariant, muted-foreground→onSurfaceVariant, border→outline, accent→tertiary, destructive→error). Extension aliases (`colors.card`, `colors.muted`, `colors.mutedForeground`, `colors.border`, `colors.destructive`) keep the guideline's names in code. `colors` is a `@Composable` getter for `MaterialTheme.colorScheme`, defined in `Components.kt`.
