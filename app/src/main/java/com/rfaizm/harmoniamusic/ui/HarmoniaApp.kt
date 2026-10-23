@@ -1,9 +1,9 @@
 package com.rfaizm.harmoniamusic.ui
 
+import android.graphics.Color as AndroidColor
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.graphics.Color as AndroidColor
 import android.net.Uri
 import android.os.Build
 import androidx.activity.ComponentActivity
@@ -71,7 +71,6 @@ import com.rfaizm.harmoniamusic.data.LyricsRepository
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
-import com.rfaizm.harmoniamusic.data.Song
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
@@ -100,7 +99,6 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
     val flags by settings.flags.collectAsStateWithLifecycle()
     val darkMode = flags.getValue(Key.DarkMode)
     val songs by music.songs.collectAsStateWithLifecycle()
-    val playlists by music.playlists.collectAsStateWithLifecycle()
     val loaded by music.loaded.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
     var fullPlayer by rememberSaveable { mutableStateOf(false) }
@@ -115,16 +113,10 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
     }
     val active = songs.firstOrNull { it.id == playback.activeId }
 
-    fun like(s: Song) {
-        music.toggleLike(s.id)
-    }
     // T16: the file is gone, so take the song out of the queue (Media3 moves on by itself) and the library.
     val deleteSong = rememberSongDeleter(music) { song ->
         player.dropFromQueue(song.id)
         music.remove(song.id)
-    }
-    fun addTo(name: String, ids: Collection<Int>) {
-        music.addToPlaylist(name, ids)
     }
 
     // Status bar icons follow the app theme; the full player is always dark.
@@ -181,7 +173,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                     label = "tab"
                 ) { t ->
                     when {
-                        t == Tab.Settings -> SettingsScreen(settings, onRescan = ::rescan)
+                        t == Tab.Settings -> SettingsScreen(hiltViewModel(), onRescan = ::rescan)
                         !granted -> PermissionEmptyState(blocked, ::requestPermission)
                         !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = colors.primary)
@@ -189,7 +181,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                         songs.isEmpty() -> NoMusicEmptyState(rescanning, ::rescan)
                         t == Tab.Songs -> SongsScreen(hiltViewModel(), playback.activeId, playback.isPlaying, player::playFrom, deleteSong)
                         t == Tab.Playlists -> PlaylistsScreen(hiltViewModel(), playback.activeId, playback.isPlaying, player::playFrom, deleteSong)
-                        else -> ExploreScreen(songs, playlists, playback.activeId, playback.isPlaying, player::playFrom, ::like, ::addTo, deleteSong)
+                        else -> ExploreScreen(hiltViewModel(), playback.activeId, playback.isPlaying, player::playFrom, deleteSong)
                     }
                 }
                 AnimatedVisibility(
@@ -227,7 +219,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                         onMute = player::toggleMute,
                         onSleep = player::setSleep,
                         onSleepAdjust = player::adjustSleep,
-                        onLike = { like(it) },
+                        onLike = { music.toggleLike(it.id) },
                     )
                 }
             }

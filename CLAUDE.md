@@ -29,8 +29,8 @@ This machine has no emulator or connected device, so UI can't be checked from he
 ## Architecture
 
 - **Repositories (M6, T32):** the app talks to three `@Singleton` repositories in `data/`, never to storage directly.
-  - `MusicRepository` holds the songs and playlists as `mutableStateListOf`, plus likes, play counts, the scan, album art, file deletion and the session a media button resumes. It lives for the whole process, so rotation doesn't rescan and the playback service sees the same songs as the screens.
-  - `SettingsRepository` holds the switches, the `.lrc` folder grant and each song's lyrics timing. Its `onChange` tells the service when to re-apply settings.
+  - `MusicRepository` publishes the songs, playlists and the loaded flag as `StateFlow`s, and changes them only through named methods (`toggleLike`, `addToPlaylist`, `remove`, …), each of which saves. It also holds likes, play counts, the scan, album art, file deletion and the session a media button resumes. It lives for the whole process, so rotation doesn't rescan and the playback service sees the same songs as the screens.
+  - `SettingsRepository` publishes the switches (`flags`) and the `.lrc` folder grant as `StateFlow`s, and keeps each song's lyrics timing. Its `onChange` tells the service when to re-apply settings.
   - `LyricsRepository` holds the `.lrc` file and the saved online lyrics, and the online lookup that only runs when the user taps.
 - **Hilt wiring:**
   - `HarmoniaApplication` is the `@HiltAndroidApp`. Hilt 2.60.1 runs on KSP 2.3.12 under AGP 9's built-in Kotlin.
@@ -40,7 +40,13 @@ This machine has no emulator or connected device, so UI can't be checked from he
   - `data/local/`: `MediaStoreSource` (also the song URI and the delete calls), `LibraryStore`, `SessionStore`, `SettingsStore`, `ArtSource`, `LyricsStore` and `LrcFolderSource`.
   - `data/remote/`: `ApiService`, built by the `ApiConfig` Hilt module. `fetchLyrics` takes the service, so tests pass a fake (`FetchLyricsTest`).
 - **Guard tests:** `DataLayerTest` keeps UI code and I/O out of the rest of `data/`, and `ArchitectureTest` keeps all I/O out of everything outside `data/`.
-- **UI state lives in the root `HarmoniaApp` composable** (`ui/HarmoniaApp.kt`), following GUIDELINE §16: the tab, the active song and play state (mirrored from the `MediaController`), shuffle/repeat, the full-player flag, dark mode and the permission state. Screens get data and callbacks as parameters; there is no ViewModel or state library.
+- **ViewModels (M6, T33):** each is a `@HiltViewModel`, reached with `hiltViewModel()` and read with `collectAsStateWithLifecycle()`.
+  - `PlayerViewModel` connects to the playback service while the app is visible, mirrors it into one `PlaybackState`, and carries every player command (volume through `AudioManager`).
+  - `SongsViewModel` works out the list (`songEntries`) and keeps the search and sort in `SavedStateHandle`. The search is Compose state, not a flow, so the text field's cursor doesn't jump.
+  - `PlaylistsViewModel` resolves playlists through an id map (`resolve`), and `ExploreViewModel` groups artists and albums (`artistsOf`/`albumsOf`). Both are tested pure functions.
+  - `SettingsViewModel` covers the Settings tab.
+  - `ArchitectureTest` fails if a screen imports the media session or `AudioManager`.
+- **Screen state stays in the composables:** `HarmoniaApp` keeps the tab, the full-player flag and the permission flow, and the screens keep their selection, the open playlist and the Liked snapshot. The full player's lyrics view still takes `SettingsRepository` and `LyricsRepository` directly.
 - **Screens:** `SongsScreen`, `PlaylistsScreen` (the list and the detail view are switched by local state, not by navigation), `ExploreScreen` (Artists/Albums tab), `SettingsScreen` and `Player.kt` (mini player plus the full-screen player overlay). Shared building blocks are in `ui/Components.kt`.
 - **Theme mapping** (`ui/theme/Theme.kt`): the guideline's CSS tokens are mapped onto the M3 `ColorScheme` (card→surface, muted→surfaceVariant, muted-foreground→onSurfaceVariant, border→outline, accent→tertiary, destructive→error). Extension aliases (`colors.card`, `colors.muted`, `colors.mutedForeground`, `colors.border`, `colors.destructive`) keep the guideline's names in code. `colors` is a `@Composable` getter for `MaterialTheme.colorScheme`, defined in `Components.kt`.
 - **`HarmoniaTheme` provides `LocalContentColor = onBackground`.** The root is a plain `Box`, not a `Surface`, so without this any `Text` with no explicit color renders black in dark mode.
@@ -53,8 +59,7 @@ This machine has no emulator or connected device, so UI can't be checked from he
 - **How data looks** lives in `ui/`, not `data/` (T30, guarded by `DataLayerTest`):
   - `ui/Display.kt` holds `GRADIENTS` (album art is a gradient chosen by `id % 12`), the `Song.gradient`/`Playlist.gradient` extensions, `formatDuration`/`formatDate` and `albumArtOf`.
   - `ui/PreviewData.kt` holds the seed lists, which only `@Preview`s and tests use.
-  - `data/` may still use Compose *runtime* state holders until the repositories arrive (T32).
-- **Songs list derivation** uses `remember(songs) { derivedStateOf { … } }`. A plain `remember(songs, …)` keyed on the `SnapshotStateList` never invalidates (identity equality), so liked and play-count changes would show stale values.
+- **`data/` imports no Compose at all** (`DataLayerTest`). Every repository change produces a new immutable list, so anything keyed on a list with `remember(list)` recomputes when it changes.
 - **`Modifier.enterAnimation()`** runs once per item (`rememberSaveable`). It staggers rows that first appear in the same frame (grouped by `withFrameMillis`), so a list opening or a sort change cascades, while a row scrolled in on its own fades in with no delay. Don't gate it on the list index: rows change index when sorting or searching, and gating on it reset their state, which caused the Songs-tab glitches.
 
 ## PRD behaviors already reflected in the UI

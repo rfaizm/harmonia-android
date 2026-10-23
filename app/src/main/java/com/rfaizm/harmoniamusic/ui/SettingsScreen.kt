@@ -30,7 +30,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,7 +39,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.rfaizm.harmoniamusic.data.SettingsRepository
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rfaizm.harmoniamusic.ui.theme.border
@@ -48,7 +46,7 @@ import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
-fun SettingsScreen(settings: SettingsRepository, onRescan: () -> Unit) {
+fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
     val flags by settings.flags.collectAsStateWithLifecycle()
     val lyricsFolder by settings.lyricsFolder.collectAsStateWithLifecycle()
     var confirmOnlineLyrics by remember { mutableStateOf(false) }
@@ -136,7 +134,7 @@ fun SettingsScreen(settings: SettingsRepository, onRescan: () -> Unit) {
 }
 
 @Composable
-private fun ToggleRow(settings: SettingsRepository, flags: Map<Key, Boolean>, icon: ImageVector, label: String, sub: String, key: Key) =
+private fun ToggleRow(settings: SettingsViewModel, flags: Map<Key, Boolean>, icon: ImageVector, label: String, sub: String, key: Key) =
     SettingsRow(icon, label, sub, onClick = { settings[key] = !flags.getValue(key) }) { HarmoniaSwitch(flags.getValue(key)) { settings[key] = it } }
 
 /** The tail of a document-tree uri is the readable part, e.g. "primary:Music". */

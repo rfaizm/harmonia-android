@@ -37,6 +37,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,7 +54,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -62,22 +62,23 @@ import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
 fun ExploreScreen(
-    songs: List<Song>,
-    playlists: List<Playlist>,
+    viewModel: ExploreViewModel,
     activeId: Int?,
     isPlaying: Boolean,
     onPlay: (song: Song, queue: List<Song>) -> Unit,
-    onLike: (Song) -> Unit,
-    onAddToPlaylist: (name: String, ids: Collection<Int>) -> Unit,
     onDeleteSong: (Song) -> Unit,
 ) {
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val artists by viewModel.artists.collectAsStateWithLifecycle()
+    val albums by viewModel.albums.collectAsStateWithLifecycle()
+    val onLike = viewModel::toggleLike
+    val onAddToPlaylist = viewModel::addToPlaylist
     var albumsView by rememberSaveable { mutableStateOf(false) }
     // Open artist or album name (which one follows albumsView); local state, like PlaylistsScreen.
     var openName by rememberSaveable { mutableStateOf<String?>(null) }
     BackHandler(openName != null) { openName = null }
     // derivedStateOf, not remember(songs) alone: the list instance never changes, so a rescan would never regroup.
-    val artists by remember(songs) { derivedStateOf { songs.groupBy { it.displayArtist }.toList().sortedBy { it.first.lowercase() } } }
-    val albums by remember(songs) { derivedStateOf { songs.groupBy { it.album }.toList().sortedBy { it.first.lowercase() } } }
 
     AnimatedContent(openName, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "exploreDetail") { open ->
         if (open != null) {

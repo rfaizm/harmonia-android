@@ -689,6 +689,21 @@ slices, each one shippable, buildable and phone-checked on its own. Behaviour mu
     selection, and the permission flow.
   - Acceptance criteria: screens receive a ViewModel rather than a dozen callbacks; rotation keeps playback,
     selection and scroll state; every feature from M0 to M4 still works.
+  - **Built (2026-10-23), in four commits:**
+    1. **StateFlow repositories.** The repositories publish `StateFlow`s and change only through named methods,
+       and `data/` imports no Compose at all (`DataLayerTest`).
+    2. **`PlayerViewModel`.** It owns the controller connection, one `PlaybackState`, the position tick and every
+       player command. `ArchitectureTest` keeps the media session and `AudioManager` out of screens.
+    3. **`SongsViewModel` and `PlaylistsViewModel`.**
+       - `songEntries` is a tested pure function, computed off the main thread, and the search and sort are kept in
+         `SavedStateHandle`.
+       - The search is Compose state, so the text field's cursor doesn't jump.
+       - The playlist lookups go through an id map (`resolve`), which is the slow lookup carried over from T32.
+    4. **`ExploreViewModel` and `SettingsViewModel`.** `artistsOf` and `albumsOf` are tested.
+  - **Result:** `HarmoniaApp.kt` went from 399 to 280 lines. Selection, the open playlist and the Liked snapshot stay
+    screen state, as planned.
+  - **Left as is:** the full player's lyrics view still takes `SettingsRepository` and `LyricsRepository`, since it's
+    part of the player rather than a screen of its own.
 - **Checkpoint M6:** a full phone run: scan, play, notification and lock screen, queue, sleep timer, shuffle,
   album art, delete, drag-select, search-while-selecting, lyrics from tags and online, and everything surviving a
   restart.

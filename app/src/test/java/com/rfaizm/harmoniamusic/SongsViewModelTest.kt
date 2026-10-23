@@ -3,6 +3,8 @@ package com.rfaizm.harmoniamusic
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.ui.Entry
 import com.rfaizm.harmoniamusic.ui.SortBy
+import com.rfaizm.harmoniamusic.ui.albumsOf
+import com.rfaizm.harmoniamusic.ui.artistsOf
 import com.rfaizm.harmoniamusic.ui.resolve
 import com.rfaizm.harmoniamusic.ui.songEntries
 import org.junit.Assert.assertEquals
@@ -49,6 +51,21 @@ class SongsViewModelTest {
         val byId = songs.associateBy { it.id }
 
         assertEquals(listOf("Adore You", "Yellow"), resolve(listOf(2, 99, 3), byId).map { it.title })
+    }
+
+    @Test
+    fun exploreListsEachArtistOnceInAlphabeticalOrder() {
+        val withLowercase = songs + Song(4, "Golden", "coldplay", "Golden", 2001, 200)
+
+        assertEquals(
+            listOf("Coldplay" to listOf("Yellow", "Clocks"), "coldplay" to listOf("Golden"), "Harry Styles" to listOf("Adore You")),
+            artistsOf(withLowercase).map { (artist, list) -> artist to list.map { it.title } },
+        )
+    }
+
+    @Test
+    fun exploreListsEachAlbumOnceInAlphabeticalOrder() {
+        assertEquals(listOf("A Rush of Blood", "Fine Line", "Parachutes"), albumsOf(songs).map { it.first })
     }
 
     private fun Entry.label() = when (this) {

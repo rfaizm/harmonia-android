@@ -68,7 +68,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T30 Tidy `data/`: split the models, the display helpers and the seed data; move `albumArtOf` into `ui/` (no behaviour change)
 - [x] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once
 - [x] T32 Repositories: `MusicRepository`, `LyricsRepository`, `SettingsRepository`; delete `object Library` and `object Settings`; the View stops calling the network
-- [ ] T33 ViewModels: one per screen, `@HiltViewModel` + `StateFlow` + `collectAsStateWithLifecycle`; `PlayerViewModel` takes over the controller and most of `HarmoniaApp.kt`
+- [x] T33 ViewModels: one per screen, `@HiltViewModel` + `StateFlow` + `collectAsStateWithLifecycle`; `PlayerViewModel` takes over the controller and most of `HarmoniaApp.kt`
 - [ ] **Checkpoint M6:** full phone run of every feature from M0 to M4
 
 ## M5: Polish and release
