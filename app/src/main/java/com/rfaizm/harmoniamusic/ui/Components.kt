@@ -363,7 +363,8 @@ fun SongRow(
             )
         }
         if (!selectionMode) {
-            Text(formatDuration(song.duration), fontSize = 12.sp, color = colors.mutedForeground.copy(alpha = 0.7f))
+            // No duration here (M11, T45): beside the heart, the menu and the A–Z bar it cut titles short, and the
+            // title is what a row is for. The full player and the playlist totals still show time.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HeartButton(song.liked, onLike)
                 Box {

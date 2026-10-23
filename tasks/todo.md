@@ -65,7 +65,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] **Checkpoint M10:** phone check on the release build passed 2026-10-16 (counts down, ±5, pauses on time with the screen off, End of track, light and dark)
 
 ## M11: UI polish from the honest review (after Checkpoint M6, before M5)
-- [ ] T45 Give titles their width back: no per-row duration in `SongRow`
+- [x] T45 Give titles their width back: no per-row duration in `SongRow`
 - [ ] T46 No "Unknown artist" wall: hide the artist line when unknown (`artistLine` test); keep it in Artists and detail headers
 - [ ] T47 Art tiles show the song's first letter (`letterOf`) when there's no cover art
 - [ ] T48 Calmer surfaces: mini player on a `card` surface, big glow only on the full-player art, radius audit, GUIDELINE §7 updated
