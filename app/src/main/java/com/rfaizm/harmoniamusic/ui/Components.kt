@@ -357,10 +357,10 @@ fun SongRow(
                 color = if (active) colors.primary else colors.onBackground,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp
             )
-            Text(
-                song.displayArtist, fontSize = 12.sp, color = colors.mutedForeground,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)
-            )
+            // No second line for an untagged file; the row centres the title instead (T46).
+            artistLine(song)?.let {
+                Text(it, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+            }
         }
         if (!selectionMode) {
             // No duration here (M11, T45): beside the heart, the menu and the A–Z bar it cut titles short, and the
@@ -422,7 +422,7 @@ private fun SongMenu(
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Text(song.displayTitle, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(song.displayArtist, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            artistLine(song)?.let { Text(it, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis) }
         }
         HorizontalDivider(color = colors.border)
         Text(

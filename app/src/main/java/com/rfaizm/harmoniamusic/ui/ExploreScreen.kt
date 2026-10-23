@@ -156,7 +156,7 @@ fun ExploreScreen(
                                     }
                                     Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
                                         Text(album, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(list.first().displayArtist, fontSize = 11.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        artistLine(list.first())?.let { Text(it, fontSize = 11.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                         Text(listOfNotNull(list.first().year.takeIf { it > 0 }, "${list.size} tracks").joinToString(" · "), fontSize = 10.sp, color = colors.mutedForeground.copy(alpha = 0.55f), modifier = Modifier.padding(top = 2.dp))
                                     }
                                 }

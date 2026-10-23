@@ -13,6 +13,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.UNKNOWN_ALBUM
+import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -66,3 +68,14 @@ fun albumArtOf(songId: Int?): ImageBitmap? {
     }
     return art
 }
+
+/**
+ * The artist under a song's title, or nothing when the file has no artist tag (M11, T46). A library of downloaded
+ * files would otherwise read "Unknown artist" on almost every row. The file-name guess isn't shown: "Title - Artist"
+ * names guess the wrong way round, and a wrong artist is worse than none.
+ */
+internal fun artistLine(song: Song): String? = song.displayArtist.takeUnless { it.isBlank() || it == UNKNOWN_ARTIST }
+
+/** The full player's "artist · album", keeping only the halves that are known. */
+internal fun playerSubtitle(song: Song): String? =
+    listOfNotNull(artistLine(song), song.album.takeUnless { it.isBlank() || it == UNKNOWN_ALBUM }).joinToString(" · ").ifEmpty { null }

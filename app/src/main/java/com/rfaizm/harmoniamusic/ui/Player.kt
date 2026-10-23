@@ -116,7 +116,7 @@ fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> 
             AlbumArt(song.gradient, 42.dp, Modifier.shadow(2.dp, RoundedCornerShape(12.dp)), songId = song.id)
             Column(Modifier.weight(1f)) {
                 Text(song.displayTitle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(song.displayArtist, fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                artistLine(song)?.let { Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             CircleIcon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", onToggle,
@@ -200,7 +200,7 @@ fun FullPlayer(
         Row(Modifier.padding(horizontal = 28.dp).padding(bottom = 20.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Text(song.displayTitle, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text("${song.displayArtist} · ${song.album}", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                playerSubtitle(song)?.let { Text(it, fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
             }
             Row(Modifier.padding(top = 6.dp, start = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Rounded.Star, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(12.dp))
