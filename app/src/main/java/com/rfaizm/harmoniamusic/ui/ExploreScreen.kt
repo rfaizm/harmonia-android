@@ -55,6 +55,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.muted
@@ -128,7 +129,7 @@ fun ExploreScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    AlbumArt(gradientFor(list.first().id), 48.dp, shape = CircleShape, icon = Icons.Rounded.Mic, songId = list.first().id)
+                                    AlbumArt(gradientFor(list.first().id), 48.dp, shape = CircleShape, icon = Icons.Rounded.Mic, songId = list.first().id, label = name.takeUnless { it == UNKNOWN_ARTIST })
                                     Column(Modifier.weight(1f)) {
                                         Text(name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         val albumCount = list.distinctBy { it.album }.size

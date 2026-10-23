@@ -154,14 +154,24 @@ fun AlbumArt(
     shape: Shape = RoundedCornerShape(12.dp),
     icon: ImageVector = Icons.Rounded.MusicNote,
     songId: Int? = null,
+    /** The title (or artist) whose first letter stands in for missing art (T47); null keeps [icon]. */
+    label: String? = null,
 ) {
     val art = albumArtOf(songId)
+    val letter = tileLetter(label)
     Box(
         modifier.size(size).clip(shape).background(gradientBrush(gradient)),
         contentAlignment = Alignment.Center
     ) {
-        if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        else Icon(icon, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(size * 0.36f))
+        when {
+            art != null -> Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            letter != null -> {
+                val textSize = (size.value * 0.42f).sp
+                // A line as tall as the letter, or the theme's 24 sp line height pushes it off centre (as in T41).
+                Text(letter, fontSize = textSize, lineHeight = textSize, fontWeight = FontWeight.ExtraBold, color = Color.White.copy(alpha = 0.85f))
+            }
+            else -> Icon(icon, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(size * 0.36f))
+        }
     }
 }
 
@@ -349,7 +359,7 @@ fun SongRow(
                 else Text("${index + 1}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (active) colors.primary else colors.mutedForeground)
             }
         } else {
-            AlbumArt(song.gradient, 48.dp, songId = song.id)
+            AlbumArt(song.gradient, 48.dp, songId = song.id, label = song.displayTitle)
         }
         Column(Modifier.weight(1f)) {
             Text(

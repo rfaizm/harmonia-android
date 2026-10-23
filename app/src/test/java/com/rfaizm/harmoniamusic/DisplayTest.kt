@@ -3,6 +3,7 @@ package com.rfaizm.harmoniamusic
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.ui.artistLine
 import com.rfaizm.harmoniamusic.ui.playerSubtitle
+import com.rfaizm.harmoniamusic.ui.tileLetter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -28,5 +29,21 @@ class DisplayTest {
         assertEquals("Parachutes", playerSubtitle(song("Unknown artist", "Parachutes")))
         assertEquals("Coldplay", playerSubtitle(song("Coldplay", "Unknown album")))
         assertNull(playerSubtitle(song("Unknown artist", "Unknown album")))
+    }
+
+    // T47: a tile without cover art shows a letter, so a library of untagged files isn't a wall of music notes.
+
+    @Test
+    fun aTileShowsTheFirstLetterWithAccentsFolded() {
+        assertEquals("Y", tileLetter("yellow"))
+        assertEquals("E", tileLetter("Élan"))
+    }
+
+    @Test
+    fun aTitleWithNoLetterKeepsTheMusicNote() {
+        // "#" on a tile would say nothing, so numbers, symbols and other scripts keep the icon.
+        assertNull(tileLetter("21 Guns"))
+        assertNull(tileLetter("夜に駆ける"))
+        assertNull(tileLetter(null))
     }
 }

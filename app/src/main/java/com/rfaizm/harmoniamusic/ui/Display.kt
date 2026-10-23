@@ -79,3 +79,9 @@ internal fun artistLine(song: Song): String? = song.displayArtist.takeUnless { i
 /** The full player's "artist · album", keeping only the halves that are known. */
 internal fun playerSubtitle(song: Song): String? =
     listOfNotNull(artistLine(song), song.album.takeUnless { it.isBlank() || it == UNKNOWN_ALBUM }).joinToString(" · ").ifEmpty { null }
+
+/**
+ * The letter a tile shows when a song has no cover art (M11, T47), so a library of untagged files isn't a wall of
+ * identical music notes. Accents fold as in the A–Z bar (`letterOf`); anything filed under "#" keeps the icon.
+ */
+internal fun tileLetter(label: String?): String? = label?.let(::letterOf)?.takeUnless { it == "#" }
