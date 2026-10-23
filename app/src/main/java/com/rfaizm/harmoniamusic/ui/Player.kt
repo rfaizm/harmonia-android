@@ -20,6 +20,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -97,35 +98,42 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rfaizm.harmoniamusic.data.lyricsQueries
 import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
+import androidx.compose.ui.tooling.preview.Preview
+import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.card
+import com.rfaizm.harmoniamusic.ui.theme.border
+import com.rfaizm.harmoniamusic.ui.theme.muted
+import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
 fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> Unit, onNext: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    val (g0, g1) = song.gradient
+    // M11 (T48): a calm card, not a saturated gradient with a coloured glow. While browsing, the list is the content;
+    // the song's colour lives in its art tile, and the one accent is the play button. The full player keeps the drama.
     val shape = RoundedCornerShape(16.dp)
     Column(
         modifier
             .padding(horizontal = 12.dp)
             .padding(bottom = 8.dp)
-            .shadow(16.dp, shape, ambientColor = g1, spotColor = g1)
+            .shadow(3.dp, shape)
             .clip(shape)
-            .background(Brush.horizontalGradient(listOf(g0.copy(alpha = 0.94f), g1.copy(alpha = 0.94f))))
+            .background(colors.card)
+            .border(1.dp, colors.border, shape)
             .clickable(onClick = onOpen)
     ) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AlbumArt(song.gradient, 42.dp, Modifier.shadow(2.dp, RoundedCornerShape(12.dp)), songId = song.id, label = song.displayTitle)
+            AlbumArt(song.gradient, 42.dp, songId = song.id, label = song.displayTitle)
             Column(Modifier.weight(1f)) {
-                Text(song.displayTitle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                artistLine(song)?.let { Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                Text(song.displayTitle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                artistLine(song)?.let { Text(it, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis) }
             }
             CircleIcon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", onToggle,
-                size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.15f)
+                size = 36.dp, iconSize = 19.dp, tint = colors.onPrimary, background = colors.primary
             )
-            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
+            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 36.dp, iconSize = 19.dp, tint = colors.mutedForeground, background = Color.Transparent)
         }
-        Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.15f))) {
-            Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White.copy(alpha = 0.6f)))
+        Box(Modifier.fillMaxWidth().height(2.dp).background(colors.muted)) {
+            Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(colors.primary))
         }
     }
 }
@@ -244,7 +252,7 @@ fun FullPlayer(
                 Modifier
                     .size(64.dp)
                     .graphicsLayer { scaleX = playScale; scaleY = playScale }
-                    .shadow(12.dp, CircleShape)
+                    .shadow(4.dp, CircleShape) // the full-player art keeps the only big glow (T48)
                     .clip(CircleShape)
                     .background(Color.White)
                     .clickable(onClick = onToggle),
@@ -514,4 +522,16 @@ private fun TimingButton(text: String, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFF5F4F0, widthDp = 390)
+@Composable
+private fun MiniPlayerPreview() = HarmoniaTheme(darkTheme = false) {
+    MiniPlayer(SEED_SONGS[2], isPlaying = true, progress = 0.4f, onToggle = {}, onNext = {}, onOpen = {})
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFF1E2022, widthDp = 390)
+@Composable
+private fun MiniPlayerDarkPreview() = HarmoniaTheme(darkTheme = true) {
+    MiniPlayer(SEED_SONGS[5], isPlaying = false, progress = 0.7f, onToggle = {}, onNext = {}, onOpen = {})
 }

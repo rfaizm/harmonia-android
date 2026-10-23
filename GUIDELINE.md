@@ -254,16 +254,15 @@ Nunito is a rounded geometric sans-serif. It reads warm and calm without feeling
 
 Position: between main content and bottom nav, `mx-3 mb-2`.
 
-- **Container:** `rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform`
-- **Background:** `linear-gradient(110deg, gradient[0]f0, gradient[1]f0)` + `backdropFilter: blur(12px)`
-- **Shadow:** `0 8px 32px gradient[1]60`
+- **Container:** `rounded-2xl overflow-hidden cursor-pointer bg-card border border-border shadow-sm`
+- **Calm on purpose (M11):** while browsing, the list is the content. The song's colour lives in its art tile, and the one accent is the play button. The full player keeps the gradient and the glow.
 - **Content row:** `flex items-center gap-3 px-3 py-2.5`
-  - Album art: 42px, `className="shadow-sm"`
-  - Title: `text-sm font-bold text-white truncate`
-  - Artist: `text-xs text-white/65 truncate`
-  - Play/Pause: `w-9 h-9 rounded-full bg-white/15 hover:bg-white/25` — icon 17px white fill
-  - Skip forward: `w-9 h-9 rounded-full bg-white/10 hover:bg-white/20`
-- **Progress bar:** `h-[2px] bg-white/15` full width (no margin), fill `bg-white/60 rounded-full`
+  - Album art: 42px, the song's gradient (or its cover), flat
+  - Title: `text-sm font-bold text-foreground truncate`
+  - Artist: `text-xs text-muted-foreground truncate`, left out when unknown
+  - Play/Pause: `w-9 h-9 rounded-full bg-primary` — icon 17px `text-primary-foreground`
+  - Skip forward: `w-9 h-9 rounded-full` — icon `text-muted-foreground`
+- **Progress bar:** `h-[2px] bg-muted` full width (no margin), fill `bg-primary`
 - **Entry animation:** spring stiffness 340, damping 30, `y: 56→0, opacity: 0→1`
 - Tap anywhere (except control buttons) → opens Full Player
 
