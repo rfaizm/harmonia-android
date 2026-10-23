@@ -154,24 +154,14 @@ fun AlbumArt(
     shape: Shape = RoundedCornerShape(12.dp),
     icon: ImageVector = Icons.Rounded.MusicNote,
     songId: Int? = null,
-    /** The title (or artist) whose first letter stands in for missing art (T47); null keeps [icon]. */
-    label: String? = null,
 ) {
     val art = albumArtOf(songId)
-    val letter = tileLetter(label)
     Box(
         modifier.size(size).clip(shape).background(gradientBrush(gradient)),
         contentAlignment = Alignment.Center
     ) {
-        when {
-            art != null -> Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            letter != null -> {
-                val textSize = (size.value * 0.42f).sp
-                // A line as tall as the letter, or the theme's 24 sp line height pushes it off centre (as in T41).
-                Text(letter, fontSize = textSize, lineHeight = textSize, fontWeight = FontWeight.ExtraBold, color = Color.White.copy(alpha = 0.85f))
-            }
-            else -> Icon(icon, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(size * 0.36f))
-        }
+        if (art != null) Image(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        else Icon(icon, null, tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.size(size * 0.36f))
     }
 }
 
@@ -359,7 +349,7 @@ fun SongRow(
                 else Text("${index + 1}", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = if (active) colors.primary else colors.mutedForeground)
             }
         } else {
-            AlbumArt(song.gradient, 48.dp, songId = song.id, label = song.displayTitle)
+            AlbumArt(song.gradient, 48.dp, songId = song.id)
         }
         Column(Modifier.weight(1f)) {
             Text(
@@ -367,14 +357,13 @@ fun SongRow(
                 color = if (active) colors.primary else colors.onBackground,
                 maxLines = 1, overflow = TextOverflow.Ellipsis, lineHeight = 18.sp
             )
-            // No second line for an untagged file; the row centres the title instead (T46).
-            artistLine(song)?.let {
-                Text(it, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
-            }
+            Text(
+                song.displayArtist, fontSize = 12.sp, color = colors.mutedForeground,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)
+            )
         }
         if (!selectionMode) {
-            // No duration here (M11, T45): beside the heart, the menu and the A–Z bar it cut titles short, and the
-            // title is what a row is for. The full player and the playlist totals still show time.
+            Text(formatDuration(song.duration), fontSize = 12.sp, color = colors.mutedForeground.copy(alpha = 0.7f))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HeartButton(song.liked, onLike)
                 Box {
@@ -432,7 +421,7 @@ private fun SongMenu(
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
             Text(song.displayTitle, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            artistLine(song)?.let { Text(it, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+            Text(song.displayArtist, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         HorizontalDivider(color = colors.border)
         Text(

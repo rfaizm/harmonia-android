@@ -16,11 +16,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class SettingsRepository @Inject constructor(private val store: SettingsStore, private val lrcFolder: LrcFolderSource) {
-    /** Light or dark, or the phone's own theme until the user picks one (T51). */
-    enum class Theme { System, Light, Dark }
-
     /** The name is the storage key, so don't rename one without migrating it. */
     enum class Key(val default: Boolean) {
+        DarkMode(true),
         Ducking(true),
         PauseOnUnplug(true),
         SmartShuffle(true),   // used by T14
@@ -31,12 +29,9 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore, p
 
     private val _flags = MutableStateFlow(Key.entries.associateWith { store.flag(it.name, it.default) })
     private val _lyricsFolder = MutableStateFlow(store.lyricsFolder)
-    private val _theme = MutableStateFlow(when (store.darkMode) { null -> Theme.System; true -> Theme.Dark; false -> Theme.Light })
 
     /** Every switch, always holding all of [Key]. */
     val flags: StateFlow<Map<Key, Boolean>> = _flags.asStateFlow()
-
-    val theme: StateFlow<Theme> = _theme.asStateFlow()
 
     /** The folder the user granted for `.lrc` files (T29), or null while none is granted. */
     val lyricsFolder: StateFlow<String?> = _lyricsFolder.asStateFlow()
@@ -47,11 +42,6 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore, p
     operator fun set(key: Key, value: Boolean) {
         _flags.update { it + (key to value) }
         store.setFlag(key.name, value)
-    }
-
-    fun setTheme(theme: Theme) {
-        _theme.value = theme
-        store.darkMode = when (theme) { Theme.System -> null; Theme.Light -> false; Theme.Dark -> true }
     }
 
     /** Keeps read access to the picked folder across restarts, then remembers it. */

@@ -64,16 +64,6 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T44 −5 / +5 min pills in the dialog; the service moves the deadline (`adjustedSleep`: at least 1 min, at most 3 h, tested)
 - [x] **Checkpoint M10:** phone check on the release build passed 2026-10-16 (counts down, ±5, pauses on time with the screen off, End of track, light and dark)
 
-## M11: UI polish from the honest review (after Checkpoint M6, before M5)
-- [x] T45 Give titles their width back: no per-row duration in `SongRow`
-- [x] T46 No "Unknown artist" wall: hide the artist line when unknown (`artistLine` test); keep it in Artists and detail headers
-- [x] T47 Art tiles show the song's first letter (`letterOf`) when there's no cover art
-- [x] T48 Calmer surfaces: mini player on a `card` surface, big glow only on the full-player art, radius audit, GUIDELINE §7 updated
-- [x] T49 Status text in sentence case ("Not synced to the song"); guideline-specified caps stay
-- [x] T50 Contrast of translucent white text on all player gradients (contrast checker), alphas raised where needed
-- [x] T51 Theme follows the phone on first launch; System / Light / Dark moves to Settings (`themeIsDark` test)
-- [ ] **Checkpoint M11:** release build, real library, both themes
-
 ## M6: MVVM migration (before M5 — T19 and T20 rework the same UI)
 - [x] T30 Tidy `data/`: split the models, the display helpers and the seed data; move `albumArtOf` into `ui/` (no behaviour change)
 - [x] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once

@@ -12,10 +12,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.Playlist
-import com.rfaizm.harmoniamusic.data.SettingsRepository.Theme
 import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.data.UNKNOWN_ALBUM
-import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -68,41 +65,4 @@ fun albumArtOf(songId: Int?): ImageBitmap? {
         if (art == null) art = withContext(Dispatchers.IO) { music.loadArt(songId) }?.asImageBitmap()
     }
     return art
-}
-
-/**
- * The artist under a song's title, or nothing when the file has no artist tag (M11, T46). A library of downloaded
- * files would otherwise read "Unknown artist" on almost every row. The file-name guess isn't shown: "Title - Artist"
- * names guess the wrong way round, and a wrong artist is worse than none.
- */
-internal fun artistLine(song: Song): String? = song.displayArtist.takeUnless { it.isBlank() || it == UNKNOWN_ARTIST }
-
-/** The full player's "artist · album", keeping only the halves that are known. */
-internal fun playerSubtitle(song: Song): String? =
-    listOfNotNull(artistLine(song), song.album.takeUnless { it.isBlank() || it == UNKNOWN_ALBUM }).joinToString(" · ").ifEmpty { null }
-
-/**
- * The letter a tile shows when a song has no cover art (M11, T47), so a library of untagged files isn't a wall of
- * identical music notes. Accents fold as in the A–Z bar (`letterOf`); anything filed under "#" keeps the icon.
- */
-internal fun tileLetter(label: String?): String? = label?.let(::letterOf)?.takeUnless { it == "#" }
-
-// M11 (T50): the full player's backdrop and the white text on it, checked against every gradient by
-// PlayerContrastTest. The lightest gradients were too light even for pure white (#688060 gave 4.33:1), so a dark scrim
-// sits over the song gradient, and the text alphas are the smallest that pass WCAG on all 26 gradient colours.
-
-/** Black laid over the song gradient behind the full player. */
-internal const val PLAYER_SCRIM = 0.2f
-
-/** White alpha for small text on the player: labels, times, secondary lines (at least 4.5:1). */
-internal const val ON_PLAYER_SMALL = 0.8f
-
-/** White alpha for the dim lyric lines, which are large extra-bold text (at least 3:1). */
-internal const val ON_PLAYER_LARGE = 0.55f
-
-/** M11 (T51): the phone's own theme until the user picks one in Settings. */
-internal fun themeIsDark(theme: Theme, systemDark: Boolean): Boolean = when (theme) {
-    Theme.System -> systemDark
-    Theme.Light -> false
-    Theme.Dark -> true
 }

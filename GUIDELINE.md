@@ -71,7 +71,7 @@ All gradients are dark-to-darker monochromatic earth tones. They serve as album 
 
 ### Special Gradients
 - **Liked Songs card:** `#c0392b → #7a1a2e` (deep red)
-- **Full player background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)` — fades to near-black for cinematic depth — with a `bg-black/20` scrim on top (M11): the lightest gradients were too light even for pure white text
+- **Full player background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)` — fades to near-black for cinematic depth
 
 ---
 
@@ -98,10 +98,10 @@ Nunito is a rounded geometric sans-serif. It reads warm and calm without feeling
 | Bottom nav label | `text-[10px]` | 700 bold | `tracking-wide` |
 | Settings section heading | `text-[10px]` | 900 black | `uppercase tracking-[0.14em] text-primary` |
 | Full player title | `text-xl` | 800 | `text-white` |
-| Full player artist | `text-sm` | 400 | `text-white/80` |
-| "NOW PLAYING" label | `text-[10px]` | 700 | `uppercase tracking-widest text-white/80` |
+| Full player artist | `text-sm` | 400 | `text-white/60` |
+| "NOW PLAYING" label | `text-[10px]` | 700 | `uppercase tracking-widest text-white/50` |
 | Pill / badge text | `text-xs` | 600 semibold | — |
-| Play count | `text-xs` | 400 | `text-white/80` |
+| Play count | `text-xs` | 400 | `text-white/40` |
 
 ---
 
@@ -125,7 +125,7 @@ Nunito is a rounded geometric sans-serif. It reads warm and calm without feeling
 ### 5.1 Top App Bar
 - Layout: `flex items-center justify-between` inside `px-5 pt-5 pb-2`
 - Left: `<h1>` "Harmonia" + `<p>` subtitle `{n} songs · local library` (`text-[11px] text-muted-foreground mt-0.5`)
-- Right: nothing. The theme is chosen in Settings › Appearance (System / Light / Dark) and follows the phone until the user picks one (M11). A button for a once-off setting took header space every day.
+- Right: dark mode toggle — `w-9 h-9 rounded-full bg-card border border-border`, Sun/Moon at 16px `strokeWidth={2}`, hover `bg-primary/10`
 - No shadow, no bottom border — blends into background
 
 ### 5.2 Bottom Navigation Bar
@@ -254,15 +254,16 @@ Nunito is a rounded geometric sans-serif. It reads warm and calm without feeling
 
 Position: between main content and bottom nav, `mx-3 mb-2`.
 
-- **Container:** `rounded-2xl overflow-hidden cursor-pointer bg-card border border-border shadow-sm`
-- **Calm on purpose (M11):** while browsing, the list is the content. The song's colour lives in its art tile, and the one accent is the play button. The full player keeps the gradient and the glow.
+- **Container:** `rounded-2xl overflow-hidden cursor-pointer active:scale-[0.98] transition-transform`
+- **Background:** `linear-gradient(110deg, gradient[0]f0, gradient[1]f0)` + `backdropFilter: blur(12px)`
+- **Shadow:** `0 8px 32px gradient[1]60`
 - **Content row:** `flex items-center gap-3 px-3 py-2.5`
-  - Album art: 42px, the song's gradient (or its cover), flat
-  - Title: `text-sm font-bold text-foreground truncate`
-  - Artist: `text-xs text-muted-foreground truncate`, left out when unknown
-  - Play/Pause: `w-9 h-9 rounded-full bg-primary` — icon 17px `text-primary-foreground`
-  - Skip forward: `w-9 h-9 rounded-full` — icon `text-muted-foreground`
-- **Progress bar:** `h-[2px] bg-muted` full width (no margin), fill `bg-primary`
+  - Album art: 42px, `className="shadow-sm"`
+  - Title: `text-sm font-bold text-white truncate`
+  - Artist: `text-xs text-white/65 truncate`
+  - Play/Pause: `w-9 h-9 rounded-full bg-white/15 hover:bg-white/25` — icon 17px white fill
+  - Skip forward: `w-9 h-9 rounded-full bg-white/10 hover:bg-white/20`
+- **Progress bar:** `h-[2px] bg-white/15` full width (no margin), fill `bg-white/60 rounded-full`
 - **Entry animation:** spring stiffness 340, damping 30, `y: 56→0, opacity: 0→1`
 - Tap anywhere (except control buttons) → opens Full Player
 
@@ -274,12 +275,12 @@ Covers full screen via `fixed inset-0 z-50`.
 
 **Entry animation:** spring stiffness 300, damping 34, `y: "100%"→0`
 
-**Background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)` plus a `bg-black/20` scrim. Small white text on it is at least `text-white/80` and dim lyric lines `text-white/55`, the smallest that reach WCAG 4.5:1 and 3:1 on all 13 gradients (checked by `PlayerContrastTest`).
+**Background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)`
 
 ### Layout (top to bottom, all `shrink-0`)
 1. **Top bar** (`px-5 pt-5 pb-2 flex items-center justify-between`):
    - Left: `w-9 h-9 rounded-full bg-white/10 hover:bg-white/20` → `ChevronDown` 20px white `strokeWidth={2}` → closes sheet
-   - Center: "NOW PLAYING" (`text-[10px] font-bold text-white/80 uppercase tracking-widest`)
+   - Center: "NOW PLAYING" (`text-[10px] font-bold text-white/50 uppercase tracking-widest`)
    - Right: same circle button → `Heart` 18px → toggles like
 
 2. **Album art** (`flex justify-center mt-4 mb-7 px-10`):
@@ -291,14 +292,14 @@ Covers full screen via `fixed inset-0 z-50`.
    - Icon: `Music2` 80px, `rgba(255,255,255,0.45)`, `strokeWidth={1.2}`
 
 3. **Song info** (`px-7 mb-5 flex items-start justify-between`):
-   - Left: title `text-xl font-extrabold text-white leading-tight truncate` + artist/album `text-sm text-white/80 mt-0.5`
-   - Right: `Star` 12px + count number, `text-white/80` (play count badge)
+   - Left: title `text-xl font-extrabold text-white leading-tight truncate` + artist/album `text-sm text-white/60 mt-0.5`
+   - Right: `Star` 12px + count number, `text-white/40` (play count badge)
 
 4. **Progress scrubber** (`px-7 mb-5`):
    - Track: `h-1 bg-white/20 rounded-full cursor-pointer group` — `ref` attached, onClick calculates pct
    - Fill: `bg-white rounded-full h-full`
    - Hover thumb: `absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100`
-   - Time labels: `flex justify-between mt-1.5`, `text-[11px] text-white/80 tabular-nums`
+   - Time labels: `flex justify-between mt-1.5`, `text-[11px] text-white/40 tabular-nums`
 
 5. **Controls row** (`px-7 flex items-center justify-between mb-7`):
    - Shuffle: `p-2`, opacity `100` (active) / `35` (inactive). Active indicator: `w-1 h-1 rounded-full bg-white mx-auto mt-0.5`

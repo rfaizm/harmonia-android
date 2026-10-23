@@ -40,10 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.SettingsRepository.Key
-import com.rfaizm.harmoniamusic.data.SettingsRepository.Theme
-import androidx.compose.material.icons.rounded.Contrast
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
@@ -53,7 +49,6 @@ import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
     val flags by settings.flags.collectAsStateWithLifecycle()
     val lyricsFolder by settings.lyricsFolder.collectAsStateWithLifecycle()
-    val theme by settings.theme.collectAsStateWithLifecycle()
     var confirmOnlineLyrics by remember { mutableStateOf(false) }
     val context = LocalContext.current
     // PRD phase 9 "Lirik Lokal": scoped storage hides .lrc files, so the user points at their music folder once.
@@ -65,15 +60,6 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text("Settings", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 14.dp))
-
-        // T51: the theme moved here from a top-bar button, and follows the phone until the user picks one.
-        SettingsSection("Appearance") {
-            SettingsRow(Icons.Rounded.Contrast, "Theme", if (theme == Theme.System) "Follows your phone" else null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Theme.entries.forEach { Pill(it.name, theme == it) { settings.setTheme(it) } }
-                }
-            }
-        }
 
         SettingsSection("Library") {
             SettingsRow(Icons.Rounded.Schedule, "Rescan library", "Find new or removed songs", onClick = onRescan) { Chevron() }

@@ -55,7 +55,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.Song
-import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
 import com.rfaizm.harmoniamusic.ui.theme.border
 import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.muted
@@ -129,7 +128,7 @@ fun ExploreScreen(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(14.dp)
                                 ) {
-                                    AlbumArt(gradientFor(list.first().id), 48.dp, shape = CircleShape, icon = Icons.Rounded.Mic, songId = list.first().id, label = name.takeUnless { it == UNKNOWN_ARTIST })
+                                    AlbumArt(gradientFor(list.first().id), 48.dp, shape = CircleShape, icon = Icons.Rounded.Mic, songId = list.first().id)
                                     Column(Modifier.weight(1f)) {
                                         Text(name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         val albumCount = list.distinctBy { it.album }.size
@@ -157,7 +156,7 @@ fun ExploreScreen(
                                     }
                                     Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
                                         Text(album, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        artistLine(list.first())?.let { Text(it, fontSize = 11.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                                        Text(list.first().displayArtist, fontSize = 11.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         Text(listOfNotNull(list.first().year.takeIf { it > 0 }, "${list.size} tracks").joinToString(" · "), fontSize = 10.sp, color = colors.mutedForeground.copy(alpha = 0.55f), modifier = Modifier.padding(top = 2.dp))
                                     }
                                 }

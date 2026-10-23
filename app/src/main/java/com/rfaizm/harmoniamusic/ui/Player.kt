@@ -20,7 +20,6 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -98,42 +97,35 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.rfaizm.harmoniamusic.data.lyricsQueries
 import kotlinx.coroutines.launch
 import com.rfaizm.harmoniamusic.ui.theme.PlayerBottom
-import androidx.compose.ui.tooling.preview.Preview
-import com.rfaizm.harmoniamusic.ui.theme.HarmoniaTheme
 import com.rfaizm.harmoniamusic.ui.theme.card
-import com.rfaizm.harmoniamusic.ui.theme.border
-import com.rfaizm.harmoniamusic.ui.theme.muted
-import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
 fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> Unit, onNext: () -> Unit, onOpen: () -> Unit, modifier: Modifier = Modifier) {
-    // M11 (T48): a calm card, not a saturated gradient with a coloured glow. While browsing, the list is the content;
-    // the song's colour lives in its art tile, and the one accent is the play button. The full player keeps the drama.
+    val (g0, g1) = song.gradient
     val shape = RoundedCornerShape(16.dp)
     Column(
         modifier
             .padding(horizontal = 12.dp)
             .padding(bottom = 8.dp)
-            .shadow(3.dp, shape)
+            .shadow(16.dp, shape, ambientColor = g1, spotColor = g1)
             .clip(shape)
-            .background(colors.card)
-            .border(1.dp, colors.border, shape)
+            .background(Brush.horizontalGradient(listOf(g0.copy(alpha = 0.94f), g1.copy(alpha = 0.94f))))
             .clickable(onClick = onOpen)
     ) {
         Row(Modifier.padding(horizontal = 12.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            AlbumArt(song.gradient, 42.dp, songId = song.id, label = song.displayTitle)
+            AlbumArt(song.gradient, 42.dp, Modifier.shadow(2.dp, RoundedCornerShape(12.dp)), songId = song.id)
             Column(Modifier.weight(1f)) {
-                Text(song.displayTitle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = colors.onBackground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                artistLine(song)?.let { Text(it, fontSize = 12.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                Text(song.displayTitle, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(song.displayArtist, fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             CircleIcon(
                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", onToggle,
-                size = 36.dp, iconSize = 19.dp, tint = colors.onPrimary, background = colors.primary
+                size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.15f)
             )
-            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 36.dp, iconSize = 19.dp, tint = colors.mutedForeground, background = Color.Transparent)
+            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
         }
-        Box(Modifier.fillMaxWidth().height(2.dp).background(colors.muted)) {
-            Box(Modifier.fillMaxWidth(progress).fillMaxHeight().background(colors.primary))
+        Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.15f))) {
+            Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White.copy(alpha = 0.6f)))
         }
     }
 }
@@ -181,7 +173,6 @@ fun FullPlayer(
         Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(0f to g0, 0.45f to g1, 1f to PlayerBottom))
-            .background(Color.Black.copy(alpha = PLAYER_SCRIM)) // so white text reads on the lightest gradients (T50)
             // swallow taps so they don't reach the screen underneath
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .systemBarsPadding()
@@ -189,7 +180,7 @@ fun FullPlayer(
         // 1. Top bar
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             CircleIcon(Icons.Rounded.KeyboardArrowDown, "Close player", onClose, size = 36.dp, iconSize = 22.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
-            Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             HeartButton(song.liked, onLike, iconSize = 18.dp, unlikedTint = Color.White)
         }
 
@@ -209,11 +200,11 @@ fun FullPlayer(
         Row(Modifier.padding(horizontal = 28.dp).padding(bottom = 20.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Text(song.displayTitle, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                playerSubtitle(song)?.let { Text(it, fontSize = 14.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
+                Text("${song.displayArtist} · ${song.album}", fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
             }
             Row(Modifier.padding(top = 6.dp, start = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Rounded.Star, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(12.dp))
-                Text("${song.playCount}", fontSize = 12.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL))
+                Text("${song.playCount}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.4f))
             }
         }
 
@@ -239,8 +230,8 @@ fun FullPlayer(
                 }
             }
             Row(Modifier.fillMaxWidth()) {
-                Text(formatDuration((song.duration * shown).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), modifier = Modifier.weight(1f))
-                Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL))
+                Text(formatDuration((song.duration * shown).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), modifier = Modifier.weight(1f))
+                Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f))
             }
         }
 
@@ -253,7 +244,7 @@ fun FullPlayer(
                 Modifier
                     .size(64.dp)
                     .graphicsLayer { scaleX = playScale; scaleY = playScale }
-                    .shadow(4.dp, CircleShape) // the full-player art keeps the only big glow (T48)
+                    .shadow(12.dp, CircleShape)
                     .clip(CircleShape)
                     .background(Color.White)
                     .clickable(onClick = onToggle),
@@ -385,10 +376,9 @@ private fun LyricsView(
         when {
             lines.isNotEmpty() -> SyncedLyrics(lines, song.id, settings, position, onPlayFrom)
             shown != null -> Column(Modifier.fillMaxSize()) {
-                // Information, not a warning, so it reads as a sentence rather than wide-tracked caps (M11, T49).
                 Text(
-                    "Not synced to the song", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = ON_PLAYER_SMALL), modifier = Modifier.padding(bottom = 12.dp),
+                    "NOT SYNCED TO THE SONG", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
+                    color = Color.White.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 12.dp),
                 )
                 Text(
                     shown, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp, color = Color.White.copy(alpha = 0.9f),
@@ -409,7 +399,7 @@ private fun LyricsView(
                         }
                         else -> "This file has no lyrics saved in it."
                     },
-                    fontSize = 15.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), lineHeight = 22.sp,
+                    fontSize = 15.sp, color = Color.White.copy(alpha = 0.75f), lineHeight = 22.sp,
                 )
                 if (flags.getValue(Key.OnlineLyrics)) {
                     TextButton({
@@ -425,7 +415,7 @@ private fun LyricsView(
                 } else {
                     Text(
                         "Harmonia only reads lyrics saved inside a file. You can switch on “Look up lyrics online” in Settings.",
-                        fontSize = 13.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), lineHeight = 19.sp,
+                        fontSize = 13.sp, color = Color.White.copy(alpha = 0.55f), lineHeight = 19.sp,
                         modifier = Modifier.padding(top = 10.dp),
                     )
                 }
@@ -479,7 +469,7 @@ private fun SyncedLyrics(
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (shift != 0) Text("%+.1f s".format(shift / 1000f), fontSize = 12.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL))
+            if (shift != 0) Text("%+.1f s".format(shift / 1000f), fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
             TimingButton("Earlier") { moveBy(-SHIFT_STEP_MS) }
             TimingButton("Later") { moveBy(SHIFT_STEP_MS) }
         }
@@ -491,7 +481,7 @@ private fun SyncedLyrics(
                 contentPadding = PaddingValues(top = maxHeight / 3, bottom = maxHeight * 2 / 3),
             ) {
                 itemsIndexed(lines) { i, line ->
-                    val alpha by animateFloatAsState(if (i == current) 1f else ON_PLAYER_LARGE, label = "lyricLine")
+                    val alpha by animateFloatAsState(if (i == current) 1f else 0.4f, label = "lyricLine")
                     Text(
                         line.text.ifEmpty { "♪" }, // a pause in the singing
                         fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, color = Color.White,
@@ -524,16 +514,4 @@ private fun TimingButton(text: String, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     )
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFFF5F4F0, widthDp = 390)
-@Composable
-private fun MiniPlayerPreview() = HarmoniaTheme(darkTheme = false) {
-    MiniPlayer(SEED_SONGS[2], isPlaying = true, progress = 0.4f, onToggle = {}, onNext = {}, onOpen = {})
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF1E2022, widthDp = 390)
-@Composable
-private fun MiniPlayerDarkPreview() = HarmoniaTheme(darkTheme = true) {
-    MiniPlayer(SEED_SONGS[5], isPlaying = false, progress = 0.7f, onToggle = {}, onNext = {}, onOpen = {})
 }
