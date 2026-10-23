@@ -187,14 +187,8 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                             CircularProgressIndicator(color = colors.primary)
                         }
                         songs.isEmpty() -> NoMusicEmptyState(rescanning, ::rescan)
-                        t == Tab.Songs -> SongsScreen(songs, playlists, playback.activeId, playback.isPlaying, player::playFrom, ::like, ::addTo, deleteSong)
-                        t == Tab.Playlists -> PlaylistsScreen(
-                            songs, playlists, playback.activeId, playback.isPlaying, player::playFrom, ::like, ::addTo,
-                            onCreate = { addTo(it, emptyList()) },
-                            onRemove = { playlistId, songId -> music.removeFromPlaylist(playlistId, songId) },
-                            onDelete = { music.deletePlaylist(it.id) },
-                            onDeleteSong = deleteSong,
-                        )
+                        t == Tab.Songs -> SongsScreen(hiltViewModel(), playback.activeId, playback.isPlaying, player::playFrom, deleteSong)
+                        t == Tab.Playlists -> PlaylistsScreen(hiltViewModel(), playback.activeId, playback.isPlaying, player::playFrom, deleteSong)
                         else -> ExploreScreen(songs, playlists, playback.activeId, playback.isPlaying, player::playFrom, ::like, ::addTo, deleteSong)
                     }
                 }

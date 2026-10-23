@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -80,24 +81,26 @@ private const val LIKED_ID = -1
 
 @Composable
 fun PlaylistsScreen(
-    songs: List<Song>,
-    playlists: List<Playlist>,
+    viewModel: PlaylistsViewModel,
     activeId: Int?,
     isPlaying: Boolean,
     onPlay: (song: Song, queue: List<Song>) -> Unit,
-    onLike: (Song) -> Unit,
-    onAddToPlaylist: (name: String, ids: Collection<Int>) -> Unit,
-    onCreate: (String) -> Unit,
-    onRemove: (playlistId: Int, songId: Int) -> Unit,
-    onDelete: (Playlist) -> Unit,
     onDeleteSong: (Song) -> Unit,
 ) {
+    val songs by viewModel.songs.collectAsStateWithLifecycle()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val byId by viewModel.songsById.collectAsStateWithLifecycle()
+    val onLike = viewModel::toggleLike
+    val onAddToPlaylist = viewModel::addToPlaylist
+    val onCreate = viewModel::create
+    val onRemove = viewModel::removeFromPlaylist
+    val onDelete = viewModel::deletePlaylist
     var openId by rememberSaveable { mutableStateOf<Int?>(null) }
     BackHandler(openId != null) { openId = null }
 
     AnimatedContent(openId, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "playlists") { id ->
         if (id == null) {
-            PlaylistList(songs, playlists, onOpen = { openId = it }, onPlay = onPlay, onCreate = onCreate, onDelete = onDelete)
+            PlaylistList(songs, byId, playlists, onOpen = { openId = it }, onPlay = onPlay, onCreate = onCreate, onDelete = onDelete)
         } else {
             val playlist = if (id == LIKED_ID) null else playlists.firstOrNull { it.id == id }
             // Liked Songs snapshots its ids on open, so un-liking keeps the song (faded) until reopened — PRD phase 8.
@@ -109,7 +112,7 @@ fun PlaylistsScreen(
                 createdAt = playlist?.createdAt,
                 gradient = playlist?.gradient ?: LIKED_GRADIENT,
                 icon = if (playlist == null) Icons.Rounded.Favorite else Icons.AutoMirrored.Rounded.QueueMusic,
-                songs = ids.mapNotNull { sid -> songs.firstOrNull { it.id == sid } },
+                songs = resolve(ids, byId),
                 playlists = playlists,
                 fadeUnliked = playlist == null,
                 activeId = activeId,
@@ -128,6 +131,7 @@ fun PlaylistsScreen(
 @Composable
 private fun PlaylistList(
     songs: List<Song>,
+    byId: Map<Int, Song>,
     playlists: List<Playlist>,
     onOpen: (Int) -> Unit,
     onPlay: (song: Song, queue: List<Song>) -> Unit,
@@ -182,9 +186,9 @@ private fun PlaylistList(
         item { LikedCard(songs.count { it.liked }) { onOpen(LIKED_ID) } }
         items(playlists, key = { it.id }) { p ->
             PlaylistCard(
-                p, songs, onOpen = { onOpen(p.id) },
+                p, byId, onOpen = { onOpen(p.id) },
                 onPlay = {
-                    val q = p.songIds.mapNotNull { id -> songs.firstOrNull { it.id == id } }
+                    val q = resolve(p.songIds, byId)
                     q.firstOrNull()?.let { onPlay(it, q) }
                 },
                 onDelete = { onDelete(p) }, modifier = Modifier.animateItem(),
@@ -213,7 +217,7 @@ private fun LikedCard(count: Int, onClick: () -> Unit) {
 }
 
 @Composable
-private fun PlaylistCard(p: Playlist, songs: List<Song>, onOpen: () -> Unit, onPlay: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
+private fun PlaylistCard(p: Playlist, byId: Map<Int, Song>, onOpen: () -> Unit, onPlay: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(16.dp)
     Column(modifier.padding(bottom = 12.dp).fillMaxWidth().clip(shape).background(colors.card).border(1.dp, colors.border, shape).clickable(onClick = onOpen)) {
         Row(
@@ -234,7 +238,7 @@ private fun PlaylistCard(p: Playlist, songs: List<Song>, onOpen: () -> Unit, onP
         Row(Modifier.padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(p.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                val total = p.songIds.sumOf { id -> songs.firstOrNull { it.id == id }?.duration ?: 0 }
+                val total = p.songIds.sumOf { id -> byId[id]?.duration ?: 0 }
                 Text("${p.songIds.size} songs · ${formatDuration(total)} · ${formatDate(p.createdAt)}", fontSize = 12.sp, color = colors.mutedForeground)
             }
             CircleIcon(Icons.Rounded.PlayCircle, "Play ${p.name}", onPlay, size = 32.dp, iconSize = 18.dp, tint = colors.primary, background = colors.primary.copy(alpha = 0.10f))

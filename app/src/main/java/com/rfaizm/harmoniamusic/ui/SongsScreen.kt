@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -76,26 +77,21 @@ import com.rfaizm.harmoniamusic.ui.theme.muted
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 import java.text.Normalizer
 
-private enum class SortBy(val label: String) { AZ("A–Z"), Recent("Recent"), MostPlayed("Most played") }
-
-private sealed interface Entry {
-    data class Header(val letter: String) : Entry
-    data class Item(val song: Song, val index: Int) : Entry
-}
-
 @Composable
 fun SongsScreen(
-    songs: List<Song>,
-    playlists: List<Playlist>,
+    viewModel: SongsViewModel,
     activeId: Int?,
     isPlaying: Boolean,
     onPlay: (song: Song, queue: List<Song>) -> Unit,
-    onLike: (Song) -> Unit,
-    onAddToPlaylist: (name: String, ids: Collection<Int>) -> Unit,
     onDelete: (Song) -> Unit,
 ) {
-    var query by rememberSaveable { mutableStateOf("") }
-    var sortBy by rememberSaveable { mutableStateOf(SortBy.AZ) }
+    // Search, sort and the A–Z grouping are worked out in the ViewModel (T33); selection stays here, as screen state.
+    val entries by viewModel.entries.collectAsStateWithLifecycle()
+    val playlists by viewModel.playlists.collectAsStateWithLifecycle()
+    val query = viewModel.query
+    val sortBy = viewModel.sortBy
+    val onLike = viewModel::toggleLike
+    val onAddToPlaylist = viewModel::addToPlaylist
     var selected by remember { mutableStateOf(emptySet<Int>()) }
     var sheetOpen by remember { mutableStateOf(false) }
     val selectionMode = selected.isNotEmpty()
@@ -121,26 +117,6 @@ fun SongsScreen(
         }
     }
 
-    // derivedStateOf re-runs when the song list itself changes (like, play count), not just on query/sort.
-    val entries by remember(songs) { derivedStateOf {
-        val q = query.trim().lowercase()
-        val filtered = songs.filter {
-            q.isEmpty() || it.displayTitle.lowercase().contains(q) || it.displayArtist.lowercase().contains(q)
-        }
-        // A–Z carries each song's letter group, so the headings come from the same rule as the order.
-        val sorted = when (sortBy) {
-            SortBy.AZ -> azOrder(filtered)
-            SortBy.Recent -> filtered.sortedByDescending { it.id }.map { null to it }
-            SortBy.MostPlayed -> filtered.sortedByDescending { it.playCount }.map { null to it }
-        }
-        buildList {
-            var last: String? = null
-            sorted.forEachIndexed { i, (letter, s) ->
-                if (letter != null && letter != last) add(Entry.Header(letter)).also { last = letter }
-                add(Entry.Item(s, i))
-            }
-        }
-    } }
     // Where each letter's heading sits, for the index bar (T41).
     val headings = remember(entries) { entries.withIndex().mapNotNull { (i, e) -> (e as? Entry.Header)?.let { it.letter to i } } }
     // Changes only when the list scrolls into another letter, so the bar isn't redrawn on every row.
@@ -152,7 +128,7 @@ fun SongsScreen(
             Column(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 6.dp)) {
                 // Search stays put while selecting: picking 15 songs out of a long library shouldn't mean scrolling
                 // to each one (PRD phase 3 is about saving taps).
-                SearchBar(query, { query = it })
+                SearchBar(query, viewModel::search)
                 AnimatedContent(selectionMode, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "songsHeader") { selecting ->
                     if (selecting) {
                         SelectionBar(
@@ -164,7 +140,7 @@ fun SongsScreen(
                         )
                     } else {
                         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SortBy.entries.forEach { Pill(it.label, sortBy == it) { sortBy = it } }
+                            SortBy.entries.forEach { Pill(it.label, sortBy == it) { viewModel.sort(it) } }
                         }
                     }
                 }
