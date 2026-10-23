@@ -384,9 +384,10 @@ private fun LyricsView(
         when {
             lines.isNotEmpty() -> SyncedLyrics(lines, song.id, settings, position, onPlayFrom)
             shown != null -> Column(Modifier.fillMaxSize()) {
+                // Information, not a warning, so it reads as a sentence rather than wide-tracked caps (M11, T49).
                 Text(
-                    "NOT SYNCED TO THE SONG", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
-                    color = Color.White.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 12.dp),
+                    "Not synced to the song", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                    color = Color.White.copy(alpha = 0.6f), modifier = Modifier.padding(bottom = 12.dp),
                 )
                 Text(
                     shown, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp, color = Color.White.copy(alpha = 0.9f),
