@@ -63,6 +63,8 @@ M9 T41 A–Z index bar jumps to a letter ──► T42 letter bubble + current-l
         │
 M10 T43 sleep timer countdown + dialog ──► T44 −5 / +5 min buttons   ← after M9, before M6
         │
+M11 T45 title width · T46 no "Unknown artist" · T47 letter tiles · T48 calmer surfaces · T49 sentence case · T50 contrast · T51 system theme   ← after Checkpoint M6
+        │
 M6 T30 tidy data · T31 Hilt + data sources · T32 repositories · T33 ViewModels   ← before M5
         │
 M5 T19 lite mode · T20 encoding repair + RTL audit · T21 (opt) Indonesian strings · T22 release checklist
@@ -606,6 +608,71 @@ Decisions:
   - with the screen off for a few minutes, it still pauses on time;
   - "End of track" works;
   - light and dark mode both look right.
+
+### M11: UI polish from the honest review (after Checkpoint M6, before M5)
+
+The user asked for an honest UI review (2026-10-23), then chose to plan all 8 findings. The design system is real and
+consistently applied; the weak spots appear with a real, messy library: titles cut off by everything else on the row,
+"Unknown artist" on almost every row, and art tiles that are all the same music note. A few treatments are also
+applied everywhere instead of at one moment: pills, big shadows, caps labels and a loud mini player. This milestone
+comes before M5, so the Play Store screenshots show the polished UI. Open question: should the guideline's own
+uppercase labels also go sentence case? [no]
+
+- **T45 Give titles their width back (S).**
+  - `SongRow` (`ui/Components.kt`, around line 366) drops the per-row duration. The full player and the playlist
+    header totals already show time.
+  - The row's trailing area becomes ♡ + ⋮ only.
+  - Acceptance: on the user's phone, typical titles like "A Sky Full of Stars" and "Adele Someone Like You" fit
+    without "…" with the A–Z bar showing.
+  - Check: the release build with the real library.
+- **T46 No "Unknown artist" wall (S).**
+  - In list rows (`SongRow`, and the second row variant around line 424) and the `MiniPlayer`, hide the artist line
+    when `displayArtist == UNKNOWN_ARTIST`, and centre the title vertically.
+  - Keep "Unknown artist" where it's a real group name: the Artists tab and the detail headers.
+  - Don't show the artist guessed from the file name: "Title - Artist" names guess wrongly (T39 found this), and a
+    wrong artist is worse than none.
+  - Test: a pure `artistLine(song): String?` helper, unit-tested.
+- **T47 Art tiles that mean something (S–M).**
+  - In `AlbumArt` (`ui/Components.kt:150`), when there's no art, replace the generic `MusicNote` with the song's
+    **first letter**. Reuse `letterOf()` from `SongsScreen.kt`, where "#" stays the music note.
+  - Extra-bold, white at about 85 %, scaled to the tile.
+  - The same in Playlists' four mini tiles and the mini player.
+  - Real album art is unchanged.
+  - Check: a `@Preview` row of tiles in both themes, and the phone.
+- **T48 Calmer surfaces: shadows and the mini player (M).**
+  - **Mini player** (`ui/Player.kt` around line 110): from a saturated full-width gradient card with a 16 dp
+    coloured shadow to a `card` surface with a thin `border` and at most a 4 dp neutral shadow. The 42 dp art tile
+    keeps the song's gradient, so the colour moves into the tile. A 2 dp progress line in `primary` sits at the
+    bottom.
+  - **Shadows:** keep the 32 dp glow **only** on the full-player album art. Tone everything else down to a 1–4 dp
+    neutral shadow or none.
+  - **Radius:** pills only for things that are pills (sort pills, chips, the A–Z capsule, ± buttons); cards 16 dp;
+    tiles 12 dp, per GUIDELINE §4. Audit `RoundedCornerShape`/`CircleShape` uses.
+  - GUIDELINE §7 (mini player) is updated to match, since it's the design system of record.
+- **T49 Status text in sentence case (XS).**
+  - "NOT SYNCED TO THE SONG" becomes "Not synced to the song".
+  - "ADD TO PLAYLIST" (`Components.kt:428`, the menu heading) follows §5.7's playlist heading spec; I'll check
+    whether it's guideline-driven, and keep it if so.
+  - Labels the guideline specifies (the "NOW PLAYING" label, letter dividers, settings section headings in §3) stay
+    unchanged unless the user decides to change the guideline (see Open question).
+- **T50 Contrast on the player gradients (S).**
+  - Run the antislop contrast checker for each translucent-white text on the full player ("NOW PLAYING" at 50 %, the
+    artist line at 60 %, timing and lyric dims) against all 12 `GRADIENTS` and `LIKED_GRADIENT`.
+  - Raise any alpha that falls below 4.5:1 (3:1 for 18 sp+), with the measured ratios noted in the plan.
+- **T51 Theme follows the phone (S).**
+  - On first launch, dark or light follows `isSystemInDarkTheme()`. Once the user toggles, their choice wins.
+  - `SettingsStore` needs to know whether the user ever chose (`prefs.contains("DarkMode")`), surfaced as
+    `SettingsRepository.darkMode: StateFlow<Boolean?>`, where null means "follow the system".
+  - **Smaller note folded in:** the sun/moon toggle moves from the top bar into Settings → Appearance, as a
+    three-way choice (System / Light / Dark). The header keeps the title and song count.
+  - Test: the pure resolve function, `themeIsDark(choice: Boolean?, systemDark: Boolean)`.
+- **Checkpoint M11:** on the release build, the real library in both themes:
+  - Songs list titles are readable;
+  - no "Unknown artist" rows;
+  - tiles show letters;
+  - the mini player is calm and the full player is unchanged;
+  - first launch follows the system theme;
+  - the contrast table passes.
 
 ### M6: MVVM migration (runs before M5, since T19 and T20 rework the same UI)
 
