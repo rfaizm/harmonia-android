@@ -70,7 +70,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T47 Art tiles show the song's first letter (`letterOf`) when there's no cover art
 - [x] T48 Calmer surfaces: mini player on a `card` surface, big glow only on the full-player art, radius audit, GUIDELINE §7 updated
 - [x] T49 Status text in sentence case ("Not synced to the song"); guideline-specified caps stay
-- [ ] T50 Contrast of translucent white text on all player gradients (contrast checker), alphas raised where needed
+- [x] T50 Contrast of translucent white text on all player gradients (contrast checker), alphas raised where needed
 - [ ] T51 Theme follows the phone on first launch; System / Light / Dark moves to Settings (`themeIsDark` test)
 - [ ] **Checkpoint M11:** release build, real library, both themes
 

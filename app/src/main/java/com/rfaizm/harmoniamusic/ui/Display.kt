@@ -85,3 +85,16 @@ internal fun playerSubtitle(song: Song): String? =
  * identical music notes. Accents fold as in the A–Z bar (`letterOf`); anything filed under "#" keeps the icon.
  */
 internal fun tileLetter(label: String?): String? = label?.let(::letterOf)?.takeUnless { it == "#" }
+
+// M11 (T50): the full player's backdrop and the white text on it, checked against every gradient by
+// PlayerContrastTest. The lightest gradients were too light even for pure white (#688060 gave 4.33:1), so a dark scrim
+// sits over the song gradient, and the text alphas are the smallest that pass WCAG on all 26 gradient colours.
+
+/** Black laid over the song gradient behind the full player. */
+internal const val PLAYER_SCRIM = 0.2f
+
+/** White alpha for small text on the player: labels, times, secondary lines (at least 4.5:1). */
+internal const val ON_PLAYER_SMALL = 0.8f
+
+/** White alpha for the dim lyric lines, which are large extra-bold text (at least 3:1). */
+internal const val ON_PLAYER_LARGE = 0.55f

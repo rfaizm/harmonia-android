@@ -181,6 +181,7 @@ fun FullPlayer(
         Modifier
             .fillMaxSize()
             .background(Brush.verticalGradient(0f to g0, 0.45f to g1, 1f to PlayerBottom))
+            .background(Color.Black.copy(alpha = PLAYER_SCRIM)) // so white text reads on the lightest gradients (T50)
             // swallow taps so they don't reach the screen underneath
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
             .systemBarsPadding()
@@ -188,7 +189,7 @@ fun FullPlayer(
         // 1. Top bar
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             CircleIcon(Icons.Rounded.KeyboardArrowDown, "Close player", onClose, size = 36.dp, iconSize = 22.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
-            Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             HeartButton(song.liked, onLike, iconSize = 18.dp, unlikedTint = Color.White)
         }
 
@@ -208,11 +209,11 @@ fun FullPlayer(
         Row(Modifier.padding(horizontal = 28.dp).padding(bottom = 20.dp), verticalAlignment = Alignment.Top) {
             Column(Modifier.weight(1f)) {
                 Text(song.displayTitle, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                playerSubtitle(song)?.let { Text(it, fontSize = 14.sp, color = Color.White.copy(alpha = 0.6f), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
+                playerSubtitle(song)?.let { Text(it, fontSize = 14.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
             }
             Row(Modifier.padding(top = 6.dp, start = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Icon(Icons.Rounded.Star, null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(12.dp))
-                Text("${song.playCount}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.4f))
+                Text("${song.playCount}", fontSize = 12.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL))
             }
         }
 
@@ -238,8 +239,8 @@ fun FullPlayer(
                 }
             }
             Row(Modifier.fillMaxWidth()) {
-                Text(formatDuration((song.duration * shown).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), modifier = Modifier.weight(1f))
-                Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f))
+                Text(formatDuration((song.duration * shown).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), modifier = Modifier.weight(1f))
+                Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL))
             }
         }
 
@@ -387,7 +388,7 @@ private fun LyricsView(
                 // Information, not a warning, so it reads as a sentence rather than wide-tracked caps (M11, T49).
                 Text(
                     "Not synced to the song", fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                    color = Color.White.copy(alpha = 0.6f), modifier = Modifier.padding(bottom = 12.dp),
+                    color = Color.White.copy(alpha = ON_PLAYER_SMALL), modifier = Modifier.padding(bottom = 12.dp),
                 )
                 Text(
                     shown, fontSize = 17.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp, color = Color.White.copy(alpha = 0.9f),
@@ -408,7 +409,7 @@ private fun LyricsView(
                         }
                         else -> "This file has no lyrics saved in it."
                     },
-                    fontSize = 15.sp, color = Color.White.copy(alpha = 0.75f), lineHeight = 22.sp,
+                    fontSize = 15.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), lineHeight = 22.sp,
                 )
                 if (flags.getValue(Key.OnlineLyrics)) {
                     TextButton({
@@ -424,7 +425,7 @@ private fun LyricsView(
                 } else {
                     Text(
                         "Harmonia only reads lyrics saved inside a file. You can switch on “Look up lyrics online” in Settings.",
-                        fontSize = 13.sp, color = Color.White.copy(alpha = 0.55f), lineHeight = 19.sp,
+                        fontSize = 13.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL), lineHeight = 19.sp,
                         modifier = Modifier.padding(top = 10.dp),
                     )
                 }
@@ -478,7 +479,7 @@ private fun SyncedLyrics(
 
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (shift != 0) Text("%+.1f s".format(shift / 1000f), fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
+            if (shift != 0) Text("%+.1f s".format(shift / 1000f), fontSize = 12.sp, color = Color.White.copy(alpha = ON_PLAYER_SMALL))
             TimingButton("Earlier") { moveBy(-SHIFT_STEP_MS) }
             TimingButton("Later") { moveBy(SHIFT_STEP_MS) }
         }
@@ -490,7 +491,7 @@ private fun SyncedLyrics(
                 contentPadding = PaddingValues(top = maxHeight / 3, bottom = maxHeight * 2 / 3),
             ) {
                 itemsIndexed(lines) { i, line ->
-                    val alpha by animateFloatAsState(if (i == current) 1f else 0.4f, label = "lyricLine")
+                    val alpha by animateFloatAsState(if (i == current) 1f else ON_PLAYER_LARGE, label = "lyricLine")
                     Text(
                         line.text.ifEmpty { "♪" }, // a pause in the singing
                         fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, lineHeight = 30.sp, color = Color.White,

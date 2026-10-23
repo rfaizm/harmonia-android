@@ -71,7 +71,7 @@ All gradients are dark-to-darker monochromatic earth tones. They serve as album 
 
 ### Special Gradients
 - **Liked Songs card:** `#c0392b → #7a1a2e` (deep red)
-- **Full player background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)` — fades to near-black for cinematic depth
+- **Full player background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)` — fades to near-black for cinematic depth — with a `bg-black/20` scrim on top (M11): the lightest gradients were too light even for pure white text
 
 ---
 
@@ -98,10 +98,10 @@ Nunito is a rounded geometric sans-serif. It reads warm and calm without feeling
 | Bottom nav label | `text-[10px]` | 700 bold | `tracking-wide` |
 | Settings section heading | `text-[10px]` | 900 black | `uppercase tracking-[0.14em] text-primary` |
 | Full player title | `text-xl` | 800 | `text-white` |
-| Full player artist | `text-sm` | 400 | `text-white/60` |
-| "NOW PLAYING" label | `text-[10px]` | 700 | `uppercase tracking-widest text-white/50` |
+| Full player artist | `text-sm` | 400 | `text-white/80` |
+| "NOW PLAYING" label | `text-[10px]` | 700 | `uppercase tracking-widest text-white/80` |
 | Pill / badge text | `text-xs` | 600 semibold | — |
-| Play count | `text-xs` | 400 | `text-white/40` |
+| Play count | `text-xs` | 400 | `text-white/80` |
 
 ---
 
@@ -274,12 +274,12 @@ Covers full screen via `fixed inset-0 z-50`.
 
 **Entry animation:** spring stiffness 300, damping 34, `y: "100%"→0`
 
-**Background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)`
+**Background:** `linear-gradient(180deg, gradient[0] 0%, gradient[1] 45%, #141618 100%)` plus a `bg-black/20` scrim. Small white text on it is at least `text-white/80` and dim lyric lines `text-white/55`, the smallest that reach WCAG 4.5:1 and 3:1 on all 13 gradients (checked by `PlayerContrastTest`).
 
 ### Layout (top to bottom, all `shrink-0`)
 1. **Top bar** (`px-5 pt-5 pb-2 flex items-center justify-between`):
    - Left: `w-9 h-9 rounded-full bg-white/10 hover:bg-white/20` → `ChevronDown` 20px white `strokeWidth={2}` → closes sheet
-   - Center: "NOW PLAYING" (`text-[10px] font-bold text-white/50 uppercase tracking-widest`)
+   - Center: "NOW PLAYING" (`text-[10px] font-bold text-white/80 uppercase tracking-widest`)
    - Right: same circle button → `Heart` 18px → toggles like
 
 2. **Album art** (`flex justify-center mt-4 mb-7 px-10`):
@@ -291,14 +291,14 @@ Covers full screen via `fixed inset-0 z-50`.
    - Icon: `Music2` 80px, `rgba(255,255,255,0.45)`, `strokeWidth={1.2}`
 
 3. **Song info** (`px-7 mb-5 flex items-start justify-between`):
-   - Left: title `text-xl font-extrabold text-white leading-tight truncate` + artist/album `text-sm text-white/60 mt-0.5`
-   - Right: `Star` 12px + count number, `text-white/40` (play count badge)
+   - Left: title `text-xl font-extrabold text-white leading-tight truncate` + artist/album `text-sm text-white/80 mt-0.5`
+   - Right: `Star` 12px + count number, `text-white/80` (play count badge)
 
 4. **Progress scrubber** (`px-7 mb-5`):
    - Track: `h-1 bg-white/20 rounded-full cursor-pointer group` — `ref` attached, onClick calculates pct
    - Fill: `bg-white rounded-full h-full`
    - Hover thumb: `absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow opacity-0 group-hover:opacity-100`
-   - Time labels: `flex justify-between mt-1.5`, `text-[11px] text-white/40 tabular-nums`
+   - Time labels: `flex justify-between mt-1.5`, `text-[11px] text-white/80 tabular-nums`
 
 5. **Controls row** (`px-7 flex items-center justify-between mb-7`):
    - Shuffle: `p-2`, opacity `100` (active) / `35` (inactive). Active indicator: `w-1 h-1 rounded-full bg-white mx-auto mt-0.5`
