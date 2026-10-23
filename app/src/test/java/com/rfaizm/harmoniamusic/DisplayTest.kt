@@ -1,8 +1,10 @@
 package com.rfaizm.harmoniamusic
 
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.SettingsRepository.Theme
 import com.rfaizm.harmoniamusic.ui.artistLine
 import com.rfaizm.harmoniamusic.ui.playerSubtitle
+import com.rfaizm.harmoniamusic.ui.themeIsDark
 import com.rfaizm.harmoniamusic.ui.tileLetter
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -45,5 +47,19 @@ class DisplayTest {
         assertNull(tileLetter("21 Guns"))
         assertNull(tileLetter("夜に駆ける"))
         assertNull(tileLetter(null))
+    }
+
+    // T51: the app follows the phone's theme until the user picks one in Settings.
+
+    @Test
+    fun systemFollowsThePhone() {
+        assertEquals(true, themeIsDark(Theme.System, systemDark = true))
+        assertEquals(false, themeIsDark(Theme.System, systemDark = false))
+    }
+
+    @Test
+    fun aChosenThemeWinsOverThePhone() {
+        assertEquals(false, themeIsDark(Theme.Light, systemDark = true))
+        assertEquals(true, themeIsDark(Theme.Dark, systemDark = false))
     }
 }

@@ -24,6 +24,14 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
         get() = prefs.getString(FOLDER_KEY, null)
         set(value) = prefs.edit { if (value == null) remove(FOLDER_KEY) else putString(FOLDER_KEY, value) }
 
+    /**
+     * True or false once the user picked dark or light; null while they never have, which means "follow the phone".
+     * The sun/moon button stored the same key, so a choice made there carries over.
+     */
+    var darkMode: Boolean?
+        get() = if (prefs.contains(DARK_KEY)) prefs.getBoolean(DARK_KEY, true) else null
+        set(value) = prefs.edit { if (value == null) remove(DARK_KEY) else putBoolean(DARK_KEY, value) }
+
     fun lyricsShift(songId: Int): Int = timing.getInt(songId.toString(), 0)
 
     fun setLyricsShift(songId: Int, ms: Int) = timing.edit { if (ms == 0) remove(songId.toString()) else putInt(songId.toString(), ms) }
@@ -37,5 +45,6 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
 
     private companion object {
         const val FOLDER_KEY = "lyricsFolder"
+        const val DARK_KEY = "DarkMode"
     }
 }

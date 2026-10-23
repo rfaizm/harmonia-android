@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.Playlist
+import com.rfaizm.harmoniamusic.data.SettingsRepository.Theme
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.data.UNKNOWN_ALBUM
 import com.rfaizm.harmoniamusic.data.UNKNOWN_ARTIST
@@ -98,3 +99,10 @@ internal const val ON_PLAYER_SMALL = 0.8f
 
 /** White alpha for the dim lyric lines, which are large extra-bold text (at least 3:1). */
 internal const val ON_PLAYER_LARGE = 0.55f
+
+/** M11 (T51): the phone's own theme until the user picks one in Settings. */
+internal fun themeIsDark(theme: Theme, systemDark: Boolean): Boolean = when (theme) {
+    Theme.System -> systemDark
+    Theme.Light -> false
+    Theme.Dark -> true
+}

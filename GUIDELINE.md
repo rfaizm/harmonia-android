@@ -125,7 +125,7 @@ Nunito is a rounded geometric sans-serif. It reads warm and calm without feeling
 ### 5.1 Top App Bar
 - Layout: `flex items-center justify-between` inside `px-5 pt-5 pb-2`
 - Left: `<h1>` "Harmonia" + `<p>` subtitle `{n} songs · local library` (`text-[11px] text-muted-foreground mt-0.5`)
-- Right: dark mode toggle — `w-9 h-9 rounded-full bg-card border border-border`, Sun/Moon at 16px `strokeWidth={2}`, hover `bg-primary/10`
+- Right: nothing. The theme is chosen in Settings › Appearance (System / Light / Dark) and follows the phone until the user picks one (M11). A button for a once-off setting took header space every day.
 - No shadow, no bottom border — blends into background
 
 ### 5.2 Bottom Navigation Bar

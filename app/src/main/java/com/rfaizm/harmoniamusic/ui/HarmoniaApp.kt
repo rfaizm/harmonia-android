@@ -38,9 +38,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
-import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.rounded.Groups
-import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.HorizontalDivider
@@ -96,8 +95,8 @@ enum class Tab(val label: String, val icon: ImageVector) {
  */
 @Composable
 fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepository: LyricsRepository) {
-    val flags by settings.flags.collectAsStateWithLifecycle()
-    val darkMode = flags.getValue(Key.DarkMode)
+    val theme by settings.theme.collectAsStateWithLifecycle()
+    val darkMode = themeIsDark(theme, isSystemInDarkTheme())
     val songs by music.songs.collectAsStateWithLifecycle()
     val loaded by music.loaded.collectAsStateWithLifecycle()
     var tab by rememberSaveable { mutableStateOf(Tab.Songs) }
@@ -165,7 +164,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
     HarmoniaTheme(darkTheme = darkMode) {
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize()) {
-                TopBar(songs.size, darkMode) { settings[Key.DarkMode] = !darkMode }
+                TopBar(songs.size)
                 AnimatedContent(
                     tab,
                     transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(160)) },
@@ -228,7 +227,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
 }
 
 @Composable
-private fun TopBar(songCount: Int, darkMode: Boolean, onToggleTheme: () -> Unit) {
+private fun TopBar(songCount: Int) {
     Row(
         Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -237,13 +236,6 @@ private fun TopBar(songCount: Int, darkMode: Boolean, onToggleTheme: () -> Unit)
             Text("Harmonia", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp)
             Text("$songCount songs · local library", fontSize = 11.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp))
         }
-        CircleIcon(
-            if (darkMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
-            if (darkMode) "Switch to light mode" else "Switch to dark mode",
-            onToggleTheme,
-            modifier = Modifier.border(1.dp, colors.border, CircleShape),
-            size = 36.dp, iconSize = 16.dp, tint = colors.onBackground, background = colors.card,
-        )
     }
 }
 
