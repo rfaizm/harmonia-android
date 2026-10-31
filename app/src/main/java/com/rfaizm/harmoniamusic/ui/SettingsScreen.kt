@@ -100,7 +100,7 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
         }
 
         SettingsSection("Display & privacy") {
-            ToggleRow(settings, flags, Icons.Rounded.Speed, "Light performance mode", "Turn off blur and heavy effects", Key.LiteMode)
+            ToggleRow(settings, flags, Icons.Rounded.Speed, "Light performance mode", "Turn off animations and glows", Key.LiteMode)
             Divider()
             ToggleRow(settings, flags, Icons.Rounded.BlurOn, "Lock screen privacy", "Blur album art on the lock screen", Key.LockPrivacy)
         }

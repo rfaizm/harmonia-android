@@ -1,5 +1,6 @@
 package com.rfaizm.harmoniamusic.data.local
 
+import android.app.ActivityManager
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
@@ -14,6 +15,9 @@ class SettingsStore @Inject constructor(@ApplicationContext context: Context) {
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     // Its own file, because the service re-applies its settings on every change to the main one (M8).
     private val timing = context.getSharedPreferences("lyrics_timing", Context.MODE_PRIVATE)
+
+    /** Android's own low-RAM flag (usually 1 GB or less), which turns light mode on by default (T19). */
+    val lowRam = context.getSystemService(ActivityManager::class.java).isLowRamDevice
 
     fun flag(name: String, default: Boolean) = prefs.getBoolean(name, default)
 

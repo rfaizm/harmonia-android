@@ -107,7 +107,7 @@ fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> 
         modifier
             .padding(horizontal = 12.dp)
             .padding(bottom = 8.dp)
-            .shadow(16.dp, shape, ambientColor = g1, spotColor = g1)
+            .glow(16.dp, shape, g1)
             .clip(shape)
             .background(Brush.horizontalGradient(listOf(g0.copy(alpha = 0.94f), g1.copy(alpha = 0.94f))))
             .clickable(onClick = onOpen)
@@ -244,7 +244,7 @@ fun FullPlayer(
                 Modifier
                     .size(64.dp)
                     .graphicsLayer { scaleX = playScale; scaleY = playScale }
-                    .shadow(12.dp, CircleShape)
+                    .glow(12.dp, CircleShape)
                     .clip(CircleShape)
                     .background(Color.White)
                     .clickable(onClick = onToggle),
@@ -279,7 +279,7 @@ fun FullPlayer(
     }
 }
 
-/** The big album art: remounts per song, breathes with play state. */
+/** The big album art: remounts per song, breathes with play state (except in light mode). */
 @Composable
 private fun PlayerArt(song: Song, isPlaying: Boolean) {
     val (_, g1) = song.gradient
@@ -288,7 +288,7 @@ private fun PlayerArt(song: Song, isPlaying: Boolean) {
             var appeared by remember { mutableStateOf(false) }
             LaunchedEffect(Unit) { appeared = true }
             val artSpring = spring<Float>(dampingRatio = 0.71f, stiffness = 240f)
-            val scale by animateFloatAsState(if (!appeared) 0.82f else if (isPlaying) 1f else 0.88f, artSpring, label = "artScale")
+            val scale by animateFloatAsState(if (!appeared) 0.82f else if (isPlaying || LocalLiteMode.current) 1f else 0.88f, artSpring, label = "artScale")
             val alpha by animateFloatAsState(if (appeared) 1f else 0f, artSpring, label = "artAlpha")
             val art = albumArtOf(song.id)
             Box(
@@ -296,7 +296,7 @@ private fun PlayerArt(song: Song, isPlaying: Boolean) {
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .graphicsLayer { scaleX = scale; scaleY = scale; this.alpha = alpha }
-                    .shadow(32.dp, RoundedCornerShape(24.dp), ambientColor = g1, spotColor = g1)
+                    .glow(32.dp, RoundedCornerShape(24.dp), g1)
                     .clip(RoundedCornerShape(24.dp))
                     .background(gradientBrush(song.gradient)),
                 contentAlignment = Alignment.Center

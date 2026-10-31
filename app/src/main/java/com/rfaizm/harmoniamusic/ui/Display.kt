@@ -55,6 +55,9 @@ fun formatDate(iso: String): String {
  */
 val LocalMusic = staticCompositionLocalOf<MusicRepository?> { null }
 
+/** Light performance mode (T19): no row entry animation, soundbar bounce, art breathing or big glows. */
+val LocalLiteMode = staticCompositionLocalOf { false }
+
 /** The song's art once it has been read from the file, or null while loading and when there is none. */
 @Composable
 fun albumArtOf(songId: Int?): ImageBitmap? {

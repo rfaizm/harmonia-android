@@ -72,7 +72,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] **Checkpoint M6:** full phone run of every feature from M0 to M4 passed 2026-10-31
 
 ## M5: Polish and release
-- [ ] T19 Light performance mode (`LocalLiteMode`, on by default for low-RAM devices)
+- [x] T19 Light performance mode: `LocalLiteMode` skips row entry animations, the soundbar bounce, the art breathing and the big glows (`Modifier.glow`); on by default where `isLowRamDevice()` (`defaultOf`, `LiteModeTest`). **Needs a phone check**
 - [ ] T20 Mojibake repair (`CharsetDetector`, injected) and RTL audit
 - [ ] T21 (optional) Indonesian strings
 - [ ] T22 Release checklist (keystore, Play Console declarations, privacy policy, R8 smoke test)

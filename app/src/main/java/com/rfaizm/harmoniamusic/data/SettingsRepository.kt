@@ -22,12 +22,12 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore, p
         Ducking(true),
         PauseOnUnplug(true),
         SmartShuffle(true),   // used by T14
-        LiteMode(false),      // used by T19
+        LiteMode(false),      // T19; starts on for low-RAM phones, see defaultOf
         LockPrivacy(false),   // used by T15
         OnlineLyrics(false),  // the only setting that lets the app touch the network
     }
 
-    private val _flags = MutableStateFlow(Key.entries.associateWith { store.flag(it.name, it.default) })
+    private val _flags = MutableStateFlow(Key.entries.associateWith { store.flag(it.name, defaultOf(it, store.lowRam)) })
     private val _lyricsFolder = MutableStateFlow(store.lyricsFolder)
 
     /** Every switch, always holding all of [Key]. */
@@ -37,7 +37,7 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore, p
     val lyricsFolder: StateFlow<String?> = _lyricsFolder.asStateFlow()
 
     /** The switch as it is now, for code that reads it once rather than following it. */
-    operator fun get(key: Key) = _flags.value[key] ?: key.default
+    operator fun get(key: Key) = _flags.value[key] ?: defaultOf(key, store.lowRam)
 
     operator fun set(key: Key, value: Boolean) {
         _flags.update { it + (key to value) }
@@ -62,3 +62,7 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore, p
     /** Calls [listener] after any switch changes; the returned function stops it. Lyrics timing doesn't count. */
     fun onChange(listener: () -> Unit): () -> Unit = store.onChange(listener)
 }
+
+/** A switch's value before the user touches it. Light mode starts on where Android says the phone is low on RAM. */
+fun defaultOf(key: SettingsRepository.Key, lowRam: Boolean) =
+    if (key == SettingsRepository.Key.LiteMode) lowRam else key.default

@@ -85,8 +85,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.DefaultShadowColor
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
@@ -196,9 +198,10 @@ private object EnterStagger {
 @Composable
 fun Modifier.enterAnimation(): Modifier {
     var shown by rememberSaveable { mutableStateOf(false) }
-    val progress = remember { Animatable(if (shown) 1f else 0f) }
+    val skip = shown || LocalLiteMode.current
+    val progress = remember { Animatable(if (skip) 1f else 0f) }
     LaunchedEffect(Unit) {
-        if (shown) return@LaunchedEffect
+        if (skip) return@LaunchedEffect
         val slot = EnterStagger.next(withFrameMillis { it })
         delay(min(slot * 30L, 300L))
         progress.animateTo(1f, tween(260))
@@ -279,13 +282,21 @@ fun SectionHeading(text: String, modifier: Modifier = Modifier) {
     )
 }
 
+private val STILL_BARS = floatArrayOf(0.5f, 1f, 0.7f)
+
+/** The big coloured glows. Light mode drops them: a large blurred shadow is the costliest thing we draw (T19). */
+@Composable
+fun Modifier.glow(elevation: Dp, shape: Shape, color: Color = DefaultShadowColor): Modifier =
+    if (LocalLiteMode.current) this else shadow(elevation, shape, ambientColor = color, spotColor = color)
+
 /** Three bouncing bars shown on the active track (GUIDELINE §10). */
 @Composable
 fun Soundbar(color: Color = colors.primary, modifier: Modifier = Modifier) {
-    val t = rememberInfiniteTransition(label = "soundbar")
+    // Light mode draws the bars still, so nothing redraws every frame.
+    val t = if (LocalLiteMode.current) null else rememberInfiniteTransition(label = "soundbar")
     Row(modifier.height(14.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         repeat(3) { i ->
-            val s by t.animateFloat(
+            val s = t?.animateFloat(
                 0.3f, 1f,
                 infiniteRepeatable(tween(800, easing = FastOutSlowInEasing), RepeatMode.Reverse, StartOffset(i * 150)),
                 label = "bar$i"
@@ -294,7 +305,7 @@ fun Soundbar(color: Color = colors.primary, modifier: Modifier = Modifier) {
                 Modifier
                     .width(2.dp)
                     .fillMaxHeight()
-                    .graphicsLayer { scaleY = s; transformOrigin = TransformOrigin(0.5f, 1f) }
+                    .graphicsLayer { scaleY = s?.value ?: STILL_BARS[i]; transformOrigin = TransformOrigin(0.5f, 1f) }
                     .background(color, CircleShape)
             )
         }

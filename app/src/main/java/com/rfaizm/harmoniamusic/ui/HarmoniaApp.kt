@@ -48,6 +48,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -162,7 +163,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
         }
     }
 
-    HarmoniaTheme(darkTheme = darkMode) {
+    HarmoniaTheme(darkTheme = darkMode) { CompositionLocalProvider(LocalLiteMode provides flags.getValue(Key.LiteMode)) {
         Box(Modifier.fillMaxSize().background(colors.background)) {
             Column(Modifier.fillMaxSize()) {
                 TopBar(songs.size, darkMode) { settings[Key.DarkMode] = !darkMode }
@@ -224,7 +225,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                 }
             }
         }
-    }
+    } }
 }
 
 @Composable
