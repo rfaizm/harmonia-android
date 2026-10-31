@@ -6,7 +6,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T1 Playlist mutations: add, merge, remove, song-menu add, card play button (pure `addSongs`/`removeSong` in `SampleData.kt`, `PlaylistTest`)
 - [x] T2 Queue context: `onPlay(song, queue)`, next/prev walk the source list
 - [x] T3 Artist/album detail (reuse `PlaylistDetail`); `CleanTagTest` already existed (class inside `ExampleUnitTest.kt`)
-- [ ] **Checkpoint M0:** tests and lint pass ✅; waiting for the phone check: that playlist add/merge/remove and the artist drill-in work
+- [x] **Checkpoint M0:** covered by the M6 phone run 2026-10-31
 
 ## M1: Real library (PRD phase 1)
 - [x] T4 Permission flow (`READ_MEDIA_AUDIO` / `READ_EXTERNAL_STORAGE` ≤32, `PermissionEmptyState`, settings link after a permanent denial)
@@ -36,7 +36,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T27 Swipe a row right-to-left to reveal Delete (Songs/artist/album) or Remove (inside a playlist), which still has to be tapped (`swipeSettlesOpen` test). One row open at a time; scrolling or entering selection closes it. The delete warning moved from `SongRow` to the screens, so the menu and the swipe share one dialog. **Gesture needs a phone check**
 - [x] T28 Optional online lyrics via LRCLIB (`data/LyricsOnline.kt`; `lyricsFrom`, `stripLrcTimestamps`, `lyricsUrl` tests): off by default behind a Settings switch that asks first, fetched only when "Find lyrics online" is tapped, cached in `lyrics.json` so a song needs the network at most once. Offline promise reworded in the permission screen and About row. **T22 still has to cover it in the privacy policy and Data safety form**. Follow-up from `SPEC.md`: S1 (artist from the file name), S2 (the player's own artist tag) and S3 (a result is used only if its title matches and either its artist or its length does) — a tagless file no longer gets another song's lyrics (`LyricsMatchTest`)
 - [x] T29 `.lrc` lyrics files beside songs (`lrcNameFor` test, reuses `stripLrcTimestamps`): Settings › Lyrics folder takes a one-time folder grant, and a `.lrc` matching the song's file name is read before anything online. `Song` now keeps its MediaStore file name. **Only the granted folder itself is searched, not subfolders**
-- [ ] **Checkpoint M4:** user tests each feature on a phone
+- [x] **Checkpoint M4:** covered by the M6 phone run 2026-10-31
 
 ## M7: CI/CD on free services (before M6, so the refactor is checked on every push)
 - [x] T34 Put the project on GitHub: `gradlew` executable, `.gitattributes`, secrets in `.gitignore`, the mixed commit split, every commit moved to the private noreply email, AI co-author lines removed, `main` up to date, live at github.com/rfaizm/harmonia-android
@@ -69,7 +69,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [x] T31 Hilt and data sources: prove KSP builds under AGP 9's built-in Kotlin first, then `data/local/` and `data/remote/` classes taking the context once
 - [x] T32 Repositories: `MusicRepository`, `LyricsRepository`, `SettingsRepository`; delete `object Library` and `object Settings`; the View stops calling the network
 - [x] T33 ViewModels: one per screen, `@HiltViewModel` + `StateFlow` + `collectAsStateWithLifecycle`; `PlayerViewModel` takes over the controller and most of `HarmoniaApp.kt`
-- [ ] **Checkpoint M6:** full phone run of every feature from M0 to M4
+- [x] **Checkpoint M6:** full phone run of every feature from M0 to M4 passed 2026-10-31
 
 ## M5: Polish and release
 - [ ] T19 Light performance mode (`LocalLiteMode`, on by default for low-RAM devices)
