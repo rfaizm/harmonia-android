@@ -73,7 +73,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 
 ## M5: Polish and release
 - [x] T19 Light performance mode: `LocalLiteMode` skips row entry animations, the soundbar bounce, the art breathing and the big glows (`Modifier.glow`); on by default where `isLowRamDevice()` (`defaultOf`, `LiteModeTest`). **Needs a phone check**
-- [ ] T20 Mojibake repair (`CharsetDetector`, injected) and RTL audit
+- [x] T20 Mojibake repair and RTL audit. `repairMojibake` fixes UTF-8 or legacy code-page tags that MediaStore read as Latin-1; the code page comes from the phone's language (`guessCharset`), because the SDK has no ICU `CharsetDetector` (`MojibakeTest`). A real "Beyoncé" survives a wrong guess. RTL: the scrubber and transport controls stay left-to-right (Material's media rule; the tap maths was wrong when mirrored), the swipe-to-delete drag is flipped to match its mirrored layout, the Explore slide comes from the right side, and `SongRowPreview` has an Arabic variant. **Needs a phone check: an Arabic UI, and a Russian or Japanese phone with old ID3v1 tags**
 - [ ] T21 (optional) Indonesian strings
 - [ ] T22 Release checklist (keystore, Play Console declarations, privacy policy, R8 smoke test)
 - [ ] **Checkpoint: Complete**, ready for release review

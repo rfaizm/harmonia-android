@@ -103,6 +103,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -502,7 +504,7 @@ internal fun swipeSettlesOpen(offset: Float, width: Float, velocity: Float) =
     if (velocity > 400f) false else offset < -width / 2 || velocity < -800f
 
 /**
- * Slides [content] to the left to reveal one action (T27). The action still has to be tapped, so a swipe on its
+ * Slides [content] towards the start to reveal one action (T27): left, or right in RTL. The action still has to be tapped, so a swipe on its
  * own never deletes anything, and only the row the caller marks [open] stays open.
  */
 @Composable
@@ -546,6 +548,8 @@ fun SwipeRow(
                 .draggable(
                     orientation = Orientation.Horizontal,
                     enabled = enabled,
+                    // offset{} mirrors in RTL but drag deltas don't, so flip them to match (T20).
+                    reverseDirection = LocalLayoutDirection.current == LayoutDirection.Rtl,
                     state = rememberDraggableState { delta ->
                         scope.launch { offset.snapTo((offset.value + delta).coerceIn(-width, 0f)) }
                     },
@@ -682,6 +686,7 @@ private fun EmptyStatesPreview() = HarmoniaTheme(darkTheme = true) {
 }
 
 @Preview(showBackground = true, backgroundColor = 0xFFF5F4F0)
+@Preview(name = "RTL", locale = "ar", showBackground = true, backgroundColor = 0xFFF5F4F0)
 @Composable
 private fun SongRowPreview() = HarmoniaTheme(darkTheme = false) {
     Column(Modifier.background(colors.background).padding(8.dp)) {

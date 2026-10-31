@@ -2,6 +2,10 @@ package com.rfaizm.harmoniamusic.data
 
 import org.json.JSONArray
 import org.json.JSONObject
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.Charset
+import java.util.Locale
 
 
 /** Only what a rescan can't rebuild: likes, play counts and playlists. */
@@ -54,6 +58,52 @@ internal fun toSong(id: Long, title: String?, artist: String?, album: String?, y
     duration = (durationMs / 1000).toInt(),
     fileName = fileName.orEmpty(),
 )
+
+/**
+ * PRD phase 6: a tag written in a legacy code page (or as UTF-8) that MediaStore read as Latin-1, e.g. "Ïðèâåò"
+ * for "Привет". UTF-8 is checked first, as a strict decode is proof on its own. Otherwise [detect] names the code page
+ * ([guessCharset] on the phone, a fake in tests), and its answer is used only if most of the tag looked garbled and the result
+ * is in a non-Latin script, so a real "Beyoncé" survives a wrong guess.
+ */
+internal fun repairMojibake(text: String, detect: (ByteArray) -> String?): String {
+    val high = text.count { it.code >= 0x80 }
+    if (high == 0 || text.any { it.code > 0xFF }) return text // plain ASCII, or decoded properly already
+    val bytes = text.toByteArray(Charsets.ISO_8859_1)
+    try {
+        return Charsets.UTF_8.newDecoder().decode(ByteBuffer.wrap(bytes)).toString()
+    } catch (_: CharacterCodingException) {}
+    // ponytail: a garbled word inside a mostly-ASCII tag stays garbled; per-word repair if anyone reports one
+    if (high * 2 < text.count { !it.isWhitespace() }) return text
+    val name = detect(bytes) ?: return text
+    val fixed = runCatching { String(bytes, Charset.forName(name)) }.getOrNull() ?: return text
+    return if (fixed.any { it.code in 0x80..0x24F || it == '�' }) text else fixed
+}
+
+/**
+ * The code page old tag writers used for the phone's language, if the bytes decode cleanly in it. Android's SDK has
+ * no ICU `CharsetDetector`, and its old media scanner guessed from the locale the same way.
+ */
+// ponytail: a Russian tag on an English-language phone isn't repaired; add a byte-pattern check if that comes up
+internal fun guessCharset(bytes: ByteArray, locale: Locale): String? {
+    val name = when (locale.language) {
+        "ru", "uk", "be", "bg", "sr", "mk", "kk" -> "windows-1251"
+        "ja" -> "Shift_JIS"
+        "ko" -> "EUC-KR"
+        "zh" -> if (locale.script == "Hant" || locale.country in setOf("TW", "HK", "MO")) "Big5" else "GBK"
+        "ar", "fa", "ur" -> "windows-1256"
+        "el" -> "windows-1253"
+        "he", "iw" -> "windows-1255"
+        "th" -> "TIS-620"
+        else -> return null
+    }
+    if (!Charset.isSupported(name)) return null
+    return try {
+        Charset.forName(name).newDecoder().decode(ByteBuffer.wrap(bytes))
+        name
+    } catch (_: CharacterCodingException) {
+        null
+    }
+}
 
 // MediaStore.UNKNOWN_STRING, spelled out so this logic needs nothing from MediaStore itself.
 private const val MEDIASTORE_UNKNOWN = "<unknown>"

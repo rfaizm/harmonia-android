@@ -4,15 +4,19 @@ import android.app.RecoverableSecurityException
 import android.content.ContentUris
 import android.content.Context
 import android.content.IntentSender
+import android.database.Cursor
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.provider.MediaStore.Audio.Media
 import com.rfaizm.harmoniamusic.data.Song
+import com.rfaizm.harmoniamusic.data.guessCharset
+import com.rfaizm.harmoniamusic.data.repairMojibake
 import com.rfaizm.harmoniamusic.data.toSong
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
+import java.util.Locale
 
 /** PRD phase 1: the phone's music as MediaStore lists it. MediaStore already has the tags, so no file is opened. */
 @Singleton
@@ -47,11 +51,13 @@ class MediaStoreSource @Inject constructor(@ApplicationContext private val conte
         return context.contentResolver.query(Media.EXTERNAL_CONTENT_URI, columns, selection, null, null)?.use { c ->
             buildList(c.count) {
                 while (c.moveToNext()) {
-                    add(toSong(c.getLong(0), c.getString(1), c.getString(2), c.getString(3), c.getInt(4), c.getLong(5), c.getString(6)))
+                    add(toSong(c.getLong(0), c.tag(1), c.tag(2), c.tag(3), c.getInt(4), c.getLong(5), c.getString(6)))
                 }
             }
         }.orEmpty()
     }
+
+    private fun Cursor.tag(column: Int): String? = getString(column)?.let { repairMojibake(it) { bytes -> guessCharset(bytes, Locale.getDefault()) } }
 }
 
 /** Where the player and the delete calls find a song's audio. */

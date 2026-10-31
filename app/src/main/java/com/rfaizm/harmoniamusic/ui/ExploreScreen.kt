@@ -53,6 +53,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import com.rfaizm.harmoniamusic.data.Song
 import com.rfaizm.harmoniamusic.ui.theme.border
@@ -110,10 +112,11 @@ fun ExploreScreen(
                     }
                 }
 
+                val mirrored = if (LocalLayoutDirection.current == LayoutDirection.Rtl) -1 else 1 // the tabs swap sides in RTL
                 AnimatedContent(
                     albumsView,
                     transitionSpec = {
-                        val dir = if (targetState) 1 else -1
+                        val dir = (if (targetState) 1 else -1) * mirrored
                         (slideInHorizontally(tween(180)) { dir * 36 } + fadeIn(tween(180))) togetherWith
                             (slideOutHorizontally(tween(180)) { -dir * 36 } + fadeOut(tween(180)))
                     },

@@ -64,6 +64,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -82,6 +83,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -208,52 +211,56 @@ fun FullPlayer(
             }
         }
 
-        // 4. Scrubber
-        Column(Modifier.padding(horizontal = 28.dp).padding(bottom = 20.dp)) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(20.dp)
-                    .pointerInput(Unit) { detectTapGestures { seek((it.x / size.width).coerceIn(0f, 1f)) } }
-                    .pointerInput(Unit) {
-                        detectHorizontalDragGestures(onDragEnd = { drag?.let(seek); drag = null }, onDragCancel = { drag = null }) { change, _ ->
-                            drag = (change.position.x / size.width).coerceIn(0f, 1f)
-                        }
-                    },
-                contentAlignment = Alignment.CenterStart
-            ) {
-                Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f))) {
-                    Box(Modifier.fillMaxWidth(shown).fillMaxHeight().clip(CircleShape).background(Color.White))
+        // Time runs left to right in every language (Material's bidi rule for media), and the tap maths reads x from
+        // the left, so the scrubber and the transport controls are never mirrored (T20).
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            // 4. Scrubber
+            Column(Modifier.padding(horizontal = 28.dp).padding(bottom = 20.dp)) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(20.dp)
+                        .pointerInput(Unit) { detectTapGestures { seek((it.x / size.width).coerceIn(0f, 1f)) } }
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(onDragEnd = { drag?.let(seek); drag = null }, onDragCancel = { drag = null }) { change, _ ->
+                                drag = (change.position.x / size.width).coerceIn(0f, 1f)
+                            }
+                        },
+                    contentAlignment = Alignment.CenterStart
+                ) {
+                    Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f))) {
+                        Box(Modifier.fillMaxWidth(shown).fillMaxHeight().clip(CircleShape).background(Color.White))
+                    }
+                    Row(Modifier.fillMaxWidth(shown), horizontalArrangement = Arrangement.End) {
+                        Box(Modifier.size(12.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
+                    }
                 }
-                Row(Modifier.fillMaxWidth(shown), horizontalArrangement = Arrangement.End) {
-                    Box(Modifier.size(12.dp).shadow(2.dp, CircleShape).background(Color.White, CircleShape))
+                Row(Modifier.fillMaxWidth()) {
+                    Text(formatDuration((song.duration * shown).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), modifier = Modifier.weight(1f))
+                    Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f))
                 }
             }
-            Row(Modifier.fillMaxWidth()) {
-                Text(formatDuration((song.duration * shown).toInt()), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f), modifier = Modifier.weight(1f))
-                Text(formatDuration(song.duration), fontSize = 11.sp, color = Color.White.copy(alpha = 0.4f))
-            }
-        }
 
-        // 5. Controls — wide spacing between play/skip (PRD phase 7)
-        Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp).padding(bottom = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            ModeButton(Icons.Rounded.Shuffle, "Shuffle", shuffle, onShuffle)
-            CircleIcon(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
-            val playScale by animateFloatAsState(if (isPlaying) 1f else 0.96f, label = "play")
-            Box(
-                Modifier
-                    .size(64.dp)
-                    .graphicsLayer { scaleX = playScale; scaleY = playScale }
-                    .glow(12.dp, CircleShape)
-                    .clip(CircleShape)
-                    .background(Color.White)
-                    .clickable(onClick = onToggle),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", tint = g0, modifier = Modifier.size(32.dp))
+            // 5. Controls — wide spacing between play/skip (PRD phase 7)
+            Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp).padding(bottom = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                ModeButton(Icons.Rounded.Shuffle, "Shuffle", shuffle, onShuffle)
+                CircleIcon(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
+                val playScale by animateFloatAsState(if (isPlaying) 1f else 0.96f, label = "play")
+                Box(
+                    Modifier
+                        .size(64.dp)
+                        .graphicsLayer { scaleX = playScale; scaleY = playScale }
+                        .glow(12.dp, CircleShape)
+                        .clip(CircleShape)
+                        .background(Color.White)
+                        .clickable(onClick = onToggle),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", tint = g0, modifier = Modifier.size(32.dp))
+                }
+                CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
+                ModeButton(if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", repeatMode != Player.REPEAT_MODE_OFF, onRepeat)
             }
-            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
-            ModeButton(if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", repeatMode != Player.REPEAT_MODE_OFF, onRepeat)
         }
 
         // 6. Volume
