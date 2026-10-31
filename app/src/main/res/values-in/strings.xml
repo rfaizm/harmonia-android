@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Indonesian (T21). Keep the keys in step with values/strings.xml; StringsTest checks. -->
+    <!-- Settings -->
+    <string name="settings_title">Pengaturan</string>
+    <string name="settings_library">Pustaka</string>
+    <string name="settings_rescan">Pindai ulang pustaka</string>
+    <string name="settings_rescan_sub">Temukan lagu baru atau yang dihapus</string>
+    <string name="settings_filters">Filter</string>
+    <string name="settings_filters_sub">Sembunyikan klip di bawah 30 detik</string>
+    <string name="settings_playback">Pemutaran</string>
+    <string name="settings_smart_shuffle">Acak pintar</string>
+    <string name="settings_smart_shuffle_sub">Jarakkan lagu dari artis yang sama</string>
+    <string name="settings_sleep_timer">Timer tidur</string>
+    <string name="settings_sleep_timer_sub">Mati · suara memudar di menit terakhir</string>
+    <string name="settings_lyrics_folder">Folder lirik</string>
+    <string name="settings_lyrics_folder_set">Membaca file .lrc dari %1$s</string>
+    <string name="settings_lyrics_folder_unset">Belum diatur · untuk file .lrc yang ada di samping lagu</string>
+    <string name="settings_lyrics_folder_fallback">folder Anda</string>
+    <string name="settings_online_lyrics">Cari lirik di internet</string>
+    <string name="settings_online_lyrics_sub">Mati · hanya lirik yang tersimpan di dalam file yang ditampilkan</string>
+    <string name="settings_audio_focus">Fokus audio</string>
+    <string name="settings_ducking">Kecilkan volume saat ada notifikasi</string>
+    <string name="settings_ducking_sub">Pelankan musik, bukan menjedanya</string>
+    <string name="settings_unplug">Jeda saat headphone dicabut</string>
+    <string name="settings_unplug_sub" formatted="false">Lanjut di speaker dengan volume 30%</string>
+    <string name="settings_display">Tampilan &amp; privasi</string>
+    <string name="settings_lite">Mode performa ringan</string>
+    <string name="settings_lite_sub">Matikan animasi dan efek cahaya</string>
+    <string name="settings_lock_privacy">Privasi layar kunci</string>
+    <string name="settings_lock_privacy_sub">Samarkan sampul album di layar kunci</string>
+    <string name="settings_about">Tentang</string>
+    <string name="settings_rate">Beri nilai Harmonia</string>
+    <string name="settings_rate_sub">Suka dengan ketenangannya? Beri tahu kami</string>
+    <string name="settings_version">Versi 1.0 · offline secara bawaan</string>
+    <string name="online_lyrics_title">Cari lirik di internet?</string>
+    <string name="online_lyrics_body">Saat Anda mengetuk “Cari lirik online” pada sebuah lagu, Harmonia mengirim judul, artis, album, dan durasi lagu itu ke lrclib.net, lalu menampilkan hasilnya. Tidak ada data lain yang keluar dari ponsel Anda, dan tidak ada yang dikirim sebelum Anda mengetuknya.</string>
+    <string name="turn_on">Aktifkan</string>
+    <string name="cancel">Batal</string>
+</resources>

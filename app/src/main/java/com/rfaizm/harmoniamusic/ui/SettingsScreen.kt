@@ -34,6 +34,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -59,32 +61,32 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text("Settings", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 14.dp))
+        Text(stringResource(R.string.settings_title), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 14.dp))
 
-        SettingsSection("Library") {
-            SettingsRow(Icons.Rounded.Schedule, "Rescan library", "Find new or removed songs", onClick = onRescan) { Chevron() }
+        SettingsSection(stringResource(R.string.settings_library)) {
+            SettingsRow(Icons.Rounded.Schedule, stringResource(R.string.settings_rescan), stringResource(R.string.settings_rescan_sub), onClick = onRescan) { Chevron() }
             Divider()
-            SettingsRow(Icons.Rounded.Tune, "Filters", "Hide clips shorter than 30 seconds", onClick = {}) { Chevron() }
+            SettingsRow(Icons.Rounded.Tune, stringResource(R.string.settings_filters), stringResource(R.string.settings_filters_sub), onClick = {}) { Chevron() }
         }
 
         // Crossfade and gapless switches are gone: Media3 is always gapless, and crossfade was dropped (tasks/plan.md).
-        SettingsSection("Playback") {
-            ToggleRow(settings, flags, Icons.Rounded.Shuffle, "Smart shuffle", "Spread out songs by the same artist", Key.SmartShuffle)
+        SettingsSection(stringResource(R.string.settings_playback)) {
+            ToggleRow(settings, flags, Icons.Rounded.Shuffle, stringResource(R.string.settings_smart_shuffle), stringResource(R.string.settings_smart_shuffle_sub), Key.SmartShuffle)
             Divider()
-            SettingsRow(Icons.Rounded.Bedtime, "Sleep timer", "Off · fades out over the last minute", onClick = {}) { Chevron() }
+            SettingsRow(Icons.Rounded.Bedtime, stringResource(R.string.settings_sleep_timer), stringResource(R.string.settings_sleep_timer_sub), onClick = {}) { Chevron() }
             Divider()
             SettingsRow(
                 Icons.Rounded.Lyrics,
-                "Lyrics folder",
-                lyricsFolder?.let { "Reading .lrc files from ${folderLabel(it)}" } ?: "Not set · for .lrc files saved next to your songs",
+                stringResource(R.string.settings_lyrics_folder),
+                lyricsFolder?.let { stringResource(R.string.settings_lyrics_folder_set, folderLabel(it) ?: stringResource(R.string.settings_lyrics_folder_fallback)) } ?: stringResource(R.string.settings_lyrics_folder_unset),
                 onClick = { pickLyricsFolder.launch(null) },
             ) { Chevron() }
             Divider()
             // The one switch that lets the app reach the network, so turning it on asks first.
             SettingsRow(
                 Icons.Rounded.Language,
-                "Look up lyrics online",
-                "Off · otherwise only lyrics saved inside a file are shown",
+                stringResource(R.string.settings_online_lyrics),
+                stringResource(R.string.settings_online_lyrics_sub),
                 onClick = { if (flags.getValue(Key.OnlineLyrics)) settings[Key.OnlineLyrics] = false else confirmOnlineLyrics = true },
             ) {
                 HarmoniaSwitch(flags.getValue(Key.OnlineLyrics)) { on ->
@@ -93,22 +95,22 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
             }
         }
 
-        SettingsSection("Audio focus") {
-            ToggleRow(settings, flags, Icons.Rounded.Notifications, "Lower volume for notifications", "Duck music instead of pausing", Key.Ducking)
+        SettingsSection(stringResource(R.string.settings_audio_focus)) {
+            ToggleRow(settings, flags, Icons.Rounded.Notifications, stringResource(R.string.settings_ducking), stringResource(R.string.settings_ducking_sub), Key.Ducking)
             Divider()
-            ToggleRow(settings, flags, Icons.Rounded.Headphones, "Pause when headphones unplug", "Resume on speaker at 30% volume", Key.PauseOnUnplug)
+            ToggleRow(settings, flags, Icons.Rounded.Headphones, stringResource(R.string.settings_unplug), stringResource(R.string.settings_unplug_sub), Key.PauseOnUnplug)
         }
 
-        SettingsSection("Display & privacy") {
-            ToggleRow(settings, flags, Icons.Rounded.Speed, "Light performance mode", "Turn off animations and glows", Key.LiteMode)
+        SettingsSection(stringResource(R.string.settings_display)) {
+            ToggleRow(settings, flags, Icons.Rounded.Speed, stringResource(R.string.settings_lite), stringResource(R.string.settings_lite_sub), Key.LiteMode)
             Divider()
-            ToggleRow(settings, flags, Icons.Rounded.BlurOn, "Lock screen privacy", "Blur album art on the lock screen", Key.LockPrivacy)
+            ToggleRow(settings, flags, Icons.Rounded.BlurOn, stringResource(R.string.settings_lock_privacy), stringResource(R.string.settings_lock_privacy_sub), Key.LockPrivacy)
         }
 
-        SettingsSection("About") {
-            SettingsRow(Icons.Rounded.Star, "Rate Harmonia", "Enjoying the quiet? Let us know", onClick = {}) { Chevron() }
+        SettingsSection(stringResource(R.string.settings_about)) {
+            SettingsRow(Icons.Rounded.Star, stringResource(R.string.settings_rate), stringResource(R.string.settings_rate_sub), onClick = {}) { Chevron() }
             Divider()
-            SettingsRow(Icons.Rounded.Info, "About", "Version 1.0 · offline by default")
+            SettingsRow(Icons.Rounded.Info, stringResource(R.string.settings_about), stringResource(R.string.settings_version))
         }
     }
 
@@ -116,19 +118,17 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
         AlertDialog(
             onDismissRequest = { confirmOnlineLyrics = false },
             containerColor = colors.card,
-            title = { Text("Look up lyrics online?", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) },
+            title = { Text(stringResource(R.string.online_lyrics_title), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) },
             text = {
                 Text(
-                    "When you tap “Find lyrics online” on a song, Harmonia sends that song's title, artist, album and " +
-                        "length to lrclib.net and shows what comes back. Nothing else leaves your phone, and nothing is sent " +
-                        "until you tap it.",
+                    stringResource(R.string.online_lyrics_body),
                     fontSize = 14.sp, color = colors.mutedForeground, lineHeight = 20.sp,
                 )
             },
             confirmButton = {
-                TextButton({ settings[Key.OnlineLyrics] = true; confirmOnlineLyrics = false }) { Text("Turn on") }
+                TextButton({ settings[Key.OnlineLyrics] = true; confirmOnlineLyrics = false }) { Text(stringResource(R.string.turn_on)) }
             },
-            dismissButton = { TextButton({ confirmOnlineLyrics = false }) { Text("Cancel", color = colors.mutedForeground) } },
+            dismissButton = { TextButton({ confirmOnlineLyrics = false }) { Text(stringResource(R.string.cancel), color = colors.mutedForeground) } },
         )
     }
 }
@@ -138,7 +138,7 @@ private fun ToggleRow(settings: SettingsViewModel, flags: Map<Key, Boolean>, ico
     SettingsRow(icon, label, sub, onClick = { settings[key] = !flags.getValue(key) }) { HarmoniaSwitch(flags.getValue(key)) { settings[key] = it } }
 
 /** The tail of a document-tree uri is the readable part, e.g. "primary:Music". */
-private fun folderLabel(uri: String) = Uri.decode(uri.substringAfterLast("%3A").substringAfterLast(':')).ifBlank { "your folder" }
+private fun folderLabel(uri: String) = Uri.decode(uri.substringAfterLast("%3A").substringAfterLast(':')).ifBlank { null }
 
 @Composable
 private fun Divider() = HorizontalDivider(color = colors.border)
