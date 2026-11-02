@@ -117,4 +117,24 @@
 
     <!-- Shared -->
     <string name="delete">Hapus</string>
+
+    <!-- Playlists and Explore -->
+    <string name="liked_songs">Lagu yang Disukai</string>
+    <string name="playlists">Playlist</string>
+    <string name="new_item">Baru</string>
+    <string name="playlist_name">Nama playlist…</string>
+    <string name="save_playlist">Simpan playlist</string>
+    <string name="play_named">Putar %1$s</string>
+    <string name="delete_named">Hapus %1$s</string>
+    <string name="back">Kembali</string>
+    <string name="created_on">Dibuat %1$s</string>
+    <string name="remove">Keluarkan</string>
+    <string name="artists">Artis</string>
+    <string name="albums">Album</string>
+    <plurals name="album_count">
+        <item quantity="other">%1$d album</item>
+    </plurals>
+    <plurals name="track_count">
+        <item quantity="other">%1$d trek</item>
+    </plurals>
 </resources>

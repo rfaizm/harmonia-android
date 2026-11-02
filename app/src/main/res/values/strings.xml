@@ -125,4 +125,26 @@
 
     <!-- Shared -->
     <string name="delete">Delete</string>
+
+    <!-- Playlists and Explore -->
+    <string name="liked_songs">Liked Songs</string>
+    <string name="playlists">Playlists</string>
+    <string name="new_item">New</string>
+    <string name="playlist_name">Playlist name…</string>
+    <string name="save_playlist">Save playlist</string>
+    <string name="play_named">Play %1$s</string>
+    <string name="delete_named">Delete %1$s</string>
+    <string name="back">Back</string>
+    <string name="created_on">Created %1$s</string>
+    <string name="remove">Remove</string>
+    <string name="artists">Artists</string>
+    <string name="albums">Albums</string>
+    <plurals name="album_count">
+        <item quantity="one">%1$d album</item>
+        <item quantity="other">%1$d albums</item>
+    </plurals>
+    <plurals name="track_count">
+        <item quantity="one">%1$d track</item>
+        <item quantity="other">%1$d tracks</item>
+    </plurals>
 </resources>

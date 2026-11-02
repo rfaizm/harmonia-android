@@ -65,7 +65,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -108,7 +111,7 @@ fun PlaylistsScreen(
             val likedSnapshot = remember(id) { songs.filter { it.liked }.map { it.id } }
             val ids = playlist?.songIds ?: likedSnapshot
             PlaylistDetail(
-                name = playlist?.name ?: "Liked Songs",
+                name = playlist?.name ?: stringResource(R.string.liked_songs),
                 createdAt = playlist?.createdAt,
                 gradient = playlist?.gradient ?: LIKED_GRADIENT,
                 icon = if (playlist == null) Icons.Rounded.Favorite else Icons.AutoMirrored.Rounded.QueueMusic,
@@ -145,7 +148,7 @@ private fun PlaylistList(
     LazyColumn(contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp), modifier = Modifier.fillMaxSize()) {
         item {
             Row(Modifier.fillMaxWidth().padding(bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Playlists", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.playlists), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 Row(
                     Modifier.clip(CircleShape).background(colors.primary.copy(alpha = 0.12f)).clickable { creating = true }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -153,7 +156,7 @@ private fun PlaylistList(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(Icons.Rounded.Add, null, tint = colors.primary, modifier = Modifier.size(13.dp))
-                    Text("New", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.primary)
+                    Text(stringResource(R.string.new_item), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.primary)
                 }
             }
         }
@@ -166,7 +169,7 @@ private fun PlaylistList(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Box(Modifier.weight(1f)) {
-                        if (newName.isEmpty()) Text("Playlist name…", fontSize = 14.sp, color = colors.mutedForeground)
+                        if (newName.isEmpty()) Text(stringResource(R.string.playlist_name), fontSize = 14.sp, color = colors.mutedForeground)
                         BasicTextField(
                             newName, { newName = it }, singleLine = true,
                             textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = colors.onBackground),
@@ -178,8 +181,8 @@ private fun PlaylistList(
                             }
                         )
                     }
-                    CircleIcon(Icons.Rounded.Check, "Save playlist", ::save, size = 26.dp, iconSize = 13.dp, tint = colors.onPrimary, background = colors.primary)
-                    CircleIcon(Icons.Rounded.Close, "Cancel", { newName = ""; creating = false }, size = 26.dp, iconSize = 13.dp, tint = colors.onBackground, background = colors.muted)
+                    CircleIcon(Icons.Rounded.Check, stringResource(R.string.save_playlist), ::save, size = 26.dp, iconSize = 13.dp, tint = colors.onPrimary, background = colors.primary)
+                    CircleIcon(Icons.Rounded.Close, stringResource(R.string.cancel), { newName = ""; creating = false }, size = 26.dp, iconSize = 13.dp, tint = colors.onBackground, background = colors.muted)
                 }
             }
         }
@@ -209,8 +212,8 @@ private fun LikedCard(count: Int, onClick: () -> Unit) {
             Icon(Icons.Rounded.Favorite, null, tint = Color.White, modifier = Modifier.size(26.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text("Liked Songs", fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
-            Text("$count songs", fontSize = 14.sp, color = Color.White.copy(alpha = 0.65f))
+            Text(stringResource(R.string.liked_songs), fontWeight = FontWeight.Bold, color = Color.White, fontSize = 16.sp)
+            Text(pluralStringResource(R.plurals.song_count, count, count), fontSize = 14.sp, color = Color.White.copy(alpha = 0.65f))
         }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
     }
@@ -239,10 +242,10 @@ private fun PlaylistCard(p: Playlist, byId: Map<Int, Song>, onOpen: () -> Unit, 
             Column(Modifier.weight(1f)) {
                 Text(p.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                 val total = p.songIds.sumOf { id -> byId[id]?.duration ?: 0 }
-                Text("${p.songIds.size} songs · ${formatDuration(total)} · ${formatDate(p.createdAt)}", fontSize = 12.sp, color = colors.mutedForeground)
+                Text("${pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size)} · ${formatDuration(total)} · ${formatDate(p.createdAt)}", fontSize = 12.sp, color = colors.mutedForeground)
             }
-            CircleIcon(Icons.Rounded.PlayCircle, "Play ${p.name}", onPlay, size = 32.dp, iconSize = 18.dp, tint = colors.primary, background = colors.primary.copy(alpha = 0.10f))
-            CircleIcon(Icons.Rounded.Delete, "Delete ${p.name}", onDelete, size = 32.dp, iconSize = 15.dp, tint = colors.mutedForeground, modifier = Modifier.padding(start = 4.dp))
+            CircleIcon(Icons.Rounded.PlayCircle, stringResource(R.string.play_named, p.name), onPlay, size = 32.dp, iconSize = 18.dp, tint = colors.primary, background = colors.primary.copy(alpha = 0.10f))
+            CircleIcon(Icons.Rounded.Delete, stringResource(R.string.delete_named, p.name), onDelete, size = 32.dp, iconSize = 15.dp, tint = colors.mutedForeground, modifier = Modifier.padding(start = 4.dp))
         }
     }
 }
@@ -282,8 +285,8 @@ fun PlaylistDetail(
                     Modifier.clip(CircleShape).clickable(onClick = onBack).padding(end = 8.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, "Back", tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
-                    Text("Back", fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
+                    Icon(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, stringResource(R.string.back), tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(18.dp))
+                    Text(stringResource(R.string.back), fontSize = 14.sp, color = Color.White.copy(alpha = 0.8f))
                 }
                 Row(Modifier.padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     Box(Modifier.size(80.dp).clip(RoundedCornerShape(16.dp)).background(Color.White.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
@@ -292,8 +295,8 @@ fun PlaylistDetail(
                     Column(Modifier.weight(1f)) {
                         Text(name, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Color.White)
                         val total = songs.sumOf { it.duration }
-                        Text("${songs.size} songs · ${formatDuration(total)}", fontSize = 14.sp, color = Color.White.copy(alpha = 0.65f))
-                        if (createdAt != null) Text("Created ${formatDate(createdAt)}", fontSize = 12.sp, color = Color.White.copy(alpha = 0.45f))
+                        Text("${pluralStringResource(R.plurals.song_count, songs.size, songs.size)} · ${formatDuration(total)}", fontSize = 14.sp, color = Color.White.copy(alpha = 0.65f))
+                        if (createdAt != null) Text(stringResource(R.string.created_on, formatDate(createdAt)), fontSize = 12.sp, color = Color.White.copy(alpha = 0.45f))
                     }
                 }
                 Row(
@@ -303,7 +306,7 @@ fun PlaylistDetail(
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Icon(Icons.Rounded.PlayArrow, null, tint = gradient.first, modifier = Modifier.size(18.dp))
-                    Text("Play", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = gradient.first)
+                    Text(stringResource(R.string.play), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = gradient.first)
                 }
             }
         }
@@ -312,7 +315,7 @@ fun PlaylistDetail(
             SwipeRow(
                 open = openRow == s.id,
                 enabled = true,
-                label = if (onRemove != null) "Remove" else "Delete",
+                label = if (onRemove != null) stringResource(R.string.remove) else stringResource(R.string.delete),
                 icon = if (onRemove != null) Icons.Rounded.RemoveCircleOutline else Icons.Rounded.DeleteForever,
                 tint = if (onRemove != null) colors.mutedForeground else colors.destructive,
                 onOpenChange = { openRow = if (it) s.id else null },

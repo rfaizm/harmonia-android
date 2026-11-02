@@ -1,5 +1,8 @@
 package com.rfaizm.harmoniamusic.ui
 
+import java.text.DateFormat
+import java.text.SimpleDateFormat
+import java.util.Locale
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,11 +45,11 @@ val Playlist.gradient get() = gradientFor(gradientIndex)
 
 fun formatDuration(sec: Int) = "%d:%02d".format(sec / 60, sec % 60)
 
-private val MONTHS = listOf("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
 
-fun formatDate(iso: String): String {
-    val (y, m, d) = iso.split("-")
-    return "${MONTHS[m.toInt() - 1]} ${d.toInt()}, $y"
+fun formatDate(iso: String, locale: Locale = Locale.getDefault()): String {
+    val day = runCatching { SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { isLenient = false }.parse(iso) }.getOrNull()
+        ?: return iso
+    return DateFormat.getDateInstance(DateFormat.MEDIUM, locale).format(day)
 }
 
 /**

@@ -50,7 +50,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -96,7 +99,7 @@ fun ExploreScreen(
         } else {
             Column(Modifier.fillMaxSize()) {
                 Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(colors.muted).padding(4.dp)) {
-                    listOf("Artists", "Albums").forEachIndexed { i, label ->
+                    listOf(stringResource(R.string.artists), stringResource(R.string.albums)).forEachIndexed { i, label ->
                         val active = albumsView == (i == 1)
                         Box(
                             Modifier.weight(1f)
@@ -135,7 +138,7 @@ fun ExploreScreen(
                                     Column(Modifier.weight(1f)) {
                                         Text(name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         val albumCount = list.distinctBy { it.album }.size
-                                        Text("${list.size} songs · $albumCount ${if (albumCount == 1) "album" else "albums"}", fontSize = 12.sp, color = colors.mutedForeground)
+                                        Text("${pluralStringResource(R.plurals.song_count, list.size, list.size)} · ${pluralStringResource(R.plurals.album_count, albumCount, albumCount)}", fontSize = 12.sp, color = colors.mutedForeground)
                                     }
                                     Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = colors.mutedForeground, modifier = Modifier.size(16.dp))
                                 }
@@ -160,7 +163,7 @@ fun ExploreScreen(
                                     Column(Modifier.padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
                                         Text(album, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         Text(list.first().displayArtist, fontSize = 11.sp, color = colors.mutedForeground, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                        Text(listOfNotNull(list.first().year.takeIf { it > 0 }, "${list.size} tracks").joinToString(" · "), fontSize = 10.sp, color = colors.mutedForeground.copy(alpha = 0.55f), modifier = Modifier.padding(top = 2.dp))
+                                        Text(listOfNotNull(list.first().year.takeIf { it > 0 }, pluralStringResource(R.plurals.track_count, list.size, list.size)).joinToString(" · "), fontSize = 10.sp, color = colors.mutedForeground.copy(alpha = 0.55f), modifier = Modifier.padding(top = 2.dp))
                                     }
                                 }
                             }
