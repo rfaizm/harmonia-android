@@ -32,3 +32,8 @@ You need JDK 25 and the Android SDK.
 
 Every push to `main` and every pull request runs the unit tests, lint and a debug build on GitHub Actions.
 Pushing a tag such as `v1.2.3` builds a signed APK and app bundle and publishes them as a GitHub Release.
+
+## License
+
+Harmonia is free software under the [GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`): you can use,
+study, share and change it, and anything you share that is built on it has to stay under the same license.

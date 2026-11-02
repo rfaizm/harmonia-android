@@ -80,7 +80,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 
 ## M12: F-Droid release (before Play Store; details in `tasks/plan.md`)
 Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 finished first.
-- [ ] F1 Add the GPL-3.0 `LICENSE` and name it in the README
+- [x] F1 Add the GPL-3.0 `LICENSE` (the official gnu.org text, so GitHub detects it) and name it in the README as `GPL-3.0-only` (`LicenseTest`)
 - [ ] F2 Plain `versionName`/`versionCode` in `build.gradle.kts`; the release workflow checks the tag matches; About shows the real version
 - [ ] F3 Turn off AGP's Google-only dependency block (`dependenciesInfo`)
 - [ ] F4 Store page files in `fastlane/metadata/android/` (en-US and id): descriptions, 512 px icon, changelog `300.txt`; **the user takes the screenshots**
