@@ -82,7 +82,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 finished first.
 - [x] F1 Add the GPL-3.0 `LICENSE` (the official gnu.org text, so GitHub detects it) and name it in the README as `GPL-3.0-only` (`LicenseTest`)
 - [x] F2 Plain `versionName = "0.3.0"` / `versionCode = 300` in `build.gradle.kts` (`VersionTest` reads them the way F-Droid does and checks the code scheme); the release workflow stops when the tag isn't `v` + versionName; Settings › About shows `BuildConfig.VERSION_NAME`
-- [ ] F3 Turn off AGP's Google-only dependency block (`dependenciesInfo`)
+- [x] F3 Turn off AGP's Google-only dependency block (`dependenciesInfo`, `FdroidBuildTest`). Checked on the release APK: its signing block held ID 0x504b4453 before and only the v2 signature and padding after
 - [ ] F4 Store page files in `fastlane/metadata/android/` (en-US and id): descriptions, 512 px icon, changelog `300.txt`; **the user takes the screenshots**
 - [ ] F5 Tag `v0.3.0` after T21 and push (**the user says "push"**)
 - [ ] **Checkpoint A:** license, version, tag and store files visible on GitHub; v0.3.0 APK runs on the phone
