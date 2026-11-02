@@ -78,6 +78,19 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] T22 Release checklist (keystore, Play Console declarations, privacy policy, R8 smoke test)
 - [ ] **Checkpoint: Complete**, ready for release review
 
+## M12: F-Droid release (before Play Store; details in `tasks/plan.md`)
+Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 finished first.
+- [ ] F1 Add the GPL-3.0 `LICENSE` and name it in the README
+- [ ] F2 Plain `versionName`/`versionCode` in `build.gradle.kts`; the release workflow checks the tag matches; About shows the real version
+- [ ] F3 Turn off AGP's Google-only dependency block (`dependenciesInfo`)
+- [ ] F4 Store page files in `fastlane/metadata/android/` (en-US and id): descriptions, 512 px icon, changelog `300.txt`; **the user takes the screenshots**
+- [ ] F5 Tag `v0.3.0` after T21 and push (**the user says "push"**)
+- [ ] **Checkpoint A:** license, version, tag and store files visible on GitHub; v0.3.0 APK runs on the phone
+- [ ] F6 Write `com.rfaizm.harmoniamusic.yml` for fdroiddata
+- [ ] F7 **The user** forks fdroiddata on GitLab and pushes the yml; its CI pipelines pass
+- [ ] F8 **The user** opens the `New App: com.rfaizm.harmoniamusic` merge request and answers the reviewers
+- [ ] **Checkpoint B:** merged, and Harmonia is listed on F-Droid
+
 ## Loose ends (details in `tasks/plan.md`)
 - [ ] T23 Adaptive launcher icon: note-only foreground inside the safe zone, dark slate background, real monochrome layer (before T22)
 - [ ] T24 Delete the template leftovers (unused colours, backup-rule templates, instrumented test stub and its deps). **Keep `keepRules/rules.keep`: it now holds the Gson DTO rule**

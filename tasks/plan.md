@@ -791,6 +791,77 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
     - Nothing crashes on a device with no Play Store at all.
   - Files: `SettingsScreen.kt`.
 
+### M12: F-Droid release (before Play Store)
+
+The first public release goes to F-Droid, following F-Droid's Quick Start Guide
+(https://f-droid.org/docs/Submitting_to_F-Droid_Quick_Start_Guide/). Every library is open source (AndroidX, Media3,
+Hilt, Retrofit, Gson) and there is no Google Play Services or Firebase, so the app qualifies. Four things in the repo
+don't meet F-Droid's rules yet: there is no license file, the version number is worked out from the tag while the app
+builds (F-Droid only reads numbers written plainly in `build.gradle.kts`), AGP adds an encrypted dependency block to
+the APK that only Google can read, and there are no store page files.
+
+Decisions taken with the user (2026-11-02): **GPL-3.0** license, **F-Droid signs** the app (the default; an F-Droid
+install can't update from a Play Store install without uninstalling first), **T21 is finished first** so Indonesian
+phones don't see two languages mixed, and the first F-Droid version is **0.3.0** (code 300; the last tag is v0.2.0).
+
+Dependency order: F1, F2 and F3 are independent; F4 needs F2 (the changelog is named after the version code); F5
+needs F1–F4 and T21; F6 needs F5's tag; F7 needs F6; F8 needs F7 to pass.
+
+**Phase 1: get the repo ready**
+
+- **F1 License (S).**
+  - Add the GPL-3.0 text as `LICENSE` at the repo root and name it in `README.md`.
+  - Acceptance criteria: GitHub shows "GPL-3.0" on the repo page after the next push.
+- **F2 Plain version numbers (S).**
+  - Write `versionName = "0.3.0"` and `versionCode = 300` in `app/build.gradle.kts` instead of working them out from
+    `VERSION_TAG`. Keep the scheme `major * 10000 + minor * 100 + patch`.
+  - The release workflow stops if the tag doesn't match `versionName`, so the two can't drift apart.
+  - Settings › About shows `BuildConfig.VERSION_NAME` instead of the hardcoded "1.0" (both languages).
+  - Acceptance criteria: a release builds as 0.3.0 / 300 with no environment variables set; a tag like `v9.9.9`
+    fails the workflow with a clear message.
+- **F3 No Google dependency block (S).**
+  - `dependenciesInfo { includeInApk = false; includeInBundle = false }`. F-Droid's scanner rejects the block, and
+    Play doesn't need it.
+  - Acceptance criteria: the release APK builds, and its signing block no longer holds the dependency entry.
+- **F4 Store page files (S, the screenshots are the user's).**
+  - `fastlane/metadata/android/en-US/`: `title.txt`, `short_description.txt` (under 80 characters, no full stop at
+    the end), `full_description.txt`, `images/icon.png` (512 x 512), `images/phoneScreenshots/1.png`, `2.png`, …,
+    and `changelogs/300.txt` (under 500 characters).
+  - The same text in `id/` (Indonesian), now that the app speaks it.
+  - The full description says what the opt-in online lyrics send, and to whom (lrclib.net).
+  - Acceptance criteria: every file is there, and the lengths are within F-Droid's limits.
+- **F5 Release v0.3.0 (S, the user's push).**
+  - After T21 is finished: tag `v0.3.0` on the release commit, push `main` and the tag (only when the user says
+    "push"). The existing workflow makes the GitHub Release.
+  - Acceptance criteria: the `v0.3.0` tag and its GitHub Release are on GitHub, and the APK installs on the phone.
+
+**Checkpoint A:** on GitHub, the repo shows the license, the plain version, the tag and the store files. The user
+runs the v0.3.0 APK on the phone.
+
+**Phase 2: send it to F-Droid**
+
+- **F6 F-Droid metadata file (S).**
+  - Write `com.rfaizm.harmoniamusic.yml` for fdroiddata: Categories (Multimedia), License (GPL-3.0-only),
+    AuthorName, SourceCode, IssueTracker, Changelog, RepoType git, Repo, one build block (`versionName: 0.3.0`,
+    `versionCode: 300`, `commit: v0.3.0`, `subdir: app`, `gradle: [yes]`), `AutoUpdateMode: Version`,
+    `UpdateCheckMode: Tags`, CurrentVersion and CurrentVersionCode.
+  - Acceptance criteria: the file follows fdroiddata's templates, and the user has it ready to copy.
+- **F7 Test on F-Droid's servers (M, the user's accounts).**
+  - The user makes a GitLab account, forks `fdroiddata`, makes a branch named `com.rfaizm.harmoniamusic`, and adds the
+    file as `metadata/com.rfaizm.harmoniamusic.yml`. Pushing the branch runs fdroiddata's CI, which runs `fdroid
+    lint`, `rewritemeta`, `checkupdates` and `build`. That replaces running fdroidserver locally, which needs Linux.
+  - Any failure: the user pastes the log, the fix goes into this repo (a new tag) or the yml.
+  - Acceptance criteria: every pipeline job on the fork is green.
+- **F8 Merge request (S, the user's).**
+  - Commit only the yml with the message `New App: com.rfaizm.harmoniamusic`, open a merge request against fdroiddata,
+    and answer the reviewers quickly.
+  - A reviewer may ask about the online lyrics. They are off by default and use LRCLIB, which is free and open
+    source, so no anti-feature should apply; if one is asked for anyway (`NonFreeNet`), accept it rather than delay.
+  - Acceptance criteria: the merge request is merged.
+
+**Checkpoint B:** the merge request is merged, and the app appears in F-Droid (the guide says about 24–48 hours after
+the merge; it can take longer). Later tags then reach F-Droid on their own through `AutoUpdateMode`.
+
 ## Risks
 
 | Risk | Impact | Mitigation |
@@ -808,7 +879,7 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
 - Crossfade on track change: drop it and keep only the fade-in on resume? [drop]
 - The Settings toggles "Gapless" and "Crossfade" have nothing to control once Media3 is in (gapless is always on). Remove them? [remove]
 - On API 30+ the system already shows its own delete confirmation. Skip the app's red dialog there, to avoid confirming twice? [skip on 30+]
-- Should the UI be translated to Indonesian (T21)? [not now]
+- Should the UI be translated to Indonesian (T21)? [yes, before the F-Droid release in M12]
 - M8: should the old cache of plain online lyrics be dropped, so those songs can be fetched again with timings?
   [drop it]
 - M10: is 5 minutes the right step for the sleep timer's − / + buttons? [5 min] Should the countdown also show on
