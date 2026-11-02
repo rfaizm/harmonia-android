@@ -78,13 +78,23 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 - [ ] T22 Release checklist (keystore, Play Console declarations, privacy policy, R8 smoke test)
 - [ ] **Checkpoint: Complete**, ready for release review
 
+## M13: Language picker and working Settings rows (before F5; details in `tasks/plan.md`)
+Decisions: AndroidX AppCompat for the language, the Filter row becomes a real switch, feedback by Toast.
+- [ ] L1 Language picker in Settings (System default / English / Bahasa Indonesia) with AppCompat; Android 13+ per-app language stays in sync
+- [ ] L2 Rescan shows a spinner while scanning, then "Found N new songs · M in total" or "Library is up to date" (`scanSummary` test)
+- [ ] L3 Sleep timer row opens the timer options and shows the live state ("Pauses in 12:34")
+- [ ] L4 Filter row becomes a real "Hide clips shorter than 30 seconds" switch; flipping it rescans (needs L2)
+- [ ] L5 Rate Harmonia opens the store page (F-Droid or Play), then GitHub, then a Toast (replaces T26)
+- [ ] L6 Mention the language picker in the store descriptions and `changelogs/300.txt`
+- [ ] **Checkpoint M13:** the user checks the rows and the picker on the release build, then takes the F4 screenshots
+
 ## M12: F-Droid release (before Play Store; details in `tasks/plan.md`)
 Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 finished first.
 - [x] F1 Add the GPL-3.0 `LICENSE` (the official gnu.org text, so GitHub detects it) and name it in the README as `GPL-3.0-only` (`LicenseTest`)
 - [x] F2 Plain `versionName = "0.3.0"` / `versionCode = 300` in `build.gradle.kts` (`VersionTest` reads them the way F-Droid does and checks the code scheme); the release workflow stops when the tag isn't `v` + versionName; Settings › About shows `BuildConfig.VERSION_NAME`
 - [x] F3 Turn off AGP's Google-only dependency block (`dependenciesInfo`, `FdroidBuildTest`). Checked on the release APK: its signing block held ID 0x504b4453 before and only the v2 signature and padding after
 - [ ] F4 Store page files in `fastlane/metadata/android/` (en-US and id): title, descriptions (with the online-lyrics disclosure and every permission), changelog `300.txt`, 512 px icon copied from `ic_launcher-playstore.png`; `StoreListingTest` checks F-Droid's limits. **Done except the screenshots: the user adds `1.png`, `2.png`, … to `en-US/images/phoneScreenshots/` before F5**
-- [ ] F5 Tag `v0.3.0` after T21 and push (**the user says "push"**)
+- [ ] F5 Tag `v0.3.0` after T21 and M13, and push (**the user says "push"**)
 - [ ] **Checkpoint A:** license, version, tag and store files visible on GitHub; v0.3.0 APK runs on the phone
 - [ ] F6 Write `com.rfaizm.harmoniamusic.yml` for fdroiddata
 - [ ] F7 **The user** forks fdroiddata on GitLab and pushes the yml; its CI pipelines pass
@@ -96,4 +106,4 @@ Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 f
 - [ ] T24 Delete the template leftovers (unused colours, backup-rule templates, instrumented test stub and its deps). **Keep `keepRules/rules.keep`: it now holds the Gson DTO rule**
 - [x] T25 Git hygiene: the commit that mixed the shuffle fix with the icon layers is split in two (done in T34, before the first push); `main` catches up in T34
 - [ ] T52 Translate the "Unknown artist / album / title" placeholders: `data/` keeps a marker, the UI shows the phone's language, and the lyrics lookup and the notification still recognise it
-- [ ] T26 "Rate Harmonia" opens the Play Store listing, with a browser fallback (after T22)
+- [x] T26 "Rate Harmonia": replaced by L5 in M13

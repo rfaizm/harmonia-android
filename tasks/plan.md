@@ -791,6 +791,65 @@ T26 only works once the Play Store listing exists, and T24 and T25 can happen an
     - Nothing crashes on a device with no Play Store at all.
   - Files: `SettingsScreen.kt`.
 
+### M13: Language picker and working Settings rows (before F5)
+
+Found on the release build (2026-11-02): the app follows the phone's language with no way to pick one in the app,
+and four Settings rows give no feedback. Rescan works but shows nothing. Filter, Sleep timer and Rate Harmonia do
+nothing at all. This lands before the v0.3.0 tag (F5), so the first F-Droid version has it and the screenshots show
+the final Settings screen.
+
+Decisions taken with the user: **AndroidX AppCompat** for the language (one call on every Android version, and on
+Android 13+ it stays in sync with the phone's own per-app language setting), **the Filter row becomes a real
+switch**, and the feedback for each row is mine to pick (below). Feedback uses a Toast, like the delete flow,
+since the app has no snackbar host.
+
+Dependency order: L1, L2, L3 and L5 are independent; L4 needs L2 (turning the filter off rescans and reports the
+result); L6 comes last.
+
+- **L1 Language picker (M).**
+  - Add `androidx.appcompat`; `MainActivity` extends `AppCompatActivity`; the theme's parent becomes
+    `Theme.AppCompat.NoActionBar` (keeping the dark window background). Below Android 13, AppCompat keeps the choice
+    itself (`AppLocalesMetadataHolderService` with `autoStoreLocales`); on 13+ it goes to the system.
+  - `generateLocaleConfig` plus `res/resources.properties` (`unqualifiedResLocale=en-US`), so Android 13+ lists
+    Harmonia under the phone's per-app language settings.
+  - Settings gets a **Language** row: "System default", "English", "Bahasa Indonesia" (each language named in
+    itself, so anyone can find their own). Picking one calls `AppCompatDelegate.setApplicationLocales` and the
+    screen redraws in that language.
+  - A pure mapping between the choice and its language tag, with a unit test.
+  - Acceptance criteria: picking a language changes the app at once and survives a restart; "System default"
+    follows the phone again; on Android 13+ the phone's per-app setting shows the same choice.
+  - Known limit: below Android 13 AppCompat only re-languages activities, so the playback service's "Couldn't play"
+    toast follows the phone's language there.
+- **L2 Rescan feedback (S).**
+  - `MusicRepository.scan()` reports what changed; a pure `scanSummary(before, after)` (tested) gives the total,
+    new and removed counts.
+  - While scanning, the Rescan row shows a small spinner instead of the arrow and ignores taps; after it, a Toast
+    says "Found 3 new songs · 120 in total", "Removed 2 songs · 118 in total", or "Library is up to date · 120
+    songs". Without the music permission it says so instead of failing silently.
+  - Acceptance criteria: every tap ends with one clear message in the current language.
+- **L3 Sleep timer row (S).**
+  - The row opens the same options as the player's sleep chip (15/30/45/60 min, End of track), plus "Turn off"
+    while one is running, through `PlayerViewModel`.
+  - The row's second line shows the live state: "Off · fades out over the last minute", "Pauses in 12:34", or
+    "Pauses when this song ends". With nothing loaded in the player, a Toast says "Play a song first".
+  - Acceptance criteria: a timer started in Settings shows on the player's chip and the other way round.
+- **L4 Filter switch (S).**
+  - New `SettingsRepository.Key.HideShortClips` (on by default, so nothing changes for anyone who doesn't touch it).
+    `MediaStoreSource` takes the minimum length instead of the fixed 30 s; a pure `selectionFor(hideShort)` is
+    tested.
+  - Flipping the switch rescans and shows L2's message.
+  - Acceptance criteria: switched off, clips under 30 seconds (voice notes, ringtones) appear after the rescan;
+    switched on again, they go.
+- **L5 Rate Harmonia (S). Replaces T26.**
+  - Opens `market://details?id=com.rfaizm.harmoniamusic`, which the F-Droid app and the Play Store both handle.
+    Without a store app it opens the GitHub page in the browser; without a browser, a Toast says nothing can open
+    the link. The order of links is a pure, tested function.
+  - Acceptance criteria: on a phone with F-Droid or Play, the row opens Harmonia's page there.
+- **L6 Store text (S).** Mention the language picker in both full descriptions and in `changelogs/300.txt`.
+
+**Checkpoint M13:** tests and lint pass; the user checks each row and the language picker on the release build,
+then takes the screenshots (F4) and moves on to F5.
+
 ### M12: F-Droid release (before Play Store)
 
 The first public release goes to F-Droid, following F-Droid's Quick Start Guide
@@ -831,7 +890,7 @@ needs F1–F4 and T21; F6 needs F5's tag; F7 needs F6; F8 needs F7 to pass.
   - The full description says what the opt-in online lyrics send, and to whom (lrclib.net).
   - Acceptance criteria: every file is there, and the lengths are within F-Droid's limits.
 - **F5 Release v0.3.0 (S, the user's push).**
-  - After T21 is finished: tag `v0.3.0` on the release commit, push `main` and the tag (only when the user says
+  - After T21 and M13 are finished: tag `v0.3.0` on the release commit, push `main` and the tag (only when the user says
     "push"). The existing workflow makes the GitHub Release.
   - Acceptance criteria: the `v0.3.0` tag and its GitHub Release are on GitHub, and the APK installs on the phone.
 
