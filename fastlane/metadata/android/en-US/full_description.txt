@@ -1,0 +1,21 @@
+Harmonia plays the music that is already on your phone. No account, no ads, no tracking and no streaming.
+
+Features:
+• Finds the songs on your phone and cleans up messy tags, such as "Song (Official Video) [y2mate]"
+• Playlists: long-press a song, drag over more songs to select them, then add them all at once
+• Plays in the background, with notification, lock screen and headset controls
+• Smart shuffle that avoids playing two songs by the same artist in a row
+• Sleep timer that fades the music out over the last minute
+• Lyrics from the song's tags or from a .lrc file next to it; synced lyrics follow the song, and tapping a line jumps to it
+• Likes, play counts, swipe actions, an A–Z scroller, and light and dark themes
+• Light performance mode for low-end phones
+• English and Indonesian
+
+Privacy:
+Harmonia works offline. Its only network feature is the optional online lyrics lookup, which is off until you turn it on. Then, only when you tap "Find lyrics online", it sends that song's title, artist, album and length to LRCLIB (lrclib.net), a free and open-source lyrics service. Nothing else leaves your phone.
+
+Permissions:
+• Music and audio: to find the songs on your phone
+• Storage (Android 9 and older only): to delete a song file when you ask
+• Internet: only for the optional lyrics lookup
+• Foreground service: to keep playing when the app is in the background

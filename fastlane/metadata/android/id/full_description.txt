@@ -1,0 +1,21 @@
+Harmonia memutar musik yang sudah ada di ponsel Anda. Tanpa akun, tanpa iklan, tanpa pelacakan, dan tanpa streaming.
+
+Fitur:
+• Menemukan lagu di ponsel Anda dan merapikan tag yang berantakan, seperti "Lagu (Official Video) [y2mate]"
+• Playlist: tekan lama sebuah lagu, geser ke lagu lain untuk memilihnya, lalu tambahkan semuanya sekaligus
+• Diputar di latar belakang, dengan kontrol di notifikasi, layar kunci, dan headset
+• Acak pintar yang tidak memutar dua lagu dari artis yang sama berturut-turut
+• Timer tidur yang memudarkan musik di menit terakhir
+• Lirik dari tag lagu atau dari file .lrc di sampingnya; lirik yang selaras mengikuti lagu, dan mengetuk satu baris akan melompat ke sana
+• Suka, jumlah putar, aksi geser, penggulir A–Z, serta tema terang dan gelap
+• Mode performa ringan untuk ponsel kelas bawah
+• Bahasa Inggris dan Indonesia
+
+Privasi:
+Harmonia bekerja secara offline. Satu-satunya fitur jaringan adalah pencarian lirik online opsional, yang mati sampai Anda menyalakannya. Setelah itu, hanya saat Anda mengetuk "Cari lirik online", aplikasi mengirim judul, artis, album, dan durasi lagu itu ke LRCLIB (lrclib.net), layanan lirik gratis dan open source. Tidak ada data lain yang keluar dari ponsel Anda.
+
+Izin:
+• Musik dan audio: untuk menemukan lagu di ponsel Anda
+• Penyimpanan (hanya Android 9 dan versi lebih lama): untuk menghapus file lagu saat Anda memintanya
+• Internet: hanya untuk pencarian lirik online opsional
+• Layanan latar depan: agar musik tetap diputar saat aplikasi berada di latar belakang
