@@ -73,7 +73,7 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
         SettingsSection(stringResource(R.string.settings_playback)) {
             ToggleRow(settings, flags, Icons.Rounded.Shuffle, stringResource(R.string.settings_smart_shuffle), stringResource(R.string.settings_smart_shuffle_sub), Key.SmartShuffle)
             Divider()
-            SettingsRow(Icons.Rounded.Bedtime, stringResource(R.string.settings_sleep_timer), stringResource(R.string.settings_sleep_timer_sub), onClick = {}) { Chevron() }
+            SettingsRow(Icons.Rounded.Bedtime, stringResource(R.string.sleep_timer), stringResource(R.string.settings_sleep_timer_sub), onClick = {}) { Chevron() }
             Divider()
             SettingsRow(
                 Icons.Rounded.Lyrics,

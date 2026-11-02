@@ -11,7 +11,7 @@
     <string name="settings_playback">Pemutaran</string>
     <string name="settings_smart_shuffle">Acak pintar</string>
     <string name="settings_smart_shuffle_sub">Jarakkan lagu dari artis yang sama</string>
-    <string name="settings_sleep_timer">Timer tidur</string>
+    <string name="sleep_timer">Timer tidur</string>
     <string name="settings_sleep_timer_sub">Mati · suara memudar di menit terakhir</string>
     <string name="settings_lyrics_folder">Folder lirik</string>
     <string name="settings_lyrics_folder_set">Membaca file .lrc dari %1$s</string>
@@ -37,4 +37,54 @@
     <string name="online_lyrics_body">Saat Anda mengetuk “Cari lirik online” pada sebuah lagu, Harmonia mengirim judul, artis, album, dan durasi lagu itu ke lrclib.net, lalu menampilkan hasilnya. Tidak ada data lain yang keluar dari ponsel Anda, dan tidak ada yang dikirim sebelum Anda mengetuknya.</string>
     <string name="turn_on">Aktifkan</string>
     <string name="cancel">Batal</string>
+
+    <!-- Player -->
+    <string name="now_playing">SEDANG DIPUTAR</string>
+    <string name="close_player">Tutup pemutar</string>
+    <string name="play">Putar</string>
+    <string name="pause">Jeda</string>
+    <string name="next">Berikutnya</string>
+    <string name="previous">Sebelumnya</string>
+    <string name="shuffle">Acak</string>
+    <string name="repeat">Ulangi</string>
+    <string name="mute">Bisukan</string>
+    <string name="unmute">Bunyikan</string>
+    <string name="lyrics">Lirik</string>
+    <string name="lyrics_not_synced">TIDAK SELARAS DENGAN LAGU</string>
+    <string name="lyrics_offline">Tidak dapat menghubungi layanan lirik. Periksa koneksi, lalu coba lagi.</string>
+    <string name="lyrics_not_found_file">Lirik untuk “%1$s - %2$s” tidak ditemukan.</string>
+    <string name="lyrics_not_found_by">Lirik “%1$s” oleh “%2$s” tidak ditemukan.</string>
+    <string name="lyrics_not_found">Lirik untuk “%1$s” tidak ditemukan.</string>
+    <string name="lyrics_none_in_file">File ini tidak menyimpan lirik.</string>
+    <string name="lyrics_find_online">Cari lirik online</string>
+    <string name="try_again">Coba lagi</string>
+    <string name="lyrics_file_only">Harmonia hanya membaca lirik yang tersimpan di dalam file. Anda bisa menyalakan “Cari lirik di internet” di Pengaturan.</string>
+    <string name="lyrics_earlier">Lebih awal</string>
+    <string name="lyrics_later">Lebih lambat</string>
+    <string name="lyrics_play_from_line">Putar dari baris ini</string>
+
+    <!-- Sleep timer -->
+    <string name="sleep_minutes">%1$d mnt</string>
+    <string name="sleep_end_of_track">Akhir lagu</string>
+    <string name="sleep_chip_end_of_track">Tidur · Akhir lagu</string>
+    <string name="sleep_chip_countdown">Tidur · %1$s</string>
+    <string name="sleep_pauses_at_end">Berhenti saat lagu ini selesai</string>
+    <string name="sleep_fading">Memudar…</string>
+    <string name="sleep_pauses_at">Berhenti pukul %1$s · memudar di menit terakhir</string>
+    <string name="sleep_minus_5">−5 mnt</string>
+    <string name="sleep_plus_5">+5 mnt</string>
+    <string name="sleep_remove_5">Kurangi 5 menit</string>
+    <string name="sleep_add_5">Tambah 5 menit</string>
+    <string name="sleep_left">%1$s lagi</string>
+    <string name="done">Selesai</string>
+    <string name="turn_off">Matikan</string>
+    <plurals name="hours">
+        <item quantity="other">%1$d jam</item>
+    </plurals>
+    <plurals name="minutes">
+        <item quantity="other">%1$d menit</item>
+    </plurals>
+    <plurals name="seconds">
+        <item quantity="other">%1$d detik</item>
+    </plurals>
 </resources>

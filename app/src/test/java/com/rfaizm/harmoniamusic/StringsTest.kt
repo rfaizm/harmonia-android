@@ -11,7 +11,7 @@ import java.io.File
 class StringsTest {
     private val res = File("src/main/res")
     private val ui = File("src/main/java/com/rfaizm/harmoniamusic/ui")
-    private val translated = listOf("SettingsScreen.kt")
+    private val translated = listOf("SettingsScreen.kt", "Player.kt", "SleepTimer.kt")
 
     /** name → text, skipping strings marked translatable="false". Plural items are keyed name/quantity. */
     private fun strings(folder: String): Map<String, String> {
@@ -44,7 +44,7 @@ class StringsTest {
         val found = translated.flatMap { name ->
             File(ui, name).readLines().mapIndexedNotNull { i, line ->
                 val code = line.substringBefore("//").trimStart()
-                if (code.startsWith("*")) null else text.find(code)?.let { "$name:${i + 1} ${it.value}" }
+                if (code.startsWith("*") || code.startsWith("/*")) null else text.find(code)?.let { "$name:${i + 1} ${it.value}" }
             }
         }
         assertEquals(emptyList<String>(), found)

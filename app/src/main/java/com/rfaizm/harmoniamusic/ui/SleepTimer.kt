@@ -57,15 +57,26 @@ import com.rfaizm.harmoniamusic.ui.theme.muted
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 import kotlinx.coroutines.delay
 import java.util.Date
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeUnit.HOURS
+import java.util.concurrent.TimeUnit.MINUTES
+import java.util.concurrent.TimeUnit.SECONDS
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.rfaizm.harmoniamusic.R
 
 /** PRD phase 7. [SLEEP_END_OF_TRACK] finishes the current song instead of counting minutes. */
-enum class SleepOption(val label: String, val minutes: Int) {
-    Min15("15 min", 15),
-    Min30("30 min", 30),
-    Min45("45 min", 45),
-    Min60("60 min", 60),
-    EndOfTrack("End of track", SLEEP_END_OF_TRACK),
+enum class SleepOption(val minutes: Int) {
+    Min15(15),
+    Min30(30),
+    Min45(45),
+    Min60(60),
+    EndOfTrack(SLEEP_END_OF_TRACK),
 }
+
+@Composable
+private fun SleepOption.label() =
+    if (this == SleepOption.EndOfTrack) stringResource(R.string.sleep_end_of_track) else stringResource(R.string.sleep_minutes, minutes)
 
 /** The option the service reports it is running, or null for "Off" (0 means none, including "just fired"). */
 internal fun sleepOptionOf(minutes: Int) = SleepOption.entries.firstOrNull { it.minutes == minutes }
@@ -84,16 +95,24 @@ internal fun countdownText(msLeft: Long): String {
     return if (h > 0) "%d:%02d:%02d".format(h, m, s) else "%d:%02d".format(m, s)
 }
 
-/** What TalkBack reads: "12:34" alone sounds like a clock time, which is when the timer ends, not what's left. */
-internal fun spokenCountdown(msLeft: Long): String {
+/** The two largest units of what's left, e.g. 12 minutes and 34 seconds; a zero second unit is dropped. */
+internal fun countdownParts(msLeft: Long): List<Pair<TimeUnit, Long>> {
     val (h, m, s) = hms(msLeft)
-    fun unit(n: Long, name: String) = if (n == 1L) "1 $name" else "$n ${name}s"
-    val parts = when {
-        h > 0 -> listOfNotNull(unit(h, "hour"), m.takeIf { it > 0 }?.let { unit(it, "minute") })
-        m > 0 -> listOfNotNull(unit(m, "minute"), s.takeIf { it > 0 }?.let { unit(it, "second") })
-        else -> listOf(unit(s, "second"))
+    return when {
+        h > 0 -> listOfNotNull(HOURS to h, (MINUTES to m).takeIf { m > 0 })
+        m > 0 -> listOfNotNull(MINUTES to m, (SECONDS to s).takeIf { s > 0 })
+        else -> listOf(SECONDS to s)
     }
-    return parts.joinToString(" ") + " left"
+}
+
+/** What TalkBack reads: "12:34" alone sounds like a clock time, which is when the timer ends, not what's left. */
+@Composable
+private fun spokenCountdown(msLeft: Long): String {
+    val parts = countdownParts(msLeft).map { (unit, n) ->
+        val id = when (unit) { HOURS -> R.plurals.hours; MINUTES -> R.plurals.minutes; else -> R.plurals.seconds }
+        pluralStringResource(id, n.toInt(), n.toInt())
+    }
+    return stringResource(R.string.sleep_left, parts.joinToString(" "))
 }
 
 private fun hms(msLeft: Long): Triple<Long, Long, Long> {
@@ -128,14 +147,14 @@ internal fun SleepTimerChip(sleep: SleepTimer?, songMsLeft: Long, onSelect: (Sle
 
     Box {
         when {
-            sleep == null -> ExtraChip(Icons.Rounded.Bedtime, "Sleep timer") { menuOpen = true }
-            sleep.option == SleepOption.EndOfTrack -> ExtraChip(Icons.Rounded.Bedtime, "Sleep · End of track", active = true) { dialogOpen = true }
-            else -> ExtraChip(Icons.Rounded.Bedtime, "Sleep · ${countdownText(rememberMsLeft(sleep.endsAt))}", active = true) { dialogOpen = true }
+            sleep == null -> ExtraChip(Icons.Rounded.Bedtime, stringResource(R.string.sleep_timer)) { menuOpen = true }
+            sleep.option == SleepOption.EndOfTrack -> ExtraChip(Icons.Rounded.Bedtime, stringResource(R.string.sleep_chip_end_of_track), active = true) { dialogOpen = true }
+            else -> ExtraChip(Icons.Rounded.Bedtime, stringResource(R.string.sleep_chip_countdown, countdownText(rememberMsLeft(sleep.endsAt))), active = true) { dialogOpen = true }
         }
         DropdownMenu(menuOpen, { menuOpen = false }, shape = RoundedCornerShape(16.dp), containerColor = colors.card) {
             SleepOption.entries.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.label, fontSize = 14.sp, color = colors.onSurface) },
+                    text = { Text(option.label(), fontSize = 14.sp, color = colors.onSurface) },
                     onClick = { onSelect(option); menuOpen = false }
                 )
             }
@@ -163,10 +182,10 @@ private fun SleepTimerDialog(
     val endOfTrack = sleep.option == SleepOption.EndOfTrack
     val msLeft = if (endOfTrack) songMsLeft else rememberMsLeft(sleep.endsAt)
     val caption = when {
-        endOfTrack -> "Pauses when this song ends"
-        msLeft <= 60_000 -> "Fading out…"
+        endOfTrack -> stringResource(R.string.sleep_pauses_at_end)
+        msLeft <= 60_000 -> stringResource(R.string.sleep_fading)
         // DateFormat follows the phone's 12- or 24-hour setting.
-        else -> "Pauses at ${DateFormat.getTimeFormat(context).format(Date(System.currentTimeMillis() + msLeft))} · fades out over the last minute"
+        else -> stringResource(R.string.sleep_pauses_at, DateFormat.getTimeFormat(context).format(Date(System.currentTimeMillis() + msLeft)))
     }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -177,13 +196,14 @@ private fun SleepTimerDialog(
                 Icon(Icons.Rounded.Bedtime, null, tint = colors.primary)
             }
         },
-        title = { Text("Sleep timer", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) },
+        title = { Text(stringResource(R.string.sleep_timer), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) },
         text = {
             Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                val spoken = spokenCountdown(msLeft)
                 Text(
                     countdownText(msLeft),
                     fontSize = 48.sp, lineHeight = 52.sp, fontWeight = FontWeight.ExtraBold, color = colors.primary,
-                    modifier = Modifier.clearAndSetSemantics { contentDescription = spokenCountdown(msLeft) },
+                    modifier = Modifier.clearAndSetSemantics { contentDescription = spoken },
                 )
                 Text(
                     caption, fontSize = 14.sp, color = colors.mutedForeground, textAlign = TextAlign.Center,
@@ -191,17 +211,17 @@ private fun SleepTimerDialog(
                 )
                 // "End of track" has no deadline to move. "−" stops at a minute left, "+" at three hours (T44).
                 if (!endOfTrack) Row(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    AdjustPill("−5 min", "Remove 5 minutes", enabled = msLeft > MIN_SLEEP_MS) { onAdjust(-SLEEP_STEP_MS) }
-                    AdjustPill("+5 min", "Add 5 minutes", enabled = msLeft < MAX_SLEEP_MS) { onAdjust(SLEEP_STEP_MS) }
+                    AdjustPill(stringResource(R.string.sleep_minus_5), stringResource(R.string.sleep_remove_5), enabled = msLeft > MIN_SLEEP_MS) { onAdjust(-SLEEP_STEP_MS) }
+                    AdjustPill(stringResource(R.string.sleep_plus_5), stringResource(R.string.sleep_add_5), enabled = msLeft < MAX_SLEEP_MS) { onAdjust(SLEEP_STEP_MS) }
                 }
             }
         },
         confirmButton = {
             Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = colors.primary, contentColor = colors.onPrimary)) {
-                Text("Done", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.done), fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onTurnOff) { Text("Turn off", color = colors.mutedForeground) } },
+        dismissButton = { TextButton(onClick = onTurnOff) { Text(stringResource(R.string.turn_off), color = colors.mutedForeground) } },
     )
 }
 

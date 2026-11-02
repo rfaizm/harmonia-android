@@ -83,6 +83,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.layout.ContentScale
@@ -122,10 +124,10 @@ fun MiniPlayer(song: Song, isPlaying: Boolean, progress: Float, onToggle: () -> 
                 Text(song.displayArtist, fontSize = 12.sp, color = Color.White.copy(alpha = 0.65f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             CircleIcon(
-                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", onToggle,
+                if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play), onToggle,
                 size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.15f)
             )
-            CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
+            CircleIcon(Icons.Rounded.SkipNext, stringResource(R.string.next), onNext, size = 36.dp, iconSize = 19.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
         }
         Box(Modifier.fillMaxWidth().height(2.dp).background(Color.White.copy(alpha = 0.15f))) {
             Box(Modifier.fillMaxWidth(progress).fillMaxHeight().clip(CircleShape).background(Color.White.copy(alpha = 0.6f)))
@@ -182,8 +184,8 @@ fun FullPlayer(
     ) {
         // 1. Top bar
         Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            CircleIcon(Icons.Rounded.KeyboardArrowDown, "Close player", onClose, size = 36.dp, iconSize = 22.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
-            Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            CircleIcon(Icons.Rounded.KeyboardArrowDown, stringResource(R.string.close_player), onClose, size = 36.dp, iconSize = 22.dp, tint = Color.White, background = Color.White.copy(alpha = 0.10f))
+            Text(stringResource(R.string.now_playing), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp, color = Color.White.copy(alpha = 0.5f), modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             HeartButton(song.liked, onLike, iconSize = 18.dp, unlikedTint = Color.White)
         }
 
@@ -243,8 +245,8 @@ fun FullPlayer(
 
             // 5. Controls — wide spacing between play/skip (PRD phase 7)
             Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp).padding(bottom = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                ModeButton(Icons.Rounded.Shuffle, "Shuffle", shuffle, onShuffle)
-                CircleIcon(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
+                ModeButton(Icons.Rounded.Shuffle, stringResource(R.string.shuffle), shuffle, onShuffle)
+                CircleIcon(Icons.Rounded.SkipPrevious, stringResource(R.string.previous), onPrev, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
                 val playScale by animateFloatAsState(if (isPlaying) 1f else 0.96f, label = "play")
                 Box(
                     Modifier
@@ -256,17 +258,17 @@ fun FullPlayer(
                         .clickable(onClick = onToggle),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", tint = g0, modifier = Modifier.size(32.dp))
+                    Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) stringResource(R.string.pause) else stringResource(R.string.play), tint = g0, modifier = Modifier.size(32.dp))
                 }
-                CircleIcon(Icons.Rounded.SkipNext, "Next", onNext, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
-                ModeButton(if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, "Repeat", repeatMode != Player.REPEAT_MODE_OFF, onRepeat)
+                CircleIcon(Icons.Rounded.SkipNext, stringResource(R.string.next), onNext, size = 48.dp, iconSize = 34.dp, tint = Color.White.copy(alpha = 0.85f))
+                ModeButton(if (repeatMode == Player.REPEAT_MODE_ONE) Icons.Rounded.RepeatOne else Icons.Rounded.Repeat, stringResource(R.string.repeat), repeatMode != Player.REPEAT_MODE_OFF, onRepeat)
             }
         }
 
         // 6. Volume
         Row(Modifier.padding(horizontal = 28.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CircleIcon(
-                if (muted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp, if (muted) "Unmute" else "Mute",
+                if (muted) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeUp, if (muted) stringResource(R.string.unmute) else stringResource(R.string.mute),
                 onMute, size = 32.dp, iconSize = 18.dp, tint = Color.White.copy(alpha = 0.6f)
             )
             Slider(
@@ -280,7 +282,7 @@ fun FullPlayer(
 
         // 7. Extras — lyrics & sleep timer (PRD phases 7 & 9)
         Row(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 16.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-            ExtraChip(Icons.Rounded.FormatQuote, "Lyrics", active = showLyrics) { showLyrics = !showLyrics }
+            ExtraChip(Icons.Rounded.FormatQuote, stringResource(R.string.lyrics), active = showLyrics) { showLyrics = !showLyrics }
             SleepTimerChip(sleep, songMsLeft = ((1f - progress) * song.duration * 1000).toLong(), onSelect = onSleep, onAdjust = onSleepAdjust)
         }
     }
@@ -384,7 +386,7 @@ private fun LyricsView(
             lines.isNotEmpty() -> SyncedLyrics(lines, song.id, settings, position, onPlayFrom)
             shown != null -> Column(Modifier.fillMaxSize()) {
                 Text(
-                    "NOT SYNCED TO THE SONG", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
+                    stringResource(R.string.lyrics_not_synced), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.5.sp,
                     color = Color.White.copy(alpha = 0.5f), modifier = Modifier.padding(bottom = 12.dp),
                 )
                 Text(
@@ -396,15 +398,15 @@ private fun LyricsView(
             else -> Column {
                 Text(
                     when (miss) {
-                        LyricsResult.Offline -> "Couldn't reach the lyrics service. Check your connection and try again."
+                        LyricsResult.Offline -> stringResource(R.string.lyrics_offline)
                         // Names what was searched for, so a bad tag is visible rather than a silent miss. A file name
                         // was searched both ways round, so it's shown as it reads, not as a guessed artist and title.
                         LyricsResult.NotFound -> when {
-                            asked.fromFileName -> "No lyrics found for “${asked.artist} - ${asked.title}”."
-                            asked.artist != null -> "No lyrics found for “${asked.title}” by “${asked.artist}”."
-                            else -> "No lyrics found for “${asked.title}”."
+                            asked.fromFileName -> stringResource(R.string.lyrics_not_found_file, asked.artist.orEmpty(), asked.title)
+                            asked.artist != null -> stringResource(R.string.lyrics_not_found_by, asked.title, asked.artist)
+                            else -> stringResource(R.string.lyrics_not_found, asked.title)
                         }
-                        else -> "This file has no lyrics saved in it."
+                        else -> stringResource(R.string.lyrics_none_in_file)
                     },
                     fontSize = 15.sp, color = Color.White.copy(alpha = 0.75f), lineHeight = 22.sp,
                 )
@@ -418,10 +420,10 @@ private fun LyricsView(
                             miss = result
                             if (result is LyricsResult.Found) found = result.text
                         }
-                    }) { Text(if (miss == null) "Find lyrics online" else "Try again", fontWeight = FontWeight.Bold, color = Color.White) }
+                    }) { Text(if (miss == null) stringResource(R.string.lyrics_find_online) else stringResource(R.string.try_again), fontWeight = FontWeight.Bold, color = Color.White) }
                 } else {
                     Text(
-                        "Harmonia only reads lyrics saved inside a file. You can switch on “Look up lyrics online” in Settings.",
+                        stringResource(R.string.lyrics_file_only),
                         fontSize = 13.sp, color = Color.White.copy(alpha = 0.55f), lineHeight = 19.sp,
                         modifier = Modifier.padding(top = 10.dp),
                     )
@@ -477,8 +479,8 @@ private fun SyncedLyrics(
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.align(Alignment.End), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (shift != 0) Text("%+.1f s".format(shift / 1000f), fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
-            TimingButton("Earlier") { moveBy(-SHIFT_STEP_MS) }
-            TimingButton("Later") { moveBy(SHIFT_STEP_MS) }
+            TimingButton(stringResource(R.string.lyrics_earlier)) { moveBy(-SHIFT_STEP_MS) }
+            TimingButton(stringResource(R.string.lyrics_later)) { moveBy(SHIFT_STEP_MS) }
         }
         BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
             LazyColumn(
@@ -495,7 +497,7 @@ private fun SyncedLyrics(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
-                            .clickable(onClickLabel = "Play from this line") {
+                            .clickable(onClickLabel = stringResource(R.string.lyrics_play_from_line)) {
                                 following = true // the tapped line is where the reader wants to be
                                 onPlayFrom(line.startsAt(shift))
                             }

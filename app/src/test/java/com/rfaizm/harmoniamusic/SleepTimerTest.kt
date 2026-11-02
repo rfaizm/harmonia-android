@@ -4,10 +4,13 @@ import com.rfaizm.harmoniamusic.ui.SleepOption
 import com.rfaizm.harmoniamusic.ui.SleepTimer
 import com.rfaizm.harmoniamusic.ui.countdownText
 import com.rfaizm.harmoniamusic.ui.sleepTimerOf
-import com.rfaizm.harmoniamusic.ui.spokenCountdown
+import com.rfaizm.harmoniamusic.ui.countdownParts
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
+import java.util.concurrent.TimeUnit.HOURS
+import java.util.concurrent.TimeUnit.MINUTES
+import java.util.concurrent.TimeUnit.SECONDS
 
 /** M10: the time left on the sleep timer, as the chip and the dialog show it. */
 class SleepTimerTest {
@@ -37,11 +40,12 @@ class SleepTimerTest {
     @Test
     fun talkBackHearsTheTimeLeftInWords() {
         // "12:34" alone is read like a clock time, which is when the timer would end, not how long is left.
-        assertEquals("12 minutes 34 seconds left", spokenCountdown(754_000))
-        assertEquals("1 minute 1 second left", spokenCountdown(61_000))
-        assertEquals("1 hour 5 minutes left", spokenCountdown(3_909_000))
-        assertEquals("2 hours left", spokenCountdown(7_200_000))
-        assertEquals("1 second left", spokenCountdown(400))
+        // The screen turns these into "12 minutes 34 seconds left" in the phone's language.
+        assertEquals(listOf(MINUTES to 12L, SECONDS to 34L), countdownParts(754_000))
+        assertEquals(listOf(MINUTES to 1L, SECONDS to 1L), countdownParts(61_000))
+        assertEquals(listOf(HOURS to 1L, MINUTES to 5L), countdownParts(3_909_000))
+        assertEquals(listOf(HOURS to 2L), countdownParts(7_200_000))
+        assertEquals(listOf(SECONDS to 1L), countdownParts(400))
     }
 
     @Test
