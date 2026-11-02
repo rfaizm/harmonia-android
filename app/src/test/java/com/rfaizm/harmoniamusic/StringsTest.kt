@@ -11,7 +11,10 @@ import java.io.File
 class StringsTest {
     private val res = File("src/main/res")
     private val ui = File("src/main/java/com/rfaizm/harmoniamusic/ui")
-    private val translated = listOf("SettingsScreen.kt", "Player.kt", "SleepTimer.kt", "SongsScreen.kt", "SongsViewModel.kt", "PlaylistsScreen.kt", "ExploreScreen.kt")
+    private val translated = listOf(
+        "SettingsScreen.kt", "Player.kt", "SleepTimer.kt", "SongsScreen.kt", "SongsViewModel.kt", "PlaylistsScreen.kt",
+        "ExploreScreen.kt", "Components.kt", "HarmoniaApp.kt", "DeleteSong.kt", "AlphabetIndex.kt",
+    )
 
     /** name → text, skipping strings marked translatable="false". Plural items are keyed name/quantity. */
     private fun strings(folder: String): Map<String, String> {

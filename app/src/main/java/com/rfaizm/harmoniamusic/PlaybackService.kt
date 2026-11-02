@@ -119,7 +119,8 @@ class PlaybackService : MediaSessionService() {
             // PRD phase 2: a corrupt or missing file skips ahead instead of stalling the queue.
             override fun onPlayerError(error: PlaybackException) {
                 val title = player.currentMediaItem?.mediaMetadata?.title
-                Toast.makeText(this@PlaybackService, title?.let { "Couldn't play “$it”" } ?: "Couldn't play this song", Toast.LENGTH_SHORT).show()
+                val text = title?.let { getString(R.string.play_failed, it) } ?: getString(R.string.play_failed_unknown)
+                Toast.makeText(this@PlaybackService, text, Toast.LENGTH_SHORT).show()
                 errorsInARow++
                 if (shouldSkipAfterError(errorsInARow, player.mediaItemCount, player.hasNextMediaItem())) {
                     player.seekToNextMediaItem()

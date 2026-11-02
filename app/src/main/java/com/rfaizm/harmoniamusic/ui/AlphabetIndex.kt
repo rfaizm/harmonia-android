@@ -49,7 +49,9 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -176,12 +178,13 @@ fun AlphabetIndex(letters: List<String>, currentSection: () -> Int, onPick: (ind
 private fun IndexLetter(letter: String, lit: Boolean, pressed: Boolean, onActivate: () -> Unit, modifier: Modifier) {
     // A small pop: the dot already nearly fills the capsule's width, and a bigger one would be cut off at its edges.
     val scale by animateFloatAsState(if (pressed) 1.15f else 1f, spring(dampingRatio = 0.6f, stiffness = 500f), label = "indexLetter")
+    val spoken = if (letter == "#") stringResource(R.string.jump_to_other) else stringResource(R.string.jump_to, letter)
     Box(
         modifier
             .fillMaxWidth()
             // One button per letter for TalkBack, which can't slide along the bar.
             .clearAndSetSemantics {
-                contentDescription = if (letter == "#") "Jump to other titles" else "Jump to $letter"
+                contentDescription = spoken
                 role = Role.Button
                 onClick { onActivate(); true }
             },

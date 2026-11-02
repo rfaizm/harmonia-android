@@ -61,7 +61,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.annotation.StringRes
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,11 +87,11 @@ import kotlinx.coroutines.launch
 private val AUDIO_PERMISSION =
     if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
 
-enum class Tab(val label: String, val icon: ImageVector) {
-    Songs("Songs", Icons.Rounded.MusicNote),
-    Playlists("Playlists", Icons.AutoMirrored.Rounded.QueueMusic),
-    Artists("Artists", Icons.Rounded.Groups),
-    Settings("Settings", Icons.Rounded.Settings),
+enum class Tab(@StringRes val label: Int, val icon: ImageVector) {
+    Songs(R.string.tab_songs, Icons.Rounded.MusicNote),
+    Playlists(R.string.playlists, Icons.AutoMirrored.Rounded.QueueMusic),
+    Artists(R.string.artists, Icons.Rounded.Groups),
+    Settings(R.string.settings_title, Icons.Rounded.Settings),
 }
 
 /**
@@ -235,12 +239,12 @@ private fun TopBar(songCount: Int, darkMode: Boolean, onToggleTheme: () -> Unit)
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text("Harmonia", fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp)
-            Text("$songCount songs · local library", fontSize = 11.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp))
+            Text(stringResource(R.string.app_name), fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.4).sp)
+            Text(pluralStringResource(R.plurals.library_summary, songCount, songCount), fontSize = 11.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp))
         }
         CircleIcon(
             if (darkMode) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
-            if (darkMode) "Switch to light mode" else "Switch to dark mode",
+            if (darkMode) stringResource(R.string.switch_to_light) else stringResource(R.string.switch_to_dark),
             onToggleTheme,
             modifier = Modifier.border(1.dp, colors.border, CircleShape),
             size = 36.dp, iconSize = 16.dp, tint = colors.onBackground, background = colors.card,
@@ -273,7 +277,7 @@ private fun BottomNav(current: Tab, onSelect: (Tab) -> Unit) {
                     ) {
                         Icon(t.icon, null, tint = if (active) colors.primary else colors.mutedForeground, modifier = Modifier.size(22.dp))
                     }
-                    Text(t.label, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, color = if (active) colors.primary else colors.mutedForeground)
+                    Text(stringResource(t.label), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.3.sp, color = if (active) colors.primary else colors.mutedForeground)
                 }
             }
         }

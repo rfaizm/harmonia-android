@@ -137,4 +137,40 @@
     <plurals name="track_count">
         <item quantity="other">%1$d trek</item>
     </plurals>
+
+    <!-- Shared parts, delete flow and playback -->
+    <string name="like">Sukai</string>
+    <string name="unlike">Batal sukai</string>
+    <string name="search_hint">Cari lagu, artis…</string>
+    <string name="clear_search">Hapus pencarian</string>
+    <string name="more_options">Opsi lainnya</string>
+    <string name="add_to_playlist_heading">TAMBAHKAN KE PLAYLIST</string>
+    <string name="remove_from_playlist">Keluarkan dari playlist</string>
+    <string name="delete_file">Hapus file</string>
+    <string name="delete_file_title">Hapus file secara permanen?</string>
+    <string name="delete_file_body">“%1$s” akan dihapus dari perangkat Anda. Tindakan ini tidak bisa dibatalkan.</string>
+    <string name="permission_title">Izinkan Harmonia menemukan musik Anda</string>
+    <string name="permission_blocked">Akses dimatikan. Buka pengaturan, ketuk Izin, lalu izinkan Musik dan audio.</string>
+    <string name="permission_body">Kami hanya membaca file audio di perangkat ini untuk menyusun pustaka Anda. Tidak ada yang keluar dari ponsel Anda, kecuali Anda menyalakan pencarian lirik opsional.</string>
+    <string name="open_settings">Buka pengaturan</string>
+    <string name="grant_access">Beri akses</string>
+    <string name="no_songs">Belum ada lagu</string>
+    <string name="no_songs_body">Salin beberapa file audio ke folder Music atau Download di ponsel Anda, lalu tarik ke bawah untuk memuat ulang.</string>
+    <string name="scan_again">Pindai lagi</string>
+    <string name="tab_songs">Lagu</string>
+    <string name="switch_to_light">Ganti ke mode terang</string>
+    <string name="switch_to_dark">Ganti ke mode gelap</string>
+    <string name="delete_failed">Gagal menghapus “%1$s”</string>
+    <string name="not_deleted">Tidak dihapus</string>
+    <string name="storage_needed_toast">Akses penyimpanan diperlukan untuk menghapus file</string>
+    <string name="storage_needed_title">Perlu akses penyimpanan</string>
+    <string name="storage_needed_body">Android 9 dan versi lebih lama memerlukan akses penyimpanan sebelum Harmonia dapat menghapus “%1$s”.</string>
+    <string name="continue_action">Lanjutkan</string>
+    <string name="jump_to_other">Lompat ke judul lainnya</string>
+    <string name="jump_to">Lompat ke %1$s</string>
+    <string name="play_failed">Gagal memutar “%1$s”</string>
+    <string name="play_failed_unknown">Gagal memutar lagu ini</string>
+    <plurals name="library_summary">
+        <item quantity="other">%1$d lagu · pustaka lokal</item>
+    </plurals>
 </resources>

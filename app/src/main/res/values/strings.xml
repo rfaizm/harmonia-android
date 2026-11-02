@@ -147,4 +147,41 @@
         <item quantity="one">%1$d track</item>
         <item quantity="other">%1$d tracks</item>
     </plurals>
+
+    <!-- Shared parts, delete flow and playback -->
+    <string name="like">Like</string>
+    <string name="unlike">Unlike</string>
+    <string name="search_hint">Search songs, artists…</string>
+    <string name="clear_search">Clear search</string>
+    <string name="more_options">More options</string>
+    <string name="add_to_playlist_heading">ADD TO PLAYLIST</string>
+    <string name="remove_from_playlist">Remove from playlist</string>
+    <string name="delete_file">Delete file</string>
+    <string name="delete_file_title">Delete file permanently?</string>
+    <string name="delete_file_body">“%1$s” will be removed from your device. This can\'t be undone.</string>
+    <string name="permission_title">Let Harmonia find your music</string>
+    <string name="permission_blocked">Access was turned off. Open settings, tap Permissions and allow Music and audio.</string>
+    <string name="permission_body">We only read audio files on this device to build your library. Nothing leaves your phone unless you switch on the optional lyrics lookup.</string>
+    <string name="open_settings">Open settings</string>
+    <string name="grant_access">Grant access</string>
+    <string name="no_songs">No songs yet</string>
+    <string name="no_songs_body">Copy some audio files to your phone\'s Music or Download folder, then pull down to refresh.</string>
+    <string name="scan_again">Scan again</string>
+    <string name="tab_songs">Songs</string>
+    <string name="switch_to_light">Switch to light mode</string>
+    <string name="switch_to_dark">Switch to dark mode</string>
+    <string name="delete_failed">Couldn\'t delete “%1$s”</string>
+    <string name="not_deleted">Not deleted</string>
+    <string name="storage_needed_toast">Storage access is needed to delete files</string>
+    <string name="storage_needed_title">Storage access needed</string>
+    <string name="storage_needed_body">Android 9 and older need storage access before Harmonia can delete “%1$s”.</string>
+    <string name="continue_action">Continue</string>
+    <string name="jump_to_other">Jump to other titles</string>
+    <string name="jump_to">Jump to %1$s</string>
+    <string name="play_failed">Couldn\'t play “%1$s”</string>
+    <string name="play_failed_unknown">Couldn\'t play this song</string>
+    <plurals name="library_summary">
+        <item quantity="one">%1$d song · local library</item>
+        <item quantity="other">%1$d songs · local library</item>
+    </plurals>
 </resources>

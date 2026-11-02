@@ -98,7 +98,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -176,7 +178,7 @@ fun HeartButton(liked: Boolean, onClick: () -> Unit, iconSize: Dp = 15.dp, unlik
     val haptics = LocalHapticFeedback.current // PRD phase 8: a like is felt, not just seen
     CircleIcon(
         icon = if (liked) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-        label = if (liked) "Unlike" else "Like",
+        label = if (liked) stringResource(R.string.unlike) else stringResource(R.string.like),
         onClick = { haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onClick() },
         iconSize = iconSize,
         tint = if (liked) LikedRed else unlikedTint,
@@ -229,7 +231,7 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: Modifier
     ) {
         Icon(Icons.Rounded.Search, null, tint = colors.mutedForeground, modifier = Modifier.size(16.dp))
         Box(Modifier.weight(1f)) {
-            if (query.isEmpty()) Text("Search songs, artists…", fontSize = 14.sp, color = colors.mutedForeground)
+            if (query.isEmpty()) Text(stringResource(R.string.search_hint), fontSize = 14.sp, color = colors.mutedForeground)
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
@@ -240,7 +242,7 @@ fun SearchBar(query: String, onQueryChange: (String) -> Unit, modifier: Modifier
             )
         }
         AnimatedVisibility(query.isNotEmpty(), enter = scaleIn(initialScale = 0.7f) + fadeIn(), exit = scaleOut(targetScale = 0.7f) + fadeOut()) {
-            CircleIcon(Icons.Rounded.Close, "Clear search", { onQueryChange("") }, size = 18.dp, iconSize = 13.dp, background = colors.muted)
+            CircleIcon(Icons.Rounded.Close, stringResource(R.string.clear_search), { onQueryChange("") }, size = 18.dp, iconSize = 13.dp, background = colors.muted)
         }
     }
 }
@@ -380,7 +382,7 @@ fun SongRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 HeartButton(song.liked, onLike)
                 Box {
-                    CircleIcon(Icons.Rounded.MoreVert, "More options", { menuOpen = true })
+                    CircleIcon(Icons.Rounded.MoreVert, stringResource(R.string.more_options), { menuOpen = true })
                     SongMenu(
                         expanded = menuOpen,
                         song = song,
@@ -438,7 +440,7 @@ private fun SongMenu(
         }
         HorizontalDivider(color = colors.border)
         Text(
-            "ADD TO PLAYLIST", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.primary, letterSpacing = 1.5.sp,
+            stringResource(R.string.add_to_playlist_heading), fontSize = 10.sp, fontWeight = FontWeight.Bold, color = colors.primary, letterSpacing = 1.5.sp,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 4.dp)
         )
         playlists.forEach { p ->
@@ -446,12 +448,12 @@ private fun SongMenu(
         }
         if (onRemoveFromPlaylist != null) {
             HorizontalDivider(color = colors.border, modifier = Modifier.padding(top = 4.dp))
-            MenuRow(Icons.Rounded.RemoveCircleOutline, "Remove from playlist", colors.onBackground) { onRemoveFromPlaylist(); onDismiss() }
+            MenuRow(Icons.Rounded.RemoveCircleOutline, stringResource(R.string.remove_from_playlist), colors.onBackground) { onRemoveFromPlaylist(); onDismiss() }
         }
         // Deliberate gap before the destructive action.
         Spacer(Modifier.height(12.dp))
         HorizontalDivider(color = colors.border)
-        MenuRow(Icons.Rounded.DeleteForever, "Delete file", colors.destructive, onDeleteFile)
+        MenuRow(Icons.Rounded.DeleteForever, stringResource(R.string.delete_file), colors.destructive, onDeleteFile)
     }
 }
 
@@ -481,19 +483,19 @@ fun DeleteFileDialog(song: Song, onDismiss: () -> Unit, onConfirm: () -> Unit = 
                 Icon(Icons.Rounded.DeleteForever, null, tint = colors.destructive)
             }
         },
-        title = { Text("Delete file permanently?", fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) },
+        title = { Text(stringResource(R.string.delete_file_title), fontWeight = FontWeight.ExtraBold, fontSize = 18.sp) },
         text = {
             Text(
-                "“${song.displayTitle}” will be removed from your device. This can't be undone.",
+                stringResource(R.string.delete_file_body, song.displayTitle),
                 fontSize = 14.sp, color = colors.mutedForeground, textAlign = TextAlign.Center
             )
         },
         confirmButton = {
             Button(onClick = onConfirm, colors = ButtonDefaults.buttonColors(containerColor = colors.destructive, contentColor = Color.White)) {
-                Text("Delete", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.delete), fontWeight = FontWeight.Bold)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = colors.mutedForeground) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel), color = colors.mutedForeground) } },
     )
 }
 
@@ -654,11 +656,9 @@ fun EmptyState(icon: ImageVector, title: String, body: String, action: String? =
 @Composable
 fun PermissionEmptyState(blocked: Boolean = false, onGrant: () -> Unit = {}) = EmptyState(
     Icons.Rounded.FolderOpen,
-    "Let Harmonia find your music",
-    if (blocked) "Access was turned off. Open settings, tap Permissions and allow Music and audio."
-    else "We only read audio files on this device to build your library. Nothing leaves your phone unless you " +
-        "switch on the optional lyrics lookup.",
-    if (blocked) "Open settings" else "Grant access",
+    stringResource(R.string.permission_title),
+    if (blocked) stringResource(R.string.permission_blocked) else stringResource(R.string.permission_body),
+    if (blocked) stringResource(R.string.open_settings) else stringResource(R.string.grant_access),
     onGrant,
 )
 
@@ -667,9 +667,9 @@ fun PermissionEmptyState(blocked: Boolean = false, onGrant: () -> Unit = {}) = E
 fun NoMusicEmptyState(refreshing: Boolean = false, onRefresh: () -> Unit = {}) = PullToRefreshBox(refreshing, onRefresh) {
     EmptyState(
         Icons.Rounded.LibraryMusic,
-        "No songs yet",
-        "Copy some audio files to your phone's Music or Download folder, then pull down to refresh.",
-        "Scan again",
+        stringResource(R.string.no_songs),
+        stringResource(R.string.no_songs_body),
+        stringResource(R.string.scan_again),
         onRefresh,
         // Fills and scrolls so a pull anywhere on screen reaches PullToRefreshBox.
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()),

@@ -22,6 +22,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.res.stringResource
+import com.rfaizm.harmoniamusic.R
 import androidx.core.content.ContextCompat
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.Song
@@ -54,6 +57,7 @@ internal fun deletePathFor(sdkInt: Int) = when {
 @Composable
 fun rememberSongDeleter(music: MusicRepository, onDeleted: (Song) -> Unit): (Song) -> Unit {
     val context = LocalContext.current
+    val resources = LocalResources.current
     val activity = context as? ComponentActivity
     // The song waiting on a system dialog or a permission prompt.
     var pending by remember { mutableStateOf<Song?>(null) }
@@ -61,14 +65,14 @@ fun rememberSongDeleter(music: MusicRepository, onDeleted: (Song) -> Unit): (Son
     // "Don't ask again" was chosen, so prompting again does nothing and only settings can grant it.
     var blocked by remember { mutableStateOf(false) }
 
-    fun toast(text: String) = Toast.makeText(context, text, Toast.LENGTH_SHORT).show()
-    fun failed(song: Song) = toast("Couldn't delete “${song.displayTitle}”")
+    fun toast(text: Int, vararg args: Any) = Toast.makeText(context, resources.getString(text, *args), Toast.LENGTH_SHORT).show()
+    fun failed(song: Song) = toast(R.string.delete_failed, song.displayTitle)
 
     val consent = rememberLauncherForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
         val song = pending ?: return@rememberLauncherForActivityResult
         pending = null
         when {
-            result.resultCode != Activity.RESULT_OK -> toast("Not deleted")
+            result.resultCode != Activity.RESULT_OK -> toast(R.string.not_deleted)
             // On Android 11+ the system already deleted it; on 10 the consent just unlocks a second attempt.
             Build.VERSION.SDK_INT >= 30 || music.delete(song.id) -> onDeleted(song)
             else -> failed(song)
@@ -83,7 +87,7 @@ fun rememberSongDeleter(music: MusicRepository, onDeleted: (Song) -> Unit): (Son
         } else {
             // Denied for good: only the settings screen can turn it back on, so say that instead of re-prompting.
             blocked = activity?.shouldShowRequestPermissionRationale(WRITE_STORAGE) == false
-            if (blocked) explainStorage = true else { pending = null; toast("Storage access is needed to delete files") }
+            if (blocked) explainStorage = true else { pending = null; toast(R.string.storage_needed_toast) }
         }
     }
 
@@ -91,15 +95,15 @@ fun rememberSongDeleter(music: MusicRepository, onDeleted: (Song) -> Unit): (Son
         val song = pending
         AlertDialog(
             onDismissRequest = { explainStorage = false; pending = null },
-            title = { Text("Storage access needed") },
-            text = { Text("Android 9 and older need storage access before Harmonia can delete “${song?.displayTitle}”.") },
+            title = { Text(stringResource(R.string.storage_needed_title)) },
+            text = { Text(stringResource(R.string.storage_needed_body, song?.displayTitle.orEmpty())) },
             confirmButton = {
                 TextButton({
                     explainStorage = false
                     if (blocked) { openAppSettings(context); pending = null } else askStorage.launch(WRITE_STORAGE)
-                }) { Text(if (blocked) "Open settings" else "Continue") }
+                }) { Text(if (blocked) stringResource(R.string.open_settings) else stringResource(R.string.continue_action)) }
             },
-            dismissButton = { TextButton({ explainStorage = false; pending = null }) { Text("Cancel") } },
+            dismissButton = { TextButton({ explainStorage = false; pending = null }) { Text(stringResource(R.string.cancel)) } },
         )
     }
 
