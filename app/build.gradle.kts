@@ -5,17 +5,8 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-// The release workflow sets these: the upload key from GitHub secrets, and the tag being released.
-// Without them a local build keeps the debug key and version 1.0.
+// The release workflow sets this from GitHub secrets; without it a local build keeps the debug key.
 val keystoreFile = providers.environmentVariable("KEYSTORE_FILE").orNull
-val versionTag = providers.environmentVariable("VERSION_TAG").orNull
-
-/** "v1.2.3" gives "1.2.3" and 10203. Minor and patch stay under 100 so every newer tag has a bigger code, as Play needs. */
-fun versionFromTag(tag: String): Pair<String, Int> {
-    val (major, minor, patch) = Regex("""v(\d+)\.(\d{1,2})\.(\d{1,2})""").matchEntire(tag)?.destructured
-        ?: error("VERSION_TAG must look like v1.2.3, got \"$tag\"")
-    return "$major.$minor.$patch" to major.toInt() * 10_000 + minor.toInt() * 100 + patch.toInt()
-}
 
 android {
     namespace = "com.rfaizm.harmoniamusic"
@@ -27,9 +18,10 @@ android {
         applicationId = "com.rfaizm.harmoniamusic"
         minSdk = 24
         targetSdk = 37
-        val (name, code) = versionTag?.let { versionFromTag(it) } ?: ("1.0" to 1)
-        versionCode = code
-        versionName = name
+        // Written plainly because F-Droid reads them with a regex and never runs Gradle (F2). A release bumps both:
+        // the code is major * 10000 + minor * 100 + patch (VersionTest), and the tag must be "v" + versionName.
+        versionCode = 300
+        versionName = "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 

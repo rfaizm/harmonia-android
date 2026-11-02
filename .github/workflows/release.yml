@@ -18,6 +18,14 @@ jobs:
           distribution: temurin
           java-version: 25
       - uses: gradle/actions/setup-gradle@v6
+      # The version lives in app/build.gradle.kts, where F-Droid reads it; the tag has to agree with it (F2).
+      - name: Check the tag matches the app version
+        run: |
+          name=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
+          if [ "v$name" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match versionName \"$name\" in app/build.gradle.kts. Bump versionName and versionCode first."
+            exit 1
+          fi
       - name: Restore the upload key
         run: echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/upload.jks"
         env:
@@ -29,7 +37,6 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-          VERSION_TAG: ${{ github.ref_name }}
       - name: Name the files after the version
         run: |
           mkdir out

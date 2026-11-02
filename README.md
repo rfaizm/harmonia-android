@@ -31,7 +31,9 @@ You need JDK 25 and the Android SDK.
 ```
 
 Every push to `main` and every pull request runs the unit tests, lint and a debug build on GitHub Actions.
-Pushing a tag such as `v1.2.3` builds a signed APK and app bundle and publishes them as a GitHub Release.
+To release, bump `versionName` and `versionCode` in `app/build.gradle.kts`, then push the matching tag (for example
+`v0.3.0`): it builds a signed APK and app bundle and publishes them as a GitHub Release. A tag that doesn't match
+`versionName` stops the release.
 
 ## License
 

@@ -35,6 +35,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import com.rfaizm.harmoniamusic.BuildConfig
 import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -110,7 +111,7 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
         SettingsSection(stringResource(R.string.settings_about)) {
             SettingsRow(Icons.Rounded.Star, stringResource(R.string.settings_rate), stringResource(R.string.settings_rate_sub), onClick = {}) { Chevron() }
             Divider()
-            SettingsRow(Icons.Rounded.Info, stringResource(R.string.settings_about), stringResource(R.string.settings_version))
+            SettingsRow(Icons.Rounded.Info, stringResource(R.string.settings_about), stringResource(R.string.settings_version, BuildConfig.VERSION_NAME))
         }
     }
 
