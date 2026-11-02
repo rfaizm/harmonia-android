@@ -87,4 +87,34 @@
     <plurals name="seconds">
         <item quantity="other">%1$d detik</item>
     </plurals>
+
+    <!-- Songs -->
+    <string name="no_matches">Tidak ada yang cocok</string>
+    <string name="no_matches_body">Tidak ada lagu di pustaka yang cocok dengan “%1$s”.</string>
+    <string name="cancel_selection">Batalkan pilihan</string>
+    <plurals name="selected_count">
+        <item quantity="other">%1$d dipilih</item>
+    </plurals>
+    <string name="select_matches">Pilih yang cocok</string>
+    <string name="select_all">Pilih semua</string>
+    <string name="add_songs_hint">Beri nama playlist baru atau pilih yang sudah ada.</string>
+    <string name="new_playlist_name">Nama playlist baru…</string>
+    <string name="create_playlist">Buat playlist</string>
+    <string name="playlist_exists">“%1$s” sudah ada. Ketuk ✓ untuk menggabungkan lagu-lagu ini ke dalamnya.</string>
+    <string name="existing_playlists">Playlist yang ada</string>
+    <string name="sort_az">A–Z</string>
+    <string name="sort_recent">Terbaru</string>
+    <string name="sort_most_played">Paling sering diputar</string>
+    <plurals name="add_songs">
+        <item quantity="other">Tambah %1$d lagu</item>
+    </plurals>
+    <plurals name="add_songs_to">
+        <item quantity="other">Tambahkan %1$d lagu ke…</item>
+    </plurals>
+    <plurals name="song_count">
+        <item quantity="other">%1$d lagu</item>
+    </plurals>
+
+    <!-- Shared -->
+    <string name="delete">Hapus</string>
 </resources>

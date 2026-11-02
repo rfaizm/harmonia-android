@@ -62,6 +62,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import com.rfaizm.harmoniamusic.R
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -139,7 +142,7 @@ fun SongsScreen(
                         )
                     } else {
                         Row(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            SortBy.entries.forEach { Pill(it.label, sortBy == it) { viewModel.sort(it) } }
+                            SortBy.entries.forEach { Pill(stringResource(it.label), sortBy == it) { viewModel.sort(it) } }
                         }
                     }
                 }
@@ -179,7 +182,7 @@ fun SongsScreen(
                         }
                 ) {
                     if (entries.isEmpty()) item {
-                        EmptyState(Icons.Rounded.SearchOff, "No matches", "Nothing in your library matches “$query”.")
+                        EmptyState(Icons.Rounded.SearchOff, stringResource(R.string.no_matches), stringResource(R.string.no_matches_body, query))
                     }
                     items(entries, key = { if (it is Entry.Item) it.song.id else "h" + (it as Entry.Header).letter }) { e ->
                         when (e) {
@@ -187,7 +190,7 @@ fun SongsScreen(
                             is Entry.Item -> SwipeRow(
                                 open = openRow == e.song.id,
                                 enabled = !selectionMode,
-                                label = "Delete",
+                                label = stringResource(R.string.delete),
                                 icon = Icons.Rounded.DeleteForever,
                                 tint = colors.destructive,
                                 onOpenChange = { openRow = if (it) e.song.id else null },
@@ -233,7 +236,7 @@ fun SongsScreen(
                 contentColor = colors.onPrimary,
                 shape = RoundedCornerShape(16.dp),
                 icon = { Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, null) },
-                text = { Text("Add ${selected.size} ${if (selected.size == 1) "song" else "songs"}", fontWeight = FontWeight.Bold) },
+                text = { Text(pluralStringResource(R.plurals.add_songs, selected.size, selected.size), fontWeight = FontWeight.Bold) },
             )
         }
     }
@@ -275,15 +278,15 @@ private fun SelectionBar(count: Int, filtered: Boolean, onClose: () -> Unit, onS
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        CircleIcon(Icons.Rounded.Close, "Cancel selection", onClose, size = 36.dp, iconSize = 18.dp, tint = colors.onBackground, background = colors.card)
-        Text("$count selected", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+        CircleIcon(Icons.Rounded.Close, stringResource(R.string.cancel_selection), onClose, size = 36.dp, iconSize = 18.dp, tint = colors.onBackground, background = colors.card)
+        Text(pluralStringResource(R.plurals.selected_count, count, count), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
         Row(
             Modifier.clip(CircleShape).background(colors.primary.copy(alpha = 0.12f)).clickable(onClick = onSelectAll).padding(horizontal = 12.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Icon(Icons.Rounded.DoneAll, null, tint = colors.primary, modifier = Modifier.size(15.dp))
-            Text(if (filtered) "Select matches" else "Select all", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.primary)
+            Text(if (filtered) stringResource(R.string.select_matches) else stringResource(R.string.select_all), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = colors.primary)
         }
     }
 }
@@ -297,15 +300,15 @@ private fun AddToPlaylistSheet(count: Int, playlists: List<Playlist>, onDismiss:
 
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = colors.card) {
         Column(Modifier.padding(horizontal = 20.dp).padding(bottom = 16.dp).navigationBarsPadding()) {
-            Text("Add $count ${if (count == 1) "song" else "songs"} to…", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
-            Text("Name a new playlist or pick an existing one.", fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
+            Text(pluralStringResource(R.plurals.add_songs_to, count, count), fontSize = 18.sp, fontWeight = FontWeight.ExtraBold)
+            Text(stringResource(R.string.add_songs_hint), fontSize = 13.sp, color = colors.mutedForeground, modifier = Modifier.padding(top = 2.dp, bottom = 16.dp))
 
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(colors.muted).padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(Modifier.weight(1f)) {
-                    if (name.isEmpty()) Text("New playlist name…", fontSize = 14.sp, color = colors.mutedForeground)
+                    if (name.isEmpty()) Text(stringResource(R.string.new_playlist_name), fontSize = 14.sp, color = colors.mutedForeground)
                     BasicTextField(
                         name, { name = it }, singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp, color = colors.onBackground),
@@ -314,7 +317,7 @@ private fun AddToPlaylistSheet(count: Int, playlists: List<Playlist>, onDismiss:
                     )
                 }
                 CircleIcon(
-                    Icons.Rounded.Check, "Create playlist", { if (name.isNotBlank()) onPick(name.trim()) }, size = 32.dp, iconSize = 15.dp,
+                    Icons.Rounded.Check, stringResource(R.string.create_playlist), { if (name.isNotBlank()) onPick(name.trim()) }, size = 32.dp, iconSize = 15.dp,
                     tint = colors.onPrimary, background = if (name.isBlank()) colors.primary.copy(alpha = 0.4f) else colors.primary
                 )
             }
@@ -327,13 +330,13 @@ private fun AddToPlaylistSheet(count: Int, playlists: List<Playlist>, onDismiss:
                 ) {
                     Icon(Icons.Rounded.Info, null, tint = colors.primary, modifier = Modifier.size(16.dp))
                     Text(
-                        "“${existing?.name}” already exists. Tap ✓ to merge these songs into it.",
+                        stringResource(R.string.playlist_exists, existing?.name.orEmpty()),
                         fontSize = 12.sp, color = colors.onBackground, lineHeight = 17.sp
                     )
                 }
             }
 
-            SectionHeading("Existing playlists", Modifier.padding(top = 20.dp, bottom = 8.dp))
+            SectionHeading(stringResource(R.string.existing_playlists), Modifier.padding(top = 20.dp, bottom = 8.dp))
             Column(Modifier.clip(RoundedCornerShape(16.dp)).border(1.dp, colors.border, RoundedCornerShape(16.dp))) {
                 playlists.forEach { p ->
                     Row(
@@ -344,7 +347,7 @@ private fun AddToPlaylistSheet(count: Int, playlists: List<Playlist>, onDismiss:
                         AlbumArt(p.gradient, 40.dp, icon = Icons.AutoMirrored.Rounded.PlaylistAdd)
                         Column(Modifier.weight(1f)) {
                             Text(p.name, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                            Text("${p.songIds.size} songs", fontSize = 12.sp, color = colors.mutedForeground)
+                            Text(pluralStringResource(R.plurals.song_count, p.songIds.size, p.songIds.size), fontSize = 12.sp, color = colors.mutedForeground)
                         }
                     }
                 }

@@ -91,4 +91,38 @@
         <item quantity="one">%1$d second</item>
         <item quantity="other">%1$d seconds</item>
     </plurals>
+
+    <!-- Songs -->
+    <string name="no_matches">No matches</string>
+    <string name="no_matches_body">Nothing in your library matches “%1$s”.</string>
+    <string name="cancel_selection">Cancel selection</string>
+    <plurals name="selected_count">
+        <item quantity="one">%1$d selected</item>
+        <item quantity="other">%1$d selected</item>
+    </plurals>
+    <string name="select_matches">Select matches</string>
+    <string name="select_all">Select all</string>
+    <string name="add_songs_hint">Name a new playlist or pick an existing one.</string>
+    <string name="new_playlist_name">New playlist name…</string>
+    <string name="create_playlist">Create playlist</string>
+    <string name="playlist_exists">“%1$s” already exists. Tap ✓ to merge these songs into it.</string>
+    <string name="existing_playlists">Existing playlists</string>
+    <string name="sort_az">A–Z</string>
+    <string name="sort_recent">Recent</string>
+    <string name="sort_most_played">Most played</string>
+    <plurals name="add_songs">
+        <item quantity="one">Add %1$d song</item>
+        <item quantity="other">Add %1$d songs</item>
+    </plurals>
+    <plurals name="add_songs_to">
+        <item quantity="one">Add %1$d song to…</item>
+        <item quantity="other">Add %1$d songs to…</item>
+    </plurals>
+    <plurals name="song_count">
+        <item quantity="one">%1$d song</item>
+        <item quantity="other">%1$d songs</item>
+    </plurals>
+
+    <!-- Shared -->
+    <string name="delete">Delete</string>
 </resources>

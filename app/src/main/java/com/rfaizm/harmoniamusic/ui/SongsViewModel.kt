@@ -1,5 +1,6 @@
 package com.rfaizm.harmoniamusic.ui
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,6 +8,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.rfaizm.harmoniamusic.R
 import com.rfaizm.harmoniamusic.data.MusicRepository
 import com.rfaizm.harmoniamusic.data.Playlist
 import com.rfaizm.harmoniamusic.data.Song
@@ -19,7 +21,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-internal enum class SortBy(val label: String) { AZ("A–Z"), Recent("Recent"), MostPlayed("Most played") }
+internal enum class SortBy(@StringRes val label: Int) { AZ(R.string.sort_az), Recent(R.string.sort_recent), MostPlayed(R.string.sort_most_played) }
 
 /** A row of the Songs list: a letter heading (A–Z only) or a song with its place in the sorted list. */
 internal sealed interface Entry {
