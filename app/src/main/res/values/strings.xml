@@ -207,4 +207,8 @@
         <item quantity="one">%1$d song in total</item>
         <item quantity="other">%1$d songs in total</item>
     </plurals>
+
+    <!-- Sleep timer in Settings -->
+    <string name="sleep_pauses_in">Pauses in %1$s</string>
+    <string name="sleep_needs_song">Play a song first</string>
 </resources>

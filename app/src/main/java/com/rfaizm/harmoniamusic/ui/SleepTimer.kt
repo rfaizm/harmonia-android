@@ -75,8 +75,11 @@ enum class SleepOption(val minutes: Int) {
 }
 
 @Composable
-private fun SleepOption.label() =
+internal fun SleepOption.label() =
     if (this == SleepOption.EndOfTrack) stringResource(R.string.sleep_end_of_track) else stringResource(R.string.sleep_minutes, minutes)
+
+/** Settings' sleep menu (L3): the times, then null for "Turn off" while one is running. */
+internal fun sleepMenuItems(running: Boolean): List<SleepOption?> = SleepOption.entries + if (running) listOf(null) else emptyList()
 
 /** The option the service reports it is running, or null for "Off" (0 means none, including "just fired"). */
 internal fun sleepOptionOf(minutes: Int) = SleepOption.entries.firstOrNull { it.minutes == minutes }
@@ -122,7 +125,7 @@ private fun hms(msLeft: Long): Triple<Long, Long, Long> {
 
 /** Time left until [endsAt], updated on each whole second of the countdown so the digits change in step with it. */
 @Composable
-private fun rememberMsLeft(endsAt: Long): Long {
+internal fun rememberMsLeft(endsAt: Long): Long {
     var now by remember { mutableLongStateOf(SystemClock.elapsedRealtime()) }
     LaunchedEffect(endsAt) {
         while (true) {

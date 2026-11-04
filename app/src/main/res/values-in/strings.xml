@@ -191,4 +191,8 @@
     <plurals name="scan_total">
         <item quantity="other">total %1$d lagu</item>
     </plurals>
+
+    <!-- Sleep timer in Settings -->
+    <string name="sleep_pauses_in">Berhenti dalam %1$s</string>
+    <string name="sleep_needs_song">Putar lagu terlebih dahulu</string>
 </resources>

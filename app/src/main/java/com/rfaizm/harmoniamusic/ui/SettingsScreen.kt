@@ -41,7 +41,9 @@ import androidx.compose.runtime.setValue
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import com.rfaizm.harmoniamusic.BuildConfig
 import com.rfaizm.harmoniamusic.R
@@ -57,7 +59,14 @@ import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
-fun SettingsScreen(settings: SettingsViewModel, rescanning: Boolean, onRescan: () -> Unit) {
+fun SettingsScreen(
+    settings: SettingsViewModel,
+    rescanning: Boolean,
+    onRescan: () -> Unit,
+    sleep: SleepTimer?,
+    hasSong: Boolean,
+    onSleep: (SleepOption?) -> Unit,
+) {
     val flags by settings.flags.collectAsStateWithLifecycle()
     val lyricsFolder by settings.lyricsFolder.collectAsStateWithLifecycle()
     var confirmOnlineLyrics by remember { mutableStateOf(false) }
@@ -88,7 +97,7 @@ fun SettingsScreen(settings: SettingsViewModel, rescanning: Boolean, onRescan: (
         SettingsSection(stringResource(R.string.settings_playback)) {
             ToggleRow(settings, flags, Icons.Rounded.Shuffle, stringResource(R.string.settings_smart_shuffle), stringResource(R.string.settings_smart_shuffle_sub), Key.SmartShuffle)
             Divider()
-            SettingsRow(Icons.Rounded.Bedtime, stringResource(R.string.sleep_timer), stringResource(R.string.settings_sleep_timer_sub), onClick = {}) { Chevron() }
+            SleepTimerRow(sleep, hasSong, onSleep)
             Divider()
             SettingsRow(
                 Icons.Rounded.Lyrics,
@@ -147,6 +156,40 @@ fun SettingsScreen(settings: SettingsViewModel, rescanning: Boolean, onRescan: (
             },
             dismissButton = { TextButton({ confirmOnlineLyrics = false }) { Text(stringResource(R.string.cancel), color = colors.mutedForeground) } },
         )
+    }
+}
+
+/**
+ * L3: the same timer as the player's sleep chip, so one set here shows there and the other way round. The second
+ * line follows it live. With nothing loaded there's nothing to pause, so a tap says so instead of opening the menu.
+ */
+@Composable
+private fun SleepTimerRow(sleep: SleepTimer?, hasSong: Boolean, onSelect: (SleepOption?) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val resources = LocalResources.current
+    val status = when {
+        sleep == null -> stringResource(R.string.settings_sleep_timer_sub)
+        sleep.option == SleepOption.EndOfTrack -> stringResource(R.string.sleep_pauses_at_end)
+        else -> stringResource(R.string.sleep_pauses_in, countdownText(rememberMsLeft(sleep.endsAt)))
+    }
+    Box {
+        SettingsRow(Icons.Rounded.Bedtime, stringResource(R.string.sleep_timer), status, onClick = {
+            if (hasSong || sleep != null) open = true
+            else Toast.makeText(context, resources.getString(R.string.sleep_needs_song), Toast.LENGTH_SHORT).show()
+        }) { Chevron() }
+        DropdownMenu(open, { open = false }, Modifier.align(Alignment.CenterEnd), shape = RoundedCornerShape(16.dp), containerColor = colors.card) {
+            sleepMenuItems(running = sleep != null).forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        if (option == null) Text(stringResource(R.string.turn_off), fontSize = 14.sp, color = colors.mutedForeground)
+                        else Text(option.label(), fontSize = 14.sp, color = colors.onSurface)
+                    },
+                    trailingIcon = { if (option != null && option == sleep?.option) Icon(Icons.Rounded.Check, null, tint = colors.primary) },
+                    onClick = { open = false; onSelect(option) },
+                )
+            }
+        }
     }
 }
 

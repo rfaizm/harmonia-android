@@ -189,7 +189,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                     label = "tab"
                 ) { t ->
                     when {
-                        t == Tab.Settings -> SettingsScreen(hiltViewModel(), rescanning, onRescan = ::rescan)
+                        t == Tab.Settings -> SettingsScreen(hiltViewModel(), rescanning, onRescan = ::rescan, sleep = playback.sleep, hasSong = active != null, onSleep = player::setSleep)
                         !granted -> PermissionEmptyState(blocked, ::requestPermission)
                         !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = colors.primary)

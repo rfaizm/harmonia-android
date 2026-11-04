@@ -5,6 +5,7 @@ import com.rfaizm.harmoniamusic.ui.SleepTimer
 import com.rfaizm.harmoniamusic.ui.countdownText
 import com.rfaizm.harmoniamusic.ui.sleepTimerOf
 import com.rfaizm.harmoniamusic.ui.countdownParts
+import com.rfaizm.harmoniamusic.ui.sleepMenuItems
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -57,5 +58,12 @@ class SleepTimerTest {
     @Test
     fun noTimerOnceItHasFired() {
         assertNull(sleepTimerOf(minutes = 0, endsAt = 0L))
+    }
+
+    @Test
+    fun theSettingsMenuOffersTurnOffOnlyWhileATimerRuns() {
+        // L3: null is "Turn off", last in the list so it sits apart from the times.
+        assertEquals(SleepOption.entries.toList(), sleepMenuItems(running = false))
+        assertEquals(SleepOption.entries + null, sleepMenuItems(running = true))
     }
 }
