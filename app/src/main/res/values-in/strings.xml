@@ -177,4 +177,18 @@
     <!-- Language -->
     <string name="settings_language">Bahasa</string>
     <string name="language_system">Ikuti sistem</string>
+
+    <!-- Rescan -->
+    <string name="scan_in_progress">Memindai…</string>
+    <string name="scan_up_to_date">Pustaka sudah terbaru</string>
+    <string name="scan_needs_permission">Izinkan Harmonia membaca musik Anda terlebih dahulu</string>
+    <plurals name="scan_added">
+        <item quantity="other">Menemukan %1$d lagu baru</item>
+    </plurals>
+    <plurals name="scan_removed">
+        <item quantity="other">%1$d lagu tidak ditemukan lagi</item>
+    </plurals>
+    <plurals name="scan_total">
+        <item quantity="other">total %1$d lagu</item>
+    </plurals>
 </resources>

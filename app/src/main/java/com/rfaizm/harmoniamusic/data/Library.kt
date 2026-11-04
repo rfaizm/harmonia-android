@@ -8,6 +8,15 @@ import java.nio.charset.Charset
 import java.util.Locale
 
 
+/** What a rescan found (L2): songs are matched by id, so a song whose tags changed isn't new. */
+data class ScanSummary(val total: Int, val added: Int, val removed: Int)
+
+internal fun scanSummary(before: List<Song>, after: List<Song>): ScanSummary {
+    val old = before.mapTo(HashSet()) { it.id }
+    val new = after.mapTo(HashSet()) { it.id }
+    return ScanSummary(total = after.size, added = (new - old).size, removed = (old - new).size)
+}
+
 /** Only what a rescan can't rebuild: likes, play counts and playlists. */
 internal fun stateJson(songs: List<Song>, playlists: List<Playlist>): String {
     val songArray = JSONArray()

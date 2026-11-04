@@ -81,7 +81,7 @@ Full details are in `tasks/plan.md`. Verify each task with `./gradlew :app:testD
 ## M13: Language picker and working Settings rows (before F5; details in `tasks/plan.md`)
 Decisions: AndroidX AppCompat for the language, the Filter row becomes a real switch, feedback by Toast.
 - [x] L1 Language picker in Settings › Display & privacy (System default / English / Bahasa Indonesia) with AppCompat 1.8.0: `MainActivity` is an `AppCompatActivity`, the theme is AppCompat, `autoStoreLocales` keeps the choice below Android 13, and `generateLocaleConfig` lists en-US and in for 13+'s per-app setting (`LanguageTest`). **Needs a phone check**
-- [ ] L2 Rescan shows a spinner while scanning, then "Found N new songs · M in total" or "Library is up to date" (`scanSummary` test)
+- [x] L2 Rescan shows a spinner and "Scanning…" in the row, then a Toast: "Found N new songs · M songs in total", "N songs no longer found · …", or "Library is up to date · …"; without permission it says so. `MusicRepository.scan()` returns a `ScanSummary` (`ScanSummaryTest`). The empty list's pull-to-refresh gets the same message. **Needs a phone check**
 - [ ] L3 Sleep timer row opens the timer options and shows the live state ("Pauses in 12:34")
 - [ ] L4 Filter row becomes a real "Hide clips shorter than 30 seconds" switch; flipping it rescans (needs L2)
 - [ ] L5 Rate Harmonia opens the store page (F-Droid or Play), then GitHub, then a Toast (replaces T26)

@@ -190,4 +190,21 @@
     <string name="language_indonesian" translatable="false">Bahasa Indonesia</string>
     <string name="settings_language">Language</string>
     <string name="language_system">System default</string>
+
+    <!-- Rescan -->
+    <string name="scan_in_progress">Scanning…</string>
+    <string name="scan_up_to_date">Library is up to date</string>
+    <string name="scan_needs_permission">Allow Harmonia to read your music first</string>
+    <plurals name="scan_added">
+        <item quantity="one">Found %1$d new song</item>
+        <item quantity="other">Found %1$d new songs</item>
+    </plurals>
+    <plurals name="scan_removed">
+        <item quantity="one">%1$d song no longer found</item>
+        <item quantity="other">%1$d songs no longer found</item>
+    </plurals>
+    <plurals name="scan_total">
+        <item quantity="one">%1$d song in total</item>
+        <item quantity="other">%1$d songs in total</item>
+    </plurals>
 </resources>

@@ -62,7 +62,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.annotation.StringRes
+import android.content.res.Resources
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
+import com.rfaizm.harmoniamusic.data.ScanSummary
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.rfaizm.harmoniamusic.R
@@ -159,11 +163,18 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
     LaunchedEffect(granted) { if (granted && !loaded) music.ensureLoaded() }
     val scope = rememberCoroutineScope()
     var rescanning by remember { mutableStateOf(false) }
+    val resources = LocalResources.current
+    // Every rescan ends with one message (L2), so a tap in Settings or a pull on the empty list is never silent.
     fun rescan() {
-        if (!granted || rescanning) return
+        if (rescanning) return
+        if (!granted) {
+            Toast.makeText(context, resources.getString(R.string.scan_needs_permission), Toast.LENGTH_SHORT).show()
+            return
+        }
         scope.launch {
             rescanning = true
-            try { music.scan() } finally { rescanning = false }
+            val summary = try { music.scan() } finally { rescanning = false }
+            Toast.makeText(context, scanMessage(resources, summary), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -178,7 +189,7 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
                     label = "tab"
                 ) { t ->
                     when {
-                        t == Tab.Settings -> SettingsScreen(hiltViewModel(), onRescan = ::rescan)
+                        t == Tab.Settings -> SettingsScreen(hiltViewModel(), rescanning, onRescan = ::rescan)
                         !granted -> PermissionEmptyState(blocked, ::requestPermission)
                         !loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator(color = colors.primary)
@@ -230,6 +241,18 @@ fun HarmoniaApp(music: MusicRepository, settings: SettingsRepository, lyricsRepo
             }
         }
     } }
+}
+
+/** "Found 3 new songs · 120 songs in total", or "Library is up to date · 120 songs in total" (L2). */
+private fun scanMessage(res: Resources, summary: ScanSummary?): String {
+    if (summary == null) return res.getString(R.string.scan_needs_permission)
+    val parts = buildList {
+        if (summary.added > 0) add(res.getQuantityString(R.plurals.scan_added, summary.added, summary.added))
+        if (summary.removed > 0) add(res.getQuantityString(R.plurals.scan_removed, summary.removed, summary.removed))
+        if (isEmpty()) add(res.getString(R.string.scan_up_to_date))
+        add(res.getQuantityString(R.plurals.scan_total, summary.total, summary.total))
+    }
+    return parts.joinToString(" · ")
 }
 
 @Composable

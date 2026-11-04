@@ -53,8 +53,11 @@ class MusicRepository @Inject constructor(
     private val writes = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val loadLock = Mutex() // the UI and the service both ask for the library at launch
 
-    /** Needs the audio permission; call on the main thread. */
-    suspend fun scan() = loadLock.withLock { scanNow() }
+    /** Needs the audio permission; call on the main thread. Null without it, otherwise what changed (L2). */
+    suspend fun scan(): ScanSummary? = loadLock.withLock {
+        val before = _songs.value
+        if (scanNow()) scanSummary(before, _songs.value) else null
+    }
 
     /** Restores and scans once, whoever asks first; a second caller waits for that scan instead of repeating it. */
     suspend fun ensureLoaded() = loadLock.withLock {
@@ -62,12 +65,14 @@ class MusicRepository @Inject constructor(
         if (!_loaded.value) scanNow()
     }
 
-    private suspend fun scanNow() {
+    /** False when the query failed. */
+    private suspend fun scanNow(): Boolean {
         // Without the audio permission the query fails; leave [loaded] false so a later grant still scans.
-        val fresh = withContext(Dispatchers.IO) { mediaStore.songs() } ?: return
+        val fresh = withContext(Dispatchers.IO) { mediaStore.songs() } ?: return false
         // Nothing scanned yet means this is the first scan of the process, so the saved state is the newest.
         _songs.value = keepUserState(fresh, _songs.value.ifEmpty { saved })
         _loaded.value = true
+        return true
     }
 
     /** Reads what MediaStore can't tell us, once, before the first scan. */

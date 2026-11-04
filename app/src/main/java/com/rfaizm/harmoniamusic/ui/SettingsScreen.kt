@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.ui.Alignment
@@ -56,7 +57,7 @@ import com.rfaizm.harmoniamusic.ui.theme.card
 import com.rfaizm.harmoniamusic.ui.theme.mutedForeground
 
 @Composable
-fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
+fun SettingsScreen(settings: SettingsViewModel, rescanning: Boolean, onRescan: () -> Unit) {
     val flags by settings.flags.collectAsStateWithLifecycle()
     val lyricsFolder by settings.lyricsFolder.collectAsStateWithLifecycle()
     var confirmOnlineLyrics by remember { mutableStateOf(false) }
@@ -72,7 +73,13 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
         Text(stringResource(R.string.settings_title), fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 14.dp))
 
         SettingsSection(stringResource(R.string.settings_library)) {
-            SettingsRow(Icons.Rounded.Schedule, stringResource(R.string.settings_rescan), stringResource(R.string.settings_rescan_sub), onClick = onRescan) { Chevron() }
+            // L2: a spinner while it runs; HarmoniaApp shows what it found when it ends.
+            SettingsRow(
+                Icons.Rounded.Schedule, stringResource(R.string.settings_rescan),
+                stringResource(if (rescanning) R.string.scan_in_progress else R.string.settings_rescan_sub), onClick = onRescan,
+            ) {
+                if (rescanning) CircularProgressIndicator(Modifier.size(16.dp), color = colors.primary, strokeWidth = 2.dp) else Chevron()
+            }
             Divider()
             SettingsRow(Icons.Rounded.Tune, stringResource(R.string.settings_filters), stringResource(R.string.settings_filters_sub), onClick = {}) { Chevron() }
         }
