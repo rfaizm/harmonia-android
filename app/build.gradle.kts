@@ -58,6 +58,10 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    // Lists the app's languages for Android 13+'s per-app language setting (L1); see res/resources.properties.
+    androidResources {
+        generateLocaleConfig = true
+    }
     buildFeatures {
         compose = true
         buildConfig = true
@@ -67,6 +71,7 @@ android {
 dependencies {
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.appcompat)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation(libs.androidx.compose.ui)

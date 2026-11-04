@@ -19,7 +19,14 @@ import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Translate
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -103,6 +110,8 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
         }
 
         SettingsSection(stringResource(R.string.settings_display)) {
+            LanguageRow(settings)
+            Divider()
             ToggleRow(settings, flags, Icons.Rounded.Speed, stringResource(R.string.settings_lite), stringResource(R.string.settings_lite_sub), Key.LiteMode)
             Divider()
             ToggleRow(settings, flags, Icons.Rounded.BlurOn, stringResource(R.string.settings_lock_privacy), stringResource(R.string.settings_lock_privacy_sub), Key.LockPrivacy)
@@ -131,6 +140,24 @@ fun SettingsScreen(settings: SettingsViewModel, onRescan: () -> Unit) {
             },
             dismissButton = { TextButton({ confirmOnlineLyrics = false }) { Text(stringResource(R.string.cancel), color = colors.mutedForeground) } },
         )
+    }
+}
+
+/** L1: the app's own language, picked from a menu; AppCompat redraws the app in it. */
+@Composable
+private fun LanguageRow(settings: SettingsViewModel) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        SettingsRow(Icons.Rounded.Translate, stringResource(R.string.settings_language), stringResource(settings.language.label), onClick = { open = true }) { Chevron() }
+        DropdownMenu(open, { open = false }, Modifier.align(Alignment.CenterEnd), shape = RoundedCornerShape(16.dp), containerColor = colors.card) {
+            AppLanguage.entries.forEach { language ->
+                DropdownMenuItem(
+                    text = { Text(stringResource(language.label), fontSize = 14.sp, color = colors.onSurface) },
+                    trailingIcon = { if (language == settings.language) Icon(Icons.Rounded.Check, null, tint = colors.primary) },
+                    onClick = { open = false; settings.setLanguage(language) },
+                )
+            }
+        }
     }
 }
 

@@ -1,9 +1,9 @@
 package com.rfaizm.harmoniamusic
 
 import android.os.Bundle
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.runtime.CompositionLocalProvider
 import com.rfaizm.harmoniamusic.data.LyricsRepository
 import com.rfaizm.harmoniamusic.data.MusicRepository
@@ -14,7 +14,8 @@ import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class MainActivity : ComponentActivity() {
+// AppCompatActivity, so the in-app language choice applies on every Android version (L1).
+class MainActivity : AppCompatActivity() {
     @Inject lateinit var music: MusicRepository
     @Inject lateinit var settings: SettingsRepository
     @Inject lateinit var lyrics: LyricsRepository

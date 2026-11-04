@@ -184,4 +184,10 @@
         <item quantity="one">%1$d song · local library</item>
         <item quantity="other">%1$d songs · local library</item>
     </plurals>
+
+    <!-- Language -->
+    <string name="language_english" translatable="false">English</string>
+    <string name="language_indonesian" translatable="false">Bahasa Indonesia</string>
+    <string name="settings_language">Language</string>
+    <string name="language_system">System default</string>
 </resources>

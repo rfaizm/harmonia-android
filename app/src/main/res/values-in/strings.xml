@@ -173,4 +173,8 @@
     <plurals name="library_summary">
         <item quantity="other">%1$d lagu · pustaka lokal</item>
     </plurals>
+
+    <!-- Language -->
+    <string name="settings_language">Bahasa</string>
+    <string name="language_system">Ikuti sistem</string>
 </resources>
