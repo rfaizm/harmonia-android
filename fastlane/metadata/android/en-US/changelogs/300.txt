@@ -1,6 +1,6 @@
 First release on F-Droid.
 • Offline playback with playlists, smart shuffle, a sleep timer and synced lyrics
-• Indonesian translation
+• Indonesian translation, with a language picker in Settings
 • Light performance mode for low-end phones
 • Repairs garbled tags from old music files
 • Right-to-left layout fixes

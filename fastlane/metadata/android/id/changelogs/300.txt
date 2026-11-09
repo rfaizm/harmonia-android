@@ -1,6 +1,6 @@
 Rilis pertama di F-Droid.
 • Pemutaran offline dengan playlist, acak pintar, timer tidur, dan lirik yang selaras
-• Terjemahan bahasa Indonesia
+• Terjemahan bahasa Indonesia, dengan pilihan bahasa di Pengaturan
 • Mode performa ringan untuk ponsel kelas bawah
 • Memperbaiki tag yang rusak dari file musik lama
 • Perbaikan tata letak kanan-ke-kiri

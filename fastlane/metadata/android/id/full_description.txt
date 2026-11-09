@@ -9,7 +9,7 @@ Fitur:
 • Lirik dari tag lagu atau dari file .lrc di sampingnya; lirik yang selaras mengikuti lagu, dan mengetuk satu baris akan melompat ke sana
 • Suka, jumlah putar, aksi geser, penggulir A–Z, serta tema terang dan gelap
 • Mode performa ringan untuk ponsel kelas bawah
-• Bahasa Inggris dan Indonesia
+• Bahasa Inggris dan Indonesia, mengikuti ponsel atau dipilih di Pengaturan
 
 Privasi:
 Harmonia bekerja secara offline. Satu-satunya fitur jaringan adalah pencarian lirik online opsional, yang mati sampai Anda menyalakannya. Setelah itu, hanya saat Anda mengetuk "Cari lirik online", aplikasi mengirim judul, artis, album, dan durasi lagu itu ke LRCLIB (lrclib.net), layanan lirik gratis dan open source. Tidak ada data lain yang keluar dari ponsel Anda.

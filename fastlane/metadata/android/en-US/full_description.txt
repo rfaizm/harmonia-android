@@ -9,7 +9,7 @@ Features:
 • Lyrics from the song's tags or from a .lrc file next to it; synced lyrics follow the song, and tapping a line jumps to it
 • Likes, play counts, swipe actions, an A–Z scroller, and light and dark themes
 • Light performance mode for low-end phones
-• English and Indonesian
+• English and Indonesian, following the phone or picked in Settings
 
 Privacy:
 Harmonia works offline. Its only network feature is the optional online lyrics lookup, which is off until you turn it on. Then, only when you tap "Find lyrics online", it sends that song's title, artist, album and length to LRCLIB (lrclib.net), a free and open-source lyrics service. Nothing else leaves your phone.
