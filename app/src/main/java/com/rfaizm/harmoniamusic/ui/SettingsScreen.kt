@@ -41,7 +41,10 @@ import androidx.compose.runtime.setValue
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Context
+import android.content.Intent
 import android.widget.Toast
+import androidx.core.net.toUri
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
@@ -139,7 +142,7 @@ fun SettingsScreen(
         }
 
         SettingsSection(stringResource(R.string.settings_about)) {
-            SettingsRow(Icons.Rounded.Star, stringResource(R.string.settings_rate), stringResource(R.string.settings_rate_sub), onClick = {}) { Chevron() }
+            SettingsRow(Icons.Rounded.Star, stringResource(R.string.settings_rate), stringResource(R.string.settings_rate_sub), onClick = { openRatePage(context) }) { Chevron() }
             Divider()
             SettingsRow(Icons.Rounded.Info, stringResource(R.string.settings_about), stringResource(R.string.settings_version, BuildConfig.VERSION_NAME))
         }
@@ -221,6 +224,17 @@ private fun ToggleRow(settings: SettingsViewModel, flags: Map<Key, Boolean>, ico
     SettingsRow(icon, label, sub, onClick = { settings[key] = !flags.getValue(key) }) { HarmoniaSwitch(flags.getValue(key)) { settings[key] = it } }
 
 /** The tail of a document-tree uri is the readable part, e.g. "primary:Music". */
+/** Where "Rate Harmonia" goes, in order (L5). F-Droid and the Play Store both handle market:// links. */
+internal val rateLinks = listOf("market://details?id=com.rfaizm.harmoniamusic", "https://github.com/rfaizm/harmonia-android")
+
+/** Opens the first link something on the phone can handle; with nothing, says so. */
+private fun openRatePage(context: Context) {
+    val opened = rateLinks.any { link ->
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, link.toUri()).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }.isSuccess
+    }
+    if (!opened) Toast.makeText(context, context.getString(R.string.rate_no_app), Toast.LENGTH_SHORT).show()
+}
+
 private fun folderLabel(uri: String) = Uri.decode(uri.substringAfterLast("%3A").substringAfterLast(':')).ifBlank { null }
 
 @Composable

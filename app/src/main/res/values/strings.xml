@@ -33,6 +33,7 @@
     <string name="settings_about">About</string>
     <string name="settings_rate">Rate Harmonia</string>
     <string name="settings_rate_sub">Enjoying the quiet? Let us know</string>
+    <string name="rate_no_app">No app on this phone can open the link</string>
     <string name="settings_version">Version %1$s · offline by default</string>
     <string name="online_lyrics_title">Look up lyrics online?</string>
     <string name="online_lyrics_body">When you tap “Find lyrics online” on a song, Harmonia sends that song\'s title, artist, album and length to lrclib.net and shows what comes back. Nothing else leaves your phone, and nothing is sent until you tap it.</string>

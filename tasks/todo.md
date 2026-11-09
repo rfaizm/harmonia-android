@@ -84,7 +84,7 @@ Decisions: AndroidX AppCompat for the language, the Filter row becomes a real sw
 - [x] L2 Rescan shows a spinner and "Scanning…" in the row, then a Toast: "Found N new songs · M songs in total", "N songs no longer found · …", or "Library is up to date · …"; without permission it says so. `MusicRepository.scan()` returns a `ScanSummary` (`ScanSummaryTest`). The empty list's pull-to-refresh gets the same message. **Needs a phone check**
 - [x] L3 Sleep timer row opens the same timer as the player's chip (15/30/45/60 min, End of track, and "Turn off" while one runs; `sleepMenuItems` test) and shows the live state ("Pauses in 12:34", "Pauses when this song ends"); with nothing loaded it says "Play a song first". **Needs a phone check**
 - [x] L4 Filters row is a real "Hide clips shorter than 30 seconds" switch (`Key.HideShortClips`, on by default); flipping it rescans and shows L2's message, and is ignored while a scan runs. The scan reads it through `selectionFor` (`ShortClipFilterTest`). **Needs a phone check**
-- [ ] L5 Rate Harmonia opens the store page (F-Droid or Play), then GitHub, then a Toast (replaces T26)
+- [x] L5 Rate Harmonia opens `market://details?id=com.rfaizm.harmoniamusic` (F-Droid or Play), else the GitHub page, else a Toast "No app on this phone can open the link" (`rateLinks`, `RateLinksTest`; replaces T26). **Needs a phone check**
 - [ ] L6 Mention the language picker in the store descriptions and `changelogs/300.txt`
 - [ ] **Checkpoint M13:** the user checks the rows and the picker on the release build, then takes the F4 screenshots
 

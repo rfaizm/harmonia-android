@@ -32,6 +32,7 @@
     <string name="settings_about">Tentang</string>
     <string name="settings_rate">Beri nilai Harmonia</string>
     <string name="settings_rate_sub">Suka dengan ketenangannya? Beri tahu kami</string>
+    <string name="rate_no_app">Tidak ada aplikasi di ponsel ini yang bisa membuka tautannya</string>
     <string name="settings_version">Versi %1$s · offline secara bawaan</string>
     <string name="online_lyrics_title">Cari lirik di internet?</string>
     <string name="online_lyrics_body">Saat Anda mengetuk “Cari lirik online” pada sebuah lagu, Harmonia mengirim judul, artis, album, dan durasi lagu itu ke lrclib.net, lalu menampilkan hasilnya. Tidak ada data lain yang keluar dari ponsel Anda, dan tidak ada yang dikirim sebelum Anda mengetuknya.</string>
