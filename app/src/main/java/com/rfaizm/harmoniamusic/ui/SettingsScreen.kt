@@ -90,7 +90,12 @@ fun SettingsScreen(
                 if (rescanning) CircularProgressIndicator(Modifier.size(16.dp), color = colors.primary, strokeWidth = 2.dp) else Chevron()
             }
             Divider()
-            SettingsRow(Icons.Rounded.Tune, stringResource(R.string.settings_filters), stringResource(R.string.settings_filters_sub), onClick = {}) { Chevron() }
+            // Flipping it changes what the scan keeps, so it rescans and shows L2's message (L4).
+            val hideShort = flags.getValue(Key.HideShortClips)
+            val setHideShort = { on: Boolean -> if (!rescanning) { settings[Key.HideShortClips] = on; onRescan() } }
+            SettingsRow(Icons.Rounded.Tune, stringResource(R.string.settings_filters), stringResource(R.string.settings_filters_sub), onClick = { setHideShort(!hideShort) }) {
+                HarmoniaSwitch(hideShort, setHideShort)
+            }
         }
 
         // Crossfade and gapless switches are gone: Media3 is always gapless, and crossfade was dropped (tasks/plan.md).

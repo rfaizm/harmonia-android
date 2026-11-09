@@ -22,7 +22,7 @@ import java.util.Locale
 @Singleton
 class MediaStoreSource @Inject constructor(@ApplicationContext private val context: Context) {
     /** Blocking: call from IO. Null without the audio permission, where the query throws. */
-    fun songs(): List<Song>? = runCatching { query() }.getOrNull()
+    fun songs(hideShort: Boolean): List<Song>? = runCatching { query(hideShort) }.getOrNull()
 
     /** True once the song is gone; a row that was already deleted elsewhere counts as gone. */
     fun delete(songId: Int): Boolean = runCatching { context.contentResolver.delete(songUri(songId), null, null) }.isSuccess
@@ -44,11 +44,9 @@ class MediaStoreSource @Inject constructor(@ApplicationContext private val conte
         } // any other SecurityException is a real failure and is reported by the caller
     }
 
-    private fun query(): List<Song> {
+    private fun query(hideShort: Boolean): List<Song> {
         val columns = arrayOf(Media._ID, Media.TITLE, Media.ARTIST, Media.ALBUM, Media.YEAR, Media.DURATION, Media.DISPLAY_NAME)
-        // Settings › Filters: "Hide clips shorter than 30 seconds".
-        val selection = "${Media.IS_MUSIC} != 0 AND ${Media.DURATION} >= 30000"
-        return context.contentResolver.query(Media.EXTERNAL_CONTENT_URI, columns, selection, null, null)?.use { c ->
+        return context.contentResolver.query(Media.EXTERNAL_CONTENT_URI, columns, selectionFor(hideShort), null, null)?.use { c ->
             buildList(c.count) {
                 while (c.moveToNext()) {
                     add(toSong(c.getLong(0), c.tag(1), c.tag(2), c.tag(3), c.getInt(4), c.getLong(5), c.getString(6)))
@@ -59,6 +57,10 @@ class MediaStoreSource @Inject constructor(@ApplicationContext private val conte
 
     private fun Cursor.tag(column: Int): String? = getString(column)?.let { repairMojibake(it) { bytes -> guessCharset(bytes, Locale.getDefault()) } }
 }
+
+/** Settings › "Hide clips shorter than 30 seconds" (L4): voice notes and ringtones stay out while it's on. */
+fun selectionFor(hideShort: Boolean): String =
+    "${Media.IS_MUSIC} != 0" + if (hideShort) " AND ${Media.DURATION} >= 30000" else ""
 
 /** Where the player and the delete calls find a song's audio. */
 fun songUri(songId: Int): Uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, songId.toLong())

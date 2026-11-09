@@ -25,6 +25,7 @@ class SettingsRepository @Inject constructor(private val store: SettingsStore, p
         LiteMode(false),      // T19; starts on for low-RAM phones, see defaultOf
         LockPrivacy(false),   // used by T15
         OnlineLyrics(false),  // the only setting that lets the app touch the network
+        HideShortClips(true), // L4; read by each scan
     }
 
     private val _flags = MutableStateFlow(Key.entries.associateWith { store.flag(it.name, defaultOf(it, store.lowRam)) })

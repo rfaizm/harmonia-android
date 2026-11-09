@@ -36,6 +36,7 @@ class MusicRepository @Inject constructor(
     private val store: LibraryStore,
     private val art: ArtSource,
     private val sessions: SessionStore,
+    private val settings: SettingsRepository,
 ) {
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
     private val _playlists = MutableStateFlow<List<Playlist>>(emptyList())
@@ -68,7 +69,7 @@ class MusicRepository @Inject constructor(
     /** False when the query failed. */
     private suspend fun scanNow(): Boolean {
         // Without the audio permission the query fails; leave [loaded] false so a later grant still scans.
-        val fresh = withContext(Dispatchers.IO) { mediaStore.songs() } ?: return false
+        val fresh = withContext(Dispatchers.IO) { mediaStore.songs(settings[SettingsRepository.Key.HideShortClips]) } ?: return false
         // Nothing scanned yet means this is the first scan of the process, so the saved state is the newest.
         _songs.value = keepUserState(fresh, _songs.value.ifEmpty { saved })
         _loaded.value = true
