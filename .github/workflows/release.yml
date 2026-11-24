@@ -21,7 +21,8 @@ jobs:
       # The version lives in app/build.gradle.kts, where F-Droid reads it; the tag has to agree with it (F2).
       - name: Check the tag matches the app version
         run: |
-          name=$(sed -n 's/^ *versionName = "\(.*\)"$/\1/p' app/build.gradle.kts)
+          # grep + cut, not a sed capture group: that came back empty on the runner and failed v0.3.0's first run.
+          name=$(grep -m1 'versionName = "' app/build.gradle.kts | cut -d'"' -f2)
           if [ "v$name" != "$GITHUB_REF_NAME" ]; then
             echo "::error::Tag $GITHUB_REF_NAME doesn't match versionName \"$name\" in app/build.gradle.kts. Bump versionName and versionCode first."
             exit 1
