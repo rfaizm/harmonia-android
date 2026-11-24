@@ -65,6 +65,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.rfaizm.harmoniamusic.R
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -154,6 +156,17 @@ fun SongsScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
+                        // The row has no long-press handler (see above), so lifting the finger after a long press
+                        // without moving counted as a tap: its onClick toggled the song straight back off and the
+                        // selection ended at once. Swallow that lift before the row sees it (Initial runs first).
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    val event = awaitPointerEvent(PointerEventPass.Initial)
+                                    if (dragFrom != null) event.changes.forEach { if (it.changedToUp()) it.consume() }
+                                }
+                            }
+                        }
                         // Only runs after a long press, so ordinary scrolling and flinging are untouched.
                         .pointerInput(entries) {
                             detectDragGesturesAfterLongPress(

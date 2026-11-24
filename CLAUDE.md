@@ -16,7 +16,7 @@ Harmonia: an offline local-music player for Android, written in Kotlin with Jetp
 `java` is not on PATH. Use Android Studio's bundled JDK:
 
 ```bash
-export JAVA_HOME="/c/Program Files/Android/Android Studio/jbr"   # Git Bash
+export JAVA_HOME="$HOME/.jdks/jbr-21.0.11"   # Git Bash (Android Studio's old jbr path is gone)
 ./gradlew :app:assembleDebug
 ./gradlew :app:assembleRelease          # R8 enabled, signed with the debug key
 ./gradlew :app:testDebugUnitTest        # JVM unit tests
