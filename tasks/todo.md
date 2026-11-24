@@ -93,7 +93,7 @@ Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 f
 - [x] F1 Add the GPL-3.0 `LICENSE` (the official gnu.org text, so GitHub detects it) and name it in the README as `GPL-3.0-only` (`LicenseTest`)
 - [x] F2 Plain `versionName = "0.3.0"` / `versionCode = 300` in `build.gradle.kts` (`VersionTest` reads them the way F-Droid does and checks the code scheme); the release workflow stops when the tag isn't `v` + versionName; Settings › About shows `BuildConfig.VERSION_NAME`
 - [x] F3 Turn off AGP's Google-only dependency block (`dependenciesInfo`, `FdroidBuildTest`). Checked on the release APK: its signing block held ID 0x504b4453 before and only the v2 signature and padding after
-- [ ] F4 Store page files in `fastlane/metadata/android/` (en-US and id): title, descriptions (with the online-lyrics disclosure and every permission), changelog `300.txt`, 512 px icon copied from `ic_launcher-playstore.png`; `StoreListingTest` checks F-Droid's limits. **Done except the screenshots: the user adds `1.png`, `2.png`, … to `en-US/images/phoneScreenshots/` before F5**
+- [x] F4 Store page files in `fastlane/metadata/android/` (en-US and id): title, descriptions (with the online-lyrics disclosure and every permission), changelog `300.txt`, 512 px icon copied from `ic_launcher-playstore.png`; `StoreListingTest` checks F-Droid's limits. Eight screenshots (`1.jpeg`–`8.jpeg`, 702×1600) taken with the fictional library on the `screenshot-data` branch (never merge it)
 - [ ] F5 Tag `v0.3.0` after T21 and M13, and push (**the user says "push"**)
 - [ ] **Checkpoint A:** license, version, tag and store files visible on GitHub; v0.3.0 APK runs on the phone
 - [ ] F6 Write `com.rfaizm.harmoniamusic.yml` for fdroiddata
