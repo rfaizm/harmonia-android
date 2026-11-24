@@ -86,7 +86,7 @@ Decisions: AndroidX AppCompat for the language, the Filter row becomes a real sw
 - [x] L4 Filters row is a real "Hide clips shorter than 30 seconds" switch (`Key.HideShortClips`, on by default); flipping it rescans and shows L2's message, and is ignored while a scan runs. The scan reads it through `selectionFor` (`ShortClipFilterTest`). **Needs a phone check**
 - [x] L5 Rate Harmonia opens `market://details?id=com.rfaizm.harmoniamusic` (F-Droid or Play), else the GitHub page, else a Toast "No app on this phone can open the link" (`rateLinks`, `RateLinksTest`; replaces T26). **Needs a phone check**
 - [x] L6 Both full descriptions and both `changelogs/300.txt` mention the language picker in Settings (`StoreListingTest` limits still hold)
-- [ ] **Checkpoint M13:** the user checks the rows and the picker on the release build, then takes the F4 screenshots
+- [x] **Checkpoint M13:** phone check of L1–L5 on the release build passed 2026-11-24; the screenshots stay open under F4
 
 ## M12: F-Droid release (before Play Store; details in `tasks/plan.md`)
 Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 finished first.
