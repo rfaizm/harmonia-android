@@ -94,8 +94,8 @@ Decisions: GPL-3.0, F-Droid signs the app, first version 0.3.0 (code 300), T21 f
 - [x] F2 Plain `versionName = "0.3.0"` / `versionCode = 300` in `build.gradle.kts` (`VersionTest` reads them the way F-Droid does and checks the code scheme); the release workflow stops when the tag isn't `v` + versionName; Settings › About shows `BuildConfig.VERSION_NAME`
 - [x] F3 Turn off AGP's Google-only dependency block (`dependenciesInfo`, `FdroidBuildTest`). Checked on the release APK: its signing block held ID 0x504b4453 before and only the v2 signature and padding after
 - [x] F4 Store page files in `fastlane/metadata/android/` (en-US and id): title, descriptions (with the online-lyrics disclosure and every permission), changelog `300.txt`, 512 px icon copied from `ic_launcher-playstore.png`; `StoreListingTest` checks F-Droid's limits. Eight screenshots (`1.jpeg`–`8.jpeg`, 702×1600) taken with the fictional library on the `screenshot-data` branch (never merge it)
-- [ ] F5 Tag `v0.3.0` after T21 and M13, and push (**the user says "push"**)
-- [ ] **Checkpoint A:** license, version, tag and store files visible on GitHub; v0.3.0 APK runs on the phone
+- [ ] F5 Release `v0.3.1` (code 301). `v0.3.0` was pushed on 2026-11-24 but its release run stopped at the tag check (a sed capture came back empty on the runner, now grep + cut); that tag has no Release and F-Droid must not use it
+- [ ] **Checkpoint A:** license, version, tag and store files visible on GitHub; v0.3.1 APK runs on the phone
 - [ ] F6 Write `com.rfaizm.harmoniamusic.yml` for fdroiddata
 - [ ] F7 **The user** forks fdroiddata on GitLab and pushes the yml; its CI pipelines pass
 - [ ] F8 **The user** opens the `New App: com.rfaizm.harmoniamusic` merge request and answers the reviewers

@@ -20,8 +20,8 @@ android {
         targetSdk = 37
         // Written plainly because F-Droid reads them with a regex and never runs Gradle (F2). A release bumps both:
         // the code is major * 10000 + minor * 100 + patch (VersionTest), and the tag must be "v" + versionName.
-        versionCode = 300
-        versionName = "0.3.0"
+        versionCode = 301
+        versionName = "0.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
